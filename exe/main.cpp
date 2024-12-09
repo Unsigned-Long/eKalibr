@@ -70,6 +70,9 @@ int main(int argc, char **argv) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
+        auto solver = ns_ekalibr::CalibSolver::Create();
+        solver->Process();
+
     } catch (const ns_ekalibr::EKalibrStatus &status) {
         // if error happened, print it
         static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);

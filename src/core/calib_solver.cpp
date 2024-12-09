@@ -28,5 +28,33 @@
 
 #include "core/calib_solver.h"
 #include "sensor/event_rosbag_loader.h"
+#include "config/configor.h"
+#include "pangolin/display/display.h"
+#include "viewer/viewer.h"
 
-namespace ns_ekalibr {}
+namespace ns_ekalibr {
+CalibSolver::CalibSolver()
+    : _viewer(Viewer::Create()),
+      _solveFinished(false) {
+    // organize the default solver option
+    _ceresOption.minimizer_type = ceres::TRUST_REGION;
+    _ceresOption.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
+    _ceresOption.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
+    _ceresOption.minimizer_progress_to_stdout = false;
+}
+
+CalibSolver::Ptr CalibSolver::Create() { return std::make_shared<CalibSolver>(); }
+
+CalibSolver::~CalibSolver() {
+    // solving is not performed or not finished as an exception is thrown
+    if (!_solveFinished) {
+        pangolin::QuitAll();
+    }
+    // solving is finished (when use 'pangolin::QuitAll()', the window not quit immediately)
+    while (_viewer->IsActive()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+void CalibSolver::Process() { _solveFinished = true; }
+}  // namespace ns_ekalibr

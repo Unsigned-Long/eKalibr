@@ -145,6 +145,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/config CONFIG_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/util UTIL_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/sensor SENSOR_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/core CORE_SRC_FILES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/viewer VIEWER_SRC_FILES)
 
 ###################
 # libekalibr_util #
@@ -236,6 +237,31 @@ target_link_libraries(
         # thirdparty
         tiny-viewer
 )
+
+#####################
+# libikalibr_viewer #
+#####################
+add_library(
+        ${PROJECT_NAME}_viewer SHARED
+        # source files
+        ${VIEWER_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_viewer PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_viewer PUBLIC
+        ${catkin_LIBRARIES}
+        ${PROJECT_NAME}_sensor
+
+        # thirdparty
+        tiny-viewer
+)
 ###########
 ## Build ##
 ###########
@@ -290,6 +316,7 @@ target_link_libraries(
         ${PROJECT_NAME}_util
         ${PROJECT_NAME}_sensor
         ${PROJECT_NAME}_core
+        ${PROJECT_NAME}_viewer
 )
 
 #############

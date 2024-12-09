@@ -29,6 +29,34 @@
 #ifndef CALIB_SOLVER_H
 #define CALIB_SOLVER_H
 
-namespace ns_ekalibr {}
+#include "memory"
+#include "ceres/ceres.h"
+
+namespace ns_ekalibr {
+class Viewer;
+using ViewerPtr = std::shared_ptr<Viewer>;
+
+class CalibSolver {
+public:
+    using Ptr = std::shared_ptr<CalibSolver>;
+
+protected:
+    // options used for ceres-related optimization
+    ceres::Solver::Options _ceresOption;
+    // viewer used to visualize entities in calibration
+    ViewerPtr _viewer;
+    // indicates whether the solving is finished
+    bool _solveFinished;
+
+public:
+    CalibSolver();
+
+    static CalibSolver::Ptr Create();
+
+    virtual ~CalibSolver();
+
+    void Process();
+};
+}  // namespace ns_ekalibr
 
 #endif  // CALIB_SOLVER_H
