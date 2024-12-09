@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+
+    <arg name="config_path" default="$(find ekalibr)/config/ekalibr-config.yaml"/>
+
+    <node pkg="ekalibr" type="ekalibr_prog" name="ekalibr_prog" output="screen">
+        <!-- change the value of this field to the path of your self-defined config file -->
+        <param name="config_path" value="$(arg config_path)" type="string"/>
+    </node>
+
+</launch>
