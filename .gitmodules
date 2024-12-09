@@ -1,0 +1,3 @@
+[submodule "thirdparty/tiny-viewer"]
+	path = thirdparty/tiny-viewer
+	url = https://github.com/Unsigned-Long/tiny-viewer.git

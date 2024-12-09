@@ -21,6 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
         roscpp
         rospy
         std_msgs
+        cv_bridge
 )
 
 ## System dependencies are found with CMake's conventions
@@ -129,13 +130,63 @@ if (OPENMP_FOUND)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif ()
 
-find_package(magic_enum)
+find_package(magic_enum REQUIRED)
 # magic_enum works in range of [MAGIC_ENUM_RANGE_MIN, MAGIC_ENUM_RANGE_MAX]
 add_definitions(-DMAGIC_ENUM_RANGE_MIN=0)
 # 1024 = 2^10
 add_definitions(-DMAGIC_ENUM_RANGE_MAX=1023)
+
 find_package(yaml-cpp)
 
+set(tiny-viewer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-viewer-install/lib/cmake/tiny-viewer)
+find_package(tiny-viewer REQUIRED)
+
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/config CONFIG_SRC_FILES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/util UTIL_SRC_FILES)
+
+###################
+# libekalibr_util #
+###################
+add_library(
+        ${PROJECT_NAME}_util SHARED
+        # source files
+        ${UTIL_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_util PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_util PUBLIC
+        ${catkin_LIBRARIES}
+        tiny-viewer
+)
+
+#####################
+# libekalibr_config #
+#####################
+add_library(
+        ${PROJECT_NAME}_config SHARED
+        # source files
+        ${CONFIG_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_config PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_config PUBLIC
+        ${catkin_LIBRARIES}
+        ${YAML_CPP_LIBRARIES}
+)
 
 ###########
 ## Build ##
@@ -187,6 +238,8 @@ target_include_directories(
 target_link_libraries(
         ${PROJECT_NAME}_prog
         ${catkin_LIBRARIES}
+        ${PROJECT_NAME}_config
+        ${PROJECT_NAME}_util
 )
 
 #############

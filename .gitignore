@@ -16,3 +16,5 @@
 *.mp4
 
 /data/*
+/thirdparty/tiny-viewer-build
+/thirdparty/tiny-viewer-install

@@ -27,8 +27,73 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "ros/ros.h"
+#include "util/status.hpp"
+#include "spdlog/fmt/bundled/color.h"
+#include "spdlog/spdlog.h"
+#include "config/configor.h"
+#include "util/utils.h"
+#include "util/utils_tpl.hpp"
+#include "filesystem"
 
 int main(int argc, char **argv) {
+    ros::init(argc, argv, "ekalibr_prog");
 
+    try {
+        // ns_ekalibr::Configor::Create()->SaveConfigure(ns_ekalibr::Configor::DataStream::PkgPath +
+        //                                               "/config/ekalibr-config1.yaml");
+        ns_ekalibr::ConfigSpdlog();
+
+        ns_ekalibr::PrintIKalibrLibInfo();
+
+        // load settings
+        auto configPath = ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_prog/config_path");
+        spdlog::info("loading configure from yaml file '{}'...", configPath);
+        if (!std::filesystem::exists(configPath)) {
+            throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,
+                                     "configure file dose not exist: '{}'", configPath);
+        }
+
+        if (!ns_ekalibr::Configor::LoadConfigure(configPath)) {
+            /**
+             * Attention: once the configure information is loaded in to this program, anywhere this
+             * configure infomoration can be used, as the 'Configor' is a large state mechine (a
+             * struct that contains all static configure fields), just like the one in OpenGL, such
+             * a design may lead to confuse to the new, and not easy to understand, however it can
+             * make code cleaner.
+             *
+             * Suggestion from authors: such a design is not recommanded in other programs,
+             * especially those multi-thread programs!!!
+             */
+            throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,
+                                     "load configure file from '{}' failed!", configPath);
+        } else {
+            ns_ekalibr::Configor::PrintMainFields();
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+    } catch (const ns_ekalibr::EKalibrStatus &status) {
+        // if error happened, print it
+        static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
+        static constexpr auto WECStyle = fmt::emphasis::italic | fmt::fg(fmt::color::red);
+        switch (status.flag) {
+            case ns_ekalibr::Status::FINE:
+                // this case usually won't happen
+                spdlog::info(fmt::format(FStyle, "{}", status.what));
+                break;
+            case ns_ekalibr::Status::WARNING:
+                spdlog::warn(fmt::format(WECStyle, "{}", status.what));
+                break;
+            case ns_ekalibr::Status::ERROR:
+                spdlog::error(fmt::format(WECStyle, "{}", status.what));
+                break;
+            case ns_ekalibr::Status::CRITICAL:
+                spdlog::critical(fmt::format(WECStyle, "{}", status.what));
+                break;
+        }
+    } catch (const std::exception &e) {
+        // an unknown exception not thrown by this program
+        static constexpr auto WECStyle = fmt::emphasis::italic | fmt::fg(fmt::color::red);
+        spdlog::critical(fmt::format(WECStyle, "unknown error happened: '{}'", e.what()));
+    }
     return 0;
 }
