@@ -143,6 +143,8 @@ find_package(tiny-viewer REQUIRED)
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/config CONFIG_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/util UTIL_SRC_FILES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/sensor SENSOR_SRC_FILES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/core CORE_SRC_FILES)
 
 ###################
 # libekalibr_util #
@@ -185,9 +187,55 @@ target_include_directories(
 target_link_libraries(
         ${PROJECT_NAME}_config PUBLIC
         ${catkin_LIBRARIES}
+        # thirdparty
         ${YAML_CPP_LIBRARIES}
 )
 
+
+#####################
+# libekalibr_sensor #
+#####################
+add_library(
+        ${PROJECT_NAME}_sensor SHARED
+        # source files
+        ${SENSOR_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_sensor PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_sensor PUBLIC
+        ${catkin_LIBRARIES}
+        # thirdparty
+        tiny-viewer
+)
+###################
+# libekalibr_core #
+###################
+add_library(
+        ${PROJECT_NAME}_core SHARED
+        # source files
+        ${CORE_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_core PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_core PUBLIC
+        ${catkin_LIBRARIES}
+        # thirdparty
+        tiny-viewer
+)
 ###########
 ## Build ##
 ###########
@@ -240,6 +288,8 @@ target_link_libraries(
         ${catkin_LIBRARIES}
         ${PROJECT_NAME}_config
         ${PROJECT_NAME}_util
+        ${PROJECT_NAME}_sensor
+        ${PROJECT_NAME}_core
 )
 
 #############

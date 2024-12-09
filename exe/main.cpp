@@ -34,13 +34,12 @@
 #include "util/utils.h"
 #include "util/utils_tpl.hpp"
 #include "filesystem"
+#include "core/calib_solver.h"
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ekalibr_prog");
 
     try {
-        // ns_ekalibr::Configor::Create()->SaveConfigure(ns_ekalibr::Configor::DataStream::PkgPath +
-        //                                               "/config/ekalibr-config1.yaml");
         ns_ekalibr::ConfigSpdlog();
 
         ns_ekalibr::PrintIKalibrLibInfo();
