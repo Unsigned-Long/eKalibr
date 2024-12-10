@@ -74,9 +74,9 @@ public:
         double timestamp;
 
         // for visualization
-        cv::Mat nfSeedsImg;
-        cv::Mat nfsImg;
-        cv::Mat tsImg;
+        cv::Mat nfSeedsImg;  // CV_8UC3
+        cv::Mat nfsImg;      // CV_8UC3
+        cv::Mat tsImg;       // CV_8UC3
 
     public:
         std::list<EventPtr> ActiveEvents(double dt = 0.02) const;

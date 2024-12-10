@@ -101,12 +101,13 @@ void CalibSolver::Process() {
                  * extract circle grid pattern
                  */
 
-                cv::waitKey(0);
+                cv::waitKey(1);
                 _viewer->ClearViewer();
             }
         }
         bar->finish();
     }
+    cv::destroyAllWindows();
 
     _solveFinished = true;
 }

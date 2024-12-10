@@ -42,9 +42,9 @@ namespace ns_ekalibr {
  * EventCircleTracking::CircleClusterInfo
  */
 EventCircleExtractor::CircleClusterInfo::CircleClusterInfo(const std::list<NormFlowPtr>& nf_cluster,
-                                                          bool polarity,
-                                                          const Eigen::Vector2d& center,
-                                                          const Eigen::Vector2d& dir)
+                                                           bool polarity,
+                                                           const Eigen::Vector2d& center,
+                                                           const Eigen::Vector2d& dir)
     : nfCluster(nf_cluster),
       polarity(polarity),
       center(center),
@@ -63,10 +63,10 @@ EventCircleExtractor::CircleClusterInfo::Ptr EventCircleExtractor::CircleCluster
  */
 
 EventCircleExtractor::TimeVaryingCircle::TimeVaryingCircle(double st,
-                                                          double et,
-                                                          const Eigen::Vector2d& cx,
-                                                          const Eigen::Vector2d& cy,
-                                                          const Eigen::Vector3d& r2)
+                                                           double et,
+                                                           const Eigen::Vector2d& cx,
+                                                           const Eigen::Vector2d& cy,
+                                                           const Eigen::Vector3d& r2)
     : st(st),
       et(et),
       cx(cx),
@@ -116,7 +116,7 @@ double EventCircleExtractor::TimeVaryingCircle::PointToCircleDistance(
 
 std::pair<double, std::vector<EventCircleExtractor::TimeVaryingCircle::Circle>>
 EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                    const Viewer::Ptr& viewer) {
+                                     const Viewer::Ptr& viewer) {
     auto evsInEachCircleClusterPair = this->ExtractPotentialCircleClusters(
         nfPack, this->CLUSTER_AREA_THD, this->DIR_DIFF_DEG_THD);
 
@@ -130,13 +130,18 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
                              ns_viewer::Colour::Black(), 1.0f);
     }
 
-    std::vector<TimeVaryingCircle::Ptr> tvCircles;
-    tvCircles.reserve(evsInEachCircleClusterPair.size());
-    for (const auto& [evs1, evs2] : evsInEachCircleClusterPair) {
-        if (auto c = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD); c != nullptr) {
-            tvCircles.push_back(c);
-        }
+    std::vector<TimeVaryingCircle::Ptr> tvCircles(evsInEachCircleClusterPair.size(), nullptr);
+#pragma omp parallel for
+    for (int i = 0; i < static_cast<int>(evsInEachCircleClusterPair.size()); i++) {
+        const auto& [evs1, evs2] = evsInEachCircleClusterPair.at(i);
+        tvCircles.at(i) = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD);
     }
+
+    // remove nullptr element
+    tvCircles.erase(
+        std::remove_if(tvCircles.begin(), tvCircles.end(),
+                       [](const TimeVaryingCircle::Ptr& ptr) { return ptr == nullptr; }),
+        tvCircles.end());
 
     // filter overlapped circles
     std::vector<TimeVaryingCircle::Circle> circles;
@@ -239,8 +244,8 @@ void EventCircleExtractor::Visualization() const {
 
 std::vector<std::pair<EventArray::Ptr, EventArray::Ptr>>
 EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                                    double CLUSTER_AREA_THD,
-                                                    double DIR_DIFF_DEG_THD) {
+                                                     double CLUSTER_AREA_THD,
+                                                     double DIR_DIFF_DEG_THD) {
     auto [pNormFlowCluster, nNormFlowCluster] = ClusterNormFlowEvents(nfPack, CLUSTER_AREA_THD);
     auto pCenDir = ComputeCenterDir(pNormFlowCluster, nfPack);
     auto nCenDir = ComputeCenterDir(nNormFlowCluster, nfPack);
@@ -852,7 +857,7 @@ std::pair<Eigen::Vector2d, Eigen::Vector2d> EventCircleExtractor::ComputeCenterD
 
 std::pair<std::vector<std::list<NormFlow::Ptr>>, std::vector<std::list<NormFlow::Ptr>>>
 EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                           double clusterAreaThd) {
+                                            double clusterAreaThd) {
     cv::Mat pMat(nfPack->rawTimeSurfaceMap.size(), CV_8UC1, cv::Scalar(0));
     cv::Mat nMat(nfPack->rawTimeSurfaceMap.size(), CV_8UC1, cv::Scalar(0));
     for (const auto& event : nfPack->NormFlowInlierEvents()) {
@@ -863,12 +868,29 @@ EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::P
             nMat.at<uchar>(ey, ex) = 255;
         }
     }
-    InterruptionInTimeDomain(pMat, nfPack->rawTimeSurfaceMap, 7E-3);
-    InterruptionInTimeDomain(nMat, nfPack->rawTimeSurfaceMap, 7E-3);
 
-    auto pContours = FindContours(pMat), nContours = FindContours(nMat);
-    FilterContoursUsingArea(pContours, clusterAreaThd);
-    FilterContoursUsingArea(nContours, clusterAreaThd);
+    {
+        std::thread pThread(InterruptionInTimeDomain, std::ref(pMat), nfPack->rawTimeSurfaceMap,
+                            7E-3);
+        std::thread nThread(InterruptionInTimeDomain, std::ref(nMat), nfPack->rawTimeSurfaceMap,
+                            7E-3);
+        pThread.join();
+        nThread.join();
+    }
+
+    std::vector<std::vector<cv::Point>> pContours, nContours;
+    {
+        std::thread pThread(FindContours, pMat, std::ref(pContours));
+        std::thread nThread(FindContours, nMat, std::ref(nContours));
+        pThread.join();
+        nThread.join();
+    }
+    {
+        std::thread pThread(FilterContoursUsingArea, std::ref(pContours), clusterAreaThd);
+        std::thread nThread(FilterContoursUsingArea, std::ref(nContours), clusterAreaThd);
+        pThread.join();
+        nThread.join();
+    }
 
     std::vector<std::list<NormFlow::Ptr>> pNormFlowCluster, ncNormFlowCluster;
     pNormFlowCluster.resize(pContours.size()), ncNormFlowCluster.resize(nContours.size());
@@ -901,7 +923,9 @@ EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::P
     return {pNormFlowCluster, ncNormFlowCluster};
 }
 
-void EventCircleExtractor::InterruptionInTimeDomain(cv::Mat& pMat, const cv::Mat& tMat, double thd) {
+void EventCircleExtractor::InterruptionInTimeDomain(cv::Mat& pMat,
+                                                    const cv::Mat& tMat,
+                                                    double thd) {
     assert(pMat.type() == CV_8UC1);
     assert(tMat.type() == CV_64FC1);
     assert(pMat.size() == tMat.size());
@@ -938,7 +962,7 @@ void EventCircleExtractor::InterruptionInTimeDomain(cv::Mat& pMat, const cv::Mat
 }
 
 void EventCircleExtractor::FilterContoursUsingArea(std::vector<std::vector<cv::Point>>& contours,
-                                                  double areaThd) {
+                                                   double areaThd) {
     contours.erase(std::remove_if(contours.begin(), contours.end(),
                                   [areaThd](const std::vector<cv::Point>& contour) {
                                       return cv::contourArea(contour) < areaThd;
@@ -946,10 +970,9 @@ void EventCircleExtractor::FilterContoursUsingArea(std::vector<std::vector<cv::P
                    contours.end());
 }
 
-std::vector<std::vector<cv::Point>> EventCircleExtractor::FindContours(const cv::Mat& binaryImg) {
-    std::vector<std::vector<cv::Point>> contours;
+void EventCircleExtractor::FindContours(const cv::Mat& binaryImg,
+                                        std::vector<std::vector<cv::Point>>& contours) {
     cv::findContours(binaryImg, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_NONE);
-    return contours;
 }
 
 /**
@@ -982,10 +1005,10 @@ void EventCircleExtractor::DrawCircleClusterPair(
 }
 
 void EventCircleExtractor::DrawCircleCluster(cv::Mat& mat,
-                                            const std::vector<CircleClusterInfo::Ptr>& clusters,
-                                            CircleClusterType type,
-                                            const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                            double scale) {
+                                             const std::vector<CircleClusterInfo::Ptr>& clusters,
+                                             CircleClusterType type,
+                                             const EventNormFlow::NormFlowPack::Ptr& nfPack,
+                                             double scale) {
     cv::Scalar color;
     ns_viewer::Colour viewerColour;
     switch (type) {
@@ -1017,17 +1040,17 @@ void EventCircleExtractor::DrawCircleCluster(cv::Mat& mat,
 }
 
 void EventCircleExtractor::DrawCluster(cv::Mat& mat,
-                                      const std::vector<std::list<NormFlow::Ptr>>& clusters,
-                                      const EventNormFlow::NormFlowPack::Ptr& nfPack) {
+                                       const std::vector<std::list<NormFlow::Ptr>>& clusters,
+                                       const EventNormFlow::NormFlowPack::Ptr& nfPack) {
     for (const auto& cluster : clusters) {
         DrawCluster(mat, cluster, nfPack);
     }
 }
 
 void EventCircleExtractor::DrawCluster(cv::Mat& mat,
-                                      const std::list<NormFlowPtr>& clusters,
-                                      const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                      std::optional<ns_viewer::Colour> color) {
+                                       const std::list<NormFlowPtr>& clusters,
+                                       const EventNormFlow::NormFlowPack::Ptr& nfPack,
+                                       std::optional<ns_viewer::Colour> color) {
     if (color == std::nullopt) {
         color = ns_viewer::Entity::GetUniqueColour();
     }
@@ -1040,8 +1063,8 @@ void EventCircleExtractor::DrawCluster(cv::Mat& mat,
 }
 
 void EventCircleExtractor::DrawContours(cv::Mat& mat,
-                                       const std::vector<std::vector<cv::Point>>& contours,
-                                       const cv::Vec3b& color) {
+                                        const std::vector<std::vector<cv::Point>>& contours,
+                                        const cv::Vec3b& color) {
     for (const auto& cVec : contours) {
         for (const auto& p : cVec) {
             mat.at<cv::Vec3b>(p) = color;

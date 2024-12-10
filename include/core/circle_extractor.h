@@ -120,9 +120,9 @@ protected:
 
 public:
     EventCircleExtractor(bool visualization,
-                        double CLUSTER_AREA_THD,
-                        double DIR_DIFF_DEG_THD,
-                        double POINT_TO_CIRCLE_AVG_THD)
+                         double CLUSTER_AREA_THD,
+                         double DIR_DIFF_DEG_THD,
+                         double POINT_TO_CIRCLE_AVG_THD)
         : CLUSTER_AREA_THD(CLUSTER_AREA_THD),
           DIR_DIFF_DEG_THD(DIR_DIFF_DEG_THD),
           POINT_TO_CIRCLE_AVG_THD(POINT_TO_CIRCLE_AVG_THD),
@@ -133,7 +133,7 @@ public:
                       double DIR_DIFF_DEG_THD = 30.0,
                       double POINT_TO_CIRCLE_AVG_THD = 1.0) {
         return std::make_shared<EventCircleExtractor>(visualization, CLUSTER_AREA_THD,
-                                                     DIR_DIFF_DEG_THD, POINT_TO_CIRCLE_AVG_THD);
+                                                      DIR_DIFF_DEG_THD, POINT_TO_CIRCLE_AVG_THD);
     }
 
     std::pair<double, std::vector<TimeVaryingCircle::Circle>> ExtractCircles(
@@ -223,7 +223,8 @@ protected:
     static void FilterContoursUsingArea(std::vector<std::vector<cv::Point>>& contours,
                                         double areaThd);
 
-    static std::vector<std::vector<cv::Point>> FindContours(const cv::Mat& binaryImg);
+    static void FindContours(const cv::Mat& binaryImg,
+                             std::vector<std::vector<cv::Point>>& contours);
 
 protected:
     /**
