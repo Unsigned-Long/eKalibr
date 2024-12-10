@@ -31,6 +31,8 @@
 #include "config/configor.h"
 #include "pangolin/display/display.h"
 #include "viewer/viewer.h"
+#include "util/status.hpp"
+#include "spdlog/spdlog.h"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver()
@@ -56,5 +58,125 @@ CalibSolver::~CalibSolver() {
     }
 }
 
-void CalibSolver::Process() { _solveFinished = true; }
+void CalibSolver::Process() {
+    /**
+     * load event data from the rosbag and align timestamps (temporal normalization)
+     */
+    this->LoadEventData();
+
+    _solveFinished = true;
+}
+
+void CalibSolver::LoadEventData() {
+    /**
+     * load raw event data from rosbag
+     */
+    std::map<std::string, std::string> evTopicTypeMap;
+    for (const auto &[topic, info] : Configor::DataStream::EventTopics) {
+        evTopicTypeMap[topic] = info.Type;
+    }
+
+    _evMes = LoadEventsFromROSBag(Configor::DataStream::BagPath,  // bag path
+                                  evTopicTypeMap,                 // map contains [topic,type] pairs
+                                  Configor::DataStream::BeginTime,  // begin time
+                                  Configor::DataStream::Duration);  // duration
+
+    /**
+     * select event data range
+     */
+    _evDataRawTimestamp.first = std::max_element(_evMes.begin(), _evMes.end(),
+                                                 [](const auto &p1, const auto &p2) {
+                                                     return p1.second.front()->GetTimestamp() <
+                                                            p2.second.front()->GetTimestamp();
+                                                 })
+                                    ->second.front()
+                                    ->GetTimestamp();
+
+    _evDataRawTimestamp.second = std::min_element(_evMes.begin(), _evMes.end(),
+                                                  [](const auto &p1, const auto &p2) {
+                                                      return p1.second.back()->GetTimestamp() <
+                                                             p2.second.back()->GetTimestamp();
+                                                  })
+                                     ->second.back()
+                                     ->GetTimestamp();
+
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        // remove event data arrays that are before the start time stamp
+        EraseSeqHeadData(
+            _evMes.at(topic),
+            [this](const EventArray::Ptr &ary) {
+                return ary->GetTimestamp() > _evDataRawTimestamp.first - 1E-3;
+            },
+            "the event data is invalid, there is no data intersection between event cameras.");
+
+        // remove event data arrays that are after the end time stamp
+        EraseSeqTailData(
+            _evMes.at(topic),
+            [this](const EventArray::Ptr &ary) {
+                return ary->GetTimestamp() < _evDataRawTimestamp.second + 1E-3;
+            },
+            "the event data is invalid, there is no data intersection between event cameras.");
+    }
+
+    /**
+     * align mes data
+     */
+    // all time stamps minus  '_rawStartTimestamp'
+    _evDataAlignedTimestamp.first = 0.0;
+    _evDataAlignedTimestamp.second = _evDataRawTimestamp.second - _evDataRawTimestamp.first;
+    for (const auto &[eventTopic, mes] : _evMes) {
+        for (const auto &array : mes) {
+            // array
+            array->SetTimestamp(array->GetTimestamp() - _evDataRawTimestamp.first);
+            // targets
+            for (auto &tar : array->GetEvents()) {
+                tar->SetTimestamp(tar->GetTimestamp() - _evDataRawTimestamp.first);
+            }
+        }
+    }
+
+    this->OutputDataStatus();
+}
+
+void CalibSolver::OutputDataStatus() const {
+    spdlog::info("calibration data info:");
+    spdlog::info("raw start time: '{:+010.5f}' (s), raw end time: '{:+010.5f}' (s)",
+                 _evDataRawTimestamp.first, _evDataRawTimestamp.second);
+    spdlog::info("aligned start time: '{:+010.5f}' (s), aligned end time: '{:+010.5f}' (s)",
+                 _evDataAlignedTimestamp.first, _evDataAlignedTimestamp.second);
+    for (const auto &[topic, mes] : _evMes) {
+        spdlog::info(
+            "Event topic: '{}', data size: '{:06}', time span: from '{:+010.5f}' to '{:+010.5f}' "
+            "(s)",
+            topic, mes.size(), mes.front()->GetTimestamp(), mes.back()->GetTimestamp());
+    }
+}
+
+void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
+                                   std::function<bool(const EventArrayPtr &)> pred,
+                                   const std::string &errorMsg) const {
+    auto iter = std::find_if(seq.begin(), seq.end(), pred);
+    if (iter == seq.end()) {
+        // find failed
+        this->OutputDataStatus();
+        throw Status(Status::ERROR, errorMsg);
+    } else {
+        // adjust
+        seq.erase(seq.begin(), iter);
+    }
+}
+
+void CalibSolver::EraseSeqTailData(std::vector<EventArrayPtr> &seq,
+                                   std::function<bool(const EventArrayPtr &)> pred,
+                                   const std::string &errorMsg) const {
+    auto iter = std::find_if(seq.rbegin(), seq.rend(), pred);
+    if (iter == seq.rend()) {
+        // find failed
+        this->OutputDataStatus();
+        throw Status(Status::ERROR, errorMsg);
+    } else {
+        // adjust
+        seq.erase(iter.base(), seq.end());
+    }
+}
 }  // namespace ns_ekalibr

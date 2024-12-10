@@ -33,7 +33,7 @@
 #include "filesystem"
 
 namespace ns_ekalibr {
-std::map<std::string, std::string> Configor::DataStream::EventTopics = {};
+std::map<std::string, Configor::DataStream::EventConfig> Configor::DataStream::EventTopics = {};
 std::string Configor::DataStream::BagPath = {};
 double Configor::DataStream::BeginTime = {};
 double Configor::DataStream::Duration = {};
@@ -53,8 +53,9 @@ Configor::Configor() = default;
 
 void Configor::PrintMainFields() {
     std::stringstream ssEventTopics;
-    for (const auto &[topic, type] : DataStream::EventTopics) {
-        ssEventTopics << topic << ":" << type << " ";
+    for (const auto &[topic, info] : DataStream::EventTopics) {
+        ssEventTopics << topic << '[' << info.Type << '|' << info.Width << 'x' << info.Height
+                      << "] ";
     }
     std::string EventTopics = ssEventTopics.str();
 

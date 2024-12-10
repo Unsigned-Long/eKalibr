@@ -35,6 +35,8 @@
 namespace ns_ekalibr {
 class Viewer;
 using ViewerPtr = std::shared_ptr<Viewer>;
+struct EventArray;
+using EventArrayPtr = std::shared_ptr<EventArray>;
 
 class CalibSolver {
 public:
@@ -48,14 +50,35 @@ protected:
     // indicates whether the solving is finished
     bool _solveFinished;
 
+    std::map<std::string, std::vector<EventArrayPtr>> _evMes;
+    // start time, end time
+    std::pair<double, double> _evDataRawTimestamp;
+    std::pair<double, double> _evDataAlignedTimestamp;
+
 public:
     CalibSolver();
 
-    static CalibSolver::Ptr Create();
+    static Ptr Create();
 
     virtual ~CalibSolver();
 
     void Process();
+
+protected:
+    void LoadEventData();
+
+    void OutputDataStatus() const;
+
+private:
+    // remove the head data according to the pred
+    void EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
+                          std::function<bool(const EventArrayPtr &)> pred,
+                          const std::string &errorMsg) const;
+
+    // remove the tail data according to the pred
+    void EraseSeqTailData(std::vector<EventArrayPtr> &seq,
+                          std::function<bool(const EventArrayPtr &)> pred,
+                          const std::string &errorMsg) const;
 };
 }  // namespace ns_ekalibr
 

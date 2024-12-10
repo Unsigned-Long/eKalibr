@@ -35,6 +35,15 @@
 #include "rosbag/message_instance.h"
 
 namespace ns_ekalibr {
+
+std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
+    const std::string &bagPath,
+    // topic, type
+    const std::map<std::string, std::string> &topics,
+    // negative values mean loading all data
+    double beginTime = -1.0,
+    double duration = -1.0);
+
 class EventDataLoader {
 public:
     using Ptr = std::shared_ptr<EventDataLoader>;

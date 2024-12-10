@@ -41,8 +41,22 @@ public:
 
 public:
     static struct DataStream {
-        // event topic, type
-        static std::map<std::string, std::string> EventTopics;
+        struct EventConfig {
+        public:
+            std::string Type;
+            std::uint16_t Width;
+            std::uint16_t Height;
+
+            EventConfig() = default;
+
+        public:
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height));
+            }
+        };
+
+        static std::map<std::string, EventConfig> EventTopics;
 
         static std::string BagPath;
         static double BeginTime;

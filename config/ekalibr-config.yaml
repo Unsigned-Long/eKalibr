@@ -5,7 +5,10 @@ Configor:
     # 2. DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
     EventTopics:
       - key: "/dvs/events"
-        value: "DVS_EVENT"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
     BagPath: "/home/csl/dataset/event_develop/data_2024_12_01.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
