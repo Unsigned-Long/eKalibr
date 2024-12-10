@@ -44,6 +44,7 @@ const std::string Configor::DataStream::DebugPath = PkgPath + "/debug/";
 
 Configor::Prior Configor::prior = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
+Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 
 Configor::Preference Configor::preference = {};
 std::string Configor::Preference::OutputDataFormatStr = {};
@@ -66,12 +67,17 @@ void Configor::PrintMainFields() {
 
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>30}: {}"
-    spdlog::info("main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                     DESC_FORMAT DESC_FORMAT DESC_FORMAT,
-                 DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath),
-                 DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
-                 DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
-                 "Preference::OutputDataFormat", Preference::OutputDataFormatStr);
+    spdlog::info(
+        "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+            DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+        DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
+        DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
+        DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+        // fields for CircleExtractor
+        "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
+        "CircleExtractor::CircleClusterPairDirThd", Prior::CircleExtractor.CircleClusterPairDirThd,
+        "CircleExtractor::PointToCircleDistThd", Prior::CircleExtractor.PointToCircleDistThd,
+        "Preference::OutputDataFormat", Preference::OutputDataFormatStr);
 
 #undef DESC_FIELD
 #undef DESC_FORMAT
@@ -102,6 +108,24 @@ void Configor::CheckConfigure() {
         throw Status(Status::ERROR,
                      "the decay time of the surface of active events (i.e., "
                      "Prior::DecayTimeOfActiveEvents) should be positive!");
+    }
+
+    if (Prior::CircleExtractor.ValidClusterAreaThd < 1 /*pixels*/) {
+        throw Status(Status::ERROR,
+                     "the valid cluster area threshold (i.e., "
+                     "CircleExtractor::ValidClusterAreaThd) should be positive!");
+    }
+
+    if (Prior::CircleExtractor.CircleClusterPairDirThd < 1E-6 /*degrees*/) {
+        throw Status(Status::ERROR,
+                     "the circle cluster pair threshold (i.e., "
+                     "CircleExtractor::CircleClusterPairDirThd) should be positive!");
+    }
+
+    if (Prior::CircleExtractor.PointToCircleDistThd < 1E-6 /*pixels*/) {
+        throw Status(Status::ERROR,
+                     "the point-to-circle threshold (i.e., "
+                     "CircleExtractor::PointToCircleDistThd) should be positive!");
     }
 }
 

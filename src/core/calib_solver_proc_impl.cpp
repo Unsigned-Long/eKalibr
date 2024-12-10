@@ -35,6 +35,7 @@
 #include "viewer/viewer.h"
 #include "opencv4/opencv2/highgui.hpp"
 #include "core/norm_flow.h"
+#include "core/circle_extractor.h"
 
 namespace ns_ekalibr {
 
@@ -79,8 +80,7 @@ void CalibSolver::Process() {
                 /**
                  * estimate norm flows using created sae
                  */
-                auto nf = EventNormFlow(sae);
-                auto nfPack = nf.ExtractNormFlows(
+                auto nfPack = EventNormFlow(sae).ExtractNormFlows(
                     decay,  // decay seconds for time surface
                     2,      // window size to fit local planes
                     1,      // distance between neighbor norm flows
@@ -88,7 +88,18 @@ void CalibSolver::Process() {
                     2E-3,   // the point to plane threshold in temporal domain, unit (s)
                     3);     // ransac iteration count
 
-                cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
+                // cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
+
+                auto circleExtractor = EventCircleExtractor::Create(
+                    true, Configor::Prior::CircleExtractor.ValidClusterAreaThd,
+                    Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
+                    Configor::Prior::CircleExtractor.PointToCircleDistThd);
+                circleExtractor->ExtractCirclesGrid(nfPack, {4, 11}, _viewer);
+                circleExtractor->Visualization();
+
+                /**
+                 * extract circle grid pattern
+                 */
 
                 cv::waitKey(0);
                 _viewer->ClearViewer();

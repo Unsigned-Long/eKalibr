@@ -19,7 +19,17 @@ Configor:
     OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
     # decay of the surface of active events, unit: sec
-    DecayTimeOfActiveEvents: 0.01
+    DecayTimeOfActiveEvents: 0.02
+    # extraction of circular shapes based on raw events
+    CircleExtractor:
+      # clusters with an area greater than the following threshold value are considered valid clusters, unit: pixels.
+      ValidClusterAreaThd: 10
+      # two matched circular clusters whose average directional difference of norm flows,
+      # should be less than the following threshold value, unit: degrees.
+      CircleClusterPairDirThd: 30
+      # When fitting a time-varying circular in the spatiotemporal domain,
+      # the distance from the event to the circle should be less than the following threshold value, unit: pixels.
+      PointToCircleDistThd: 2.0
   Preference:
     # supported data output format:
     # 1. JSON

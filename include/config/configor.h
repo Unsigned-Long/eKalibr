@@ -77,10 +77,26 @@ public:
     static struct Prior {
         static double DecayTimeOfActiveEvents;
 
+        struct CircleExtractorConfig {
+            double ValidClusterAreaThd;
+            double CircleClusterPairDirThd;
+            double PointToCircleDistThd;
+
+            CircleExtractorConfig() = default;
+
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(ValidClusterAreaThd), CEREAL_NVP(CircleClusterPairDirThd),
+                   CEREAL_NVP(PointToCircleDistThd));
+            }
+        };
+
+        static CircleExtractorConfig CircleExtractor;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(DecayTimeOfActiveEvents));
+            ar(CEREAL_NVP(DecayTimeOfActiveEvents), CEREAL_NVP(CircleExtractor));
         }
     } prior;
 

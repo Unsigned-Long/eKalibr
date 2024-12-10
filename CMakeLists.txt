@@ -136,7 +136,9 @@ add_definitions(-DMAGIC_ENUM_RANGE_MIN=0)
 # 1024 = 2^10
 add_definitions(-DMAGIC_ENUM_RANGE_MAX=1023)
 
-find_package(yaml-cpp)
+find_package(yaml-cpp REQUIRED)
+
+find_package(Ceres REQUIRED)
 
 set(tiny-viewer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-viewer-install/lib/cmake/tiny-viewer)
 find_package(tiny-viewer REQUIRED)
@@ -232,6 +234,8 @@ target_include_directories(
         # include
         ${catkin_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        # thirdparty
+        ${CERES_INCLUDE_DIRS}
 )
 
 target_link_libraries(
@@ -240,6 +244,7 @@ target_link_libraries(
         # thirdparty
         tiny-viewer
         opengv
+        ${CERES_LIBRARIES}
 )
 
 #####################
