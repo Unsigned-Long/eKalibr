@@ -34,13 +34,15 @@
 #include <iostream>
 #include <util/enum_cast.hpp>
 #include "spdlog/fmt/fmt.h"
+#include "spdlog/fmt/bundled/color.h"
+#include "spdlog/spdlog.h"
 
 namespace ns_ekalibr {
 #define EKALIBR_CODE_POS fmt::format("[line: '{}', file: '{}']", __LINE__, __FILE__)
 
 #define EKALIBR_DEBUG                                                          \
-spdlog::warn(fmt::format(fmt::emphasis::italic | fmt::fg(fmt::color::red), \
-"(EKALIBR-DEBUG) {}", EKALIBR_CODE_POS));
+    spdlog::warn(fmt::format(fmt::emphasis::italic | fmt::fg(fmt::color::red), \
+                             "(EKALIBR-DEBUG) {}", EKALIBR_CODE_POS));
 
 enum class Status : std::uint8_t { FINE, WARNING, ERROR, CRITICAL };
 
@@ -64,6 +66,6 @@ template <typename... T>
 EKalibrStatus Status(Status flag, fmt::format_string<T...> fmt, T &&...args) {
     return EKalibrStatus(flag, fmt::format(fmt, args...));
 }
-}
+}  // namespace ns_ekalibr
 
-#endif //STATUS_HPP
+#endif  // STATUS_HPP

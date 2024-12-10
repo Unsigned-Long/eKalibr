@@ -51,11 +51,11 @@ CalibSolver::Ptr CalibSolver::Create() { return std::make_shared<CalibSolver>();
 
 CalibSolver::~CalibSolver() {
     // solving is not performed or not finished as an exception is thrown
-    if (!_solveFinished) {
+    if (Configor::Preference::Visualization && !_solveFinished) {
         pangolin::QuitAll();
     }
     // solving is finished (when use 'pangolin::QuitAll()', the window not quit immediately)
-    while (_viewer->IsActive()) {
+    while (Configor::Preference::Visualization && _viewer->IsActive()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }

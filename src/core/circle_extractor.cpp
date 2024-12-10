@@ -456,11 +456,14 @@ EventCircleExtractor::RawEventsOfCircleClusterPairs(
         auto cEventAry = RawEventsOfEachCircleClusterPairs(cCluster);
         auto rEventAry = RawEventsOfEachCircleClusterPairs(rCluster);
 
+        if (cEventAry.empty() || rEventAry.empty()) {
+            continue;
+        }
+
         double st = std::max(cEventAry.front()->GetTimestamp(), rEventAry.front()->GetTimestamp());
 
         RemoveOldEvents(cEventAry, st);
         RemoveOldEvents(rEventAry, st);
-        // todo: fit circle? rather than ellipse???
 
         if (cEventAry.empty() || rEventAry.empty()) {
             continue;

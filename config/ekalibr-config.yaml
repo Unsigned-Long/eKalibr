@@ -37,4 +37,4 @@ Configor:
     # 3. YAML
     # 4. BINARY (not recommended)
     OutputDataFormat: "YAML"
-    Visualization: true
+    Visualization: false
