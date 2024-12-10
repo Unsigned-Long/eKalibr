@@ -66,7 +66,7 @@ void Configor::PrintMainFields() {
     std::string EventTopics = ssEventTopics.str();
 
 #define DESC_FIELD(field) #field, field
-#define DESC_FORMAT "\n{:>30}: {}"
+#define DESC_FORMAT "\n{:>40}: {}"
     spdlog::info(
         "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,

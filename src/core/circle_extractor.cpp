@@ -186,8 +186,8 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
 
     for (int i = 0; i < static_cast<int>(tvCircles.size()); ++i) {
         const auto& curCircle = circles.at(i);
-        // too small circle
-        if (curCircle.second < 1.0 /*pixel*/) {
+        // too small or large circle
+        if (curCircle.second < 1.0 /*pixel*/ || curCircle.second > 1000.0 /*pixel*/) {
             indices.push_back(i);
             continue;
         }
@@ -215,8 +215,8 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
 
     if (visualization) {
         for (const auto& c : circles) {
-            // cv::circle(imgExtractCircles, cv::Point2d(c.first(0), c.first(1)), c.second,
-            //            cv::Scalar(0, 255, 0), 1);
+            cv::circle(imgExtractCircles, cv::Point2d(c.first(0), c.first(1)), c.second,
+                       cv::Scalar(0, 255, 0), 1);
             DrawKeypointOnCVMat(imgExtractCircles, c.first, false, cv::Scalar(0, 255, 0));
         }
     }
