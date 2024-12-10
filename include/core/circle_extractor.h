@@ -122,19 +122,12 @@ public:
     EventCircleExtractor(bool visualization,
                          double CLUSTER_AREA_THD,
                          double DIR_DIFF_DEG_THD,
-                         double POINT_TO_CIRCLE_AVG_THD)
-        : CLUSTER_AREA_THD(CLUSTER_AREA_THD),
-          DIR_DIFF_DEG_THD(DIR_DIFF_DEG_THD),
-          POINT_TO_CIRCLE_AVG_THD(POINT_TO_CIRCLE_AVG_THD),
-          visualization(visualization) {}
+                         double POINT_TO_CIRCLE_AVG_THD);
 
     static Ptr Create(bool visualization = false,
                       double CLUSTER_AREA_THD = 10.0,
                       double DIR_DIFF_DEG_THD = 30.0,
-                      double POINT_TO_CIRCLE_AVG_THD = 1.0) {
-        return std::make_shared<EventCircleExtractor>(visualization, CLUSTER_AREA_THD,
-                                                      DIR_DIFF_DEG_THD, POINT_TO_CIRCLE_AVG_THD);
-    }
+                      double POINT_TO_CIRCLE_AVG_THD = 1.0);
 
     std::pair<double, std::vector<TimeVaryingCircle::Circle>> ExtractCircles(
         const EventNormFlow::NormFlowPack::Ptr& nfPack, const ViewerPtr& viewer = nullptr);
@@ -146,6 +139,8 @@ public:
 
     void Visualization() const;
 
+    void InitMatsForVisualization(const EventNormFlow::NormFlowPack::Ptr& nfPack);
+
 protected:
     std::vector<std::pair<EventArrayPtr, EventArrayPtr>> ExtractPotentialCircleClusters(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
@@ -155,6 +150,17 @@ protected:
     static TimeVaryingCircle::Ptr FitTimeVaryingCircle(const EventArrayPtr& ary1,
                                                        const EventArrayPtr& ary2,
                                                        double avgDistThd);
+
+    template <typename Type>
+    static void RemoveElemBasedOnIndices(std::vector<Type>& vec,
+                                         const std::list<std::size_t>& indices) {
+        std::size_t backValidIdx = vec.size() - 1;
+        for (std::size_t index : indices) {
+            vec.at(index) = vec.at(backValidIdx);
+            --backValidIdx;
+        }
+        vec.resize(backValidIdx + 1);
+    }
 
 protected:
     static std::vector<std::pair<EventArrayPtr, EventArrayPtr>> RawEventsOfCircleClusterPairs(

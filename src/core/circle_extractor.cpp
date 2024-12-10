@@ -114,11 +114,36 @@ double EventCircleExtractor::TimeVaryingCircle::PointToCircleDistance(
  * EventCircleTracking
  */
 
+EventCircleExtractor::EventCircleExtractor(bool visualization,
+                                           double CLUSTER_AREA_THD,
+                                           double DIR_DIFF_DEG_THD,
+                                           double POINT_TO_CIRCLE_AVG_THD)
+    : CLUSTER_AREA_THD(CLUSTER_AREA_THD),
+      DIR_DIFF_DEG_THD(DIR_DIFF_DEG_THD),
+      POINT_TO_CIRCLE_AVG_THD(POINT_TO_CIRCLE_AVG_THD),
+      visualization(visualization) {}
+
+EventCircleExtractor::Ptr EventCircleExtractor::Create(bool visualization,
+                                                       double CLUSTER_AREA_THD,
+                                                       double DIR_DIFF_DEG_THD,
+                                                       double POINT_TO_CIRCLE_AVG_THD) {
+    return std::make_shared<EventCircleExtractor>(visualization, CLUSTER_AREA_THD, DIR_DIFF_DEG_THD,
+                                                  POINT_TO_CIRCLE_AVG_THD);
+}
+
 std::pair<double, std::vector<EventCircleExtractor::TimeVaryingCircle::Circle>>
 EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                      const Viewer::Ptr& viewer) {
+    if (visualization) {
+        this->InitMatsForVisualization(nfPack);
+    }
+
     auto evsInEachCircleClusterPair = this->ExtractPotentialCircleClusters(
         nfPack, this->CLUSTER_AREA_THD, this->DIR_DIFF_DEG_THD);
+
+    if (evsInEachCircleClusterPair.empty()) {
+        return {};
+    }
 
     if (viewer != nullptr) {
         // cluster results
@@ -137,22 +162,35 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
         tvCircles.at(i) = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD);
     }
 
-    // remove nullptr element
-    tvCircles.erase(
-        std::remove_if(tvCircles.begin(), tvCircles.end(),
-                       [](const TimeVaryingCircle::Ptr& ptr) { return ptr == nullptr; }),
-        tvCircles.end());
+    std::list<std::size_t> indices;
 
-    // filter overlapped circles
+    /**
+     * remove nullptr element
+     */
+    for (int i = 0; i < static_cast<int>(tvCircles.size()); i++) {
+        if (tvCircles.at(i) == nullptr) {
+            indices.push_back(i);
+        }
+    }
+    RemoveElemBasedOnIndices(tvCircles, indices);
+    indices.clear();
+
+    /**
+     * filter overlapped circles
+     */
     std::vector<TimeVaryingCircle::Circle> circles;
     circles.reserve(tvCircles.size());
     for (const auto& c : tvCircles) {
         circles.push_back(c->CircleAt(nfPack->timestamp));
     }
 
-    std::list<std::size_t> indices;
     for (int i = 0; i < static_cast<int>(tvCircles.size()); ++i) {
         const auto& curCircle = circles.at(i);
+        // too small circle
+        if (curCircle.second < 1.0 /*pixel*/) {
+            indices.push_back(i);
+            continue;
+        }
         for (int j = i + 1; j < static_cast<int>(tvCircles.size()); ++j) {
             const auto& tarCircle = circles.at(j);
             const double distCenter = (curCircle.first - tarCircle.first).norm();
@@ -163,28 +201,22 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
             }
         }
     }
-    std::size_t backValidIdx = circles.size() - 1;
-    for (std::size_t index : indices) {
-        circles.at(index) = circles.at(backValidIdx);
-        tvCircles.at(index) = tvCircles.at(backValidIdx);
-        --backValidIdx;
-    }
-    circles.resize(backValidIdx + 1);
-    tvCircles.resize(backValidIdx + 1);
+
+    RemoveElemBasedOnIndices(circles, indices);
+    RemoveElemBasedOnIndices(tvCircles, indices);
+    indices.clear();
 
     if (viewer != nullptr) {
-        // time-varying ellipse fitting
-        for (const auto& ellipse : tvCircles) {
-            viewer->AddSpatioTemporalTrace(ellipse->PosVecAt(1E-3), nfPack->timestamp, 2.0f,
+        for (const auto& c : tvCircles) {
+            viewer->AddSpatioTemporalTrace(c->PosVecAt(1E-3), nfPack->timestamp, 2.0f,
                                            ns_viewer::Colour::Green(), {0.01, 100});
         }
     }
 
     if (visualization) {
-        imgExtractCircles = nfPack->tsImg.clone();
         for (const auto& c : circles) {
-            cv::circle(imgExtractCircles, cv::Point2d(c.first(0), c.first(1)), c.second,
-                       cv::Scalar(0, 255, 0), 1);
+            // cv::circle(imgExtractCircles, cv::Point2d(c.first(0), c.first(1)), c.second,
+            //            cv::Scalar(0, 255, 0), 1);
             DrawKeypointOnCVMat(imgExtractCircles, c.first, false, cv::Scalar(0, 255, 0));
         }
     }
@@ -216,7 +248,6 @@ std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid
         ns_cv_helper::CirclesGridFinderParameters());
 
     if (visualization) {
-        imgExtractCirclesGrid = nfPack->tsImg.clone();
         cv::drawChessboardCorners(imgExtractCirclesGrid, gridSize, centers, res);
     }
 
@@ -242,6 +273,15 @@ void EventCircleExtractor::Visualization() const {
     cv::imshow("Found Circle Grid", matGrid);
 }
 
+void EventCircleExtractor::InitMatsForVisualization(
+    const EventNormFlow::NormFlowPack::Ptr& nfPack) {
+    imgClusterNormFlowEvents = nfPack->tsImg.clone();
+    imgIdentifyCategory = nfPack->tsImg.clone();
+    imgSearchMatches = nfPack->tsImg.clone();
+    imgExtractCircles = nfPack->tsImg.clone();
+    imgExtractCirclesGrid = nfPack->tsImg.clone();
+}
+
 std::vector<std::pair<EventArray::Ptr, EventArray::Ptr>>
 EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                                      double CLUSTER_AREA_THD,
@@ -251,7 +291,6 @@ EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFl
     auto nCenDir = ComputeCenterDir(nNormFlowCluster, nfPack);
 
     if (visualization) {
-        imgClusterNormFlowEvents = nfPack->tsImg.clone();
         DrawCluster(imgClusterNormFlowEvents, pNormFlowCluster, nfPack);
         DrawCluster(imgClusterNormFlowEvents, nNormFlowCluster, nfPack);
     }
@@ -272,7 +311,6 @@ EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFl
     }
 
     if (visualization) {
-        imgIdentifyCategory = nfPack->tsImg.clone();
         DrawCircleCluster(imgIdentifyCategory, clusters, nfPack, 10);
     }
 
