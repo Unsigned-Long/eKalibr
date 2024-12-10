@@ -66,20 +66,20 @@ EventCircleExtractor::TimeVaryingCircle::TimeVaryingCircle(double st,
                                                            double et,
                                                            const Eigen::Vector2d& cx,
                                                            const Eigen::Vector2d& cy,
-                                                           const Eigen::Vector3d& r2)
+                                                           const Eigen::Vector2d& m)
     : st(st),
       et(et),
       cx(cx),
       cy(cy),
-      r2(r2) {}
+      m(m) {}
 
 EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::TimeVaryingCircle::Create(
     double st,
     double et,
     const Eigen::Vector2d& cx,
     const Eigen::Vector2d& cy,
-    const Eigen::Vector3d& r2) {
-    return std::make_shared<TimeVaryingCircle>(st, et, cx, cy, r2);
+    const Eigen::Vector2d& m) {
+    return std::make_shared<TimeVaryingCircle>(st, et, cx, cy, m);
 }
 
 Eigen::Vector2d EventCircleExtractor::TimeVaryingCircle::PosAt(double t) const {
@@ -100,8 +100,9 @@ std::vector<Eigen::Vector3d> EventCircleExtractor::TimeVaryingCircle::PosVecAt(d
 }
 
 double EventCircleExtractor::TimeVaryingCircle::RadiusAt(double t) const {
-    Eigen::Vector3d tVec(t * t, t, 1.0);
-    return std::sqrt(r2.dot(tVec));
+    Eigen::Vector2d tVec(t, 1.0);
+    double mVal = m.dot(tVec);
+    return mVal * mVal;
 }
 
 double EventCircleExtractor::TimeVaryingCircle::PointToCircleDistance(
@@ -156,7 +157,7 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
     }
 
     std::vector<TimeVaryingCircle::Ptr> tvCircles(evsInEachCircleClusterPair.size(), nullptr);
-#pragma omp parallel for
+    // #pragma omp parallel for
     for (int i = 0; i < static_cast<int>(evsInEachCircleClusterPair.size()); i++) {
         const auto& [evs1, evs2] = evsInEachCircleClusterPair.at(i);
         tvCircles.at(i) = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD);
@@ -374,14 +375,15 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
                 et = event->GetTimestamp();
             }
         }
-        return c / static_cast<double>(ary->GetEvents().size());
+        Eigen::Vector2d avgCenter = c / static_cast<double>(ary->GetEvents().size());
+        return avgCenter;
     };
     Eigen::Vector2d c1 = ComputeCenter(ary1), c2 = ComputeCenter(ary2);
 
     const Eigen::Vector2d c = 0.5 * (c1 + c2);
-    const double r = (0.5 * (c1 - c2)).norm();
+    const double r = 0.5 * (c1 - c2).norm();
 
-    auto circle = TimeVaryingCircle::Create(st, et, {0.0, c(0)}, {0.0, c(1)}, {0.0, 0.0, r * r});
+    auto circle = TimeVaryingCircle::Create(st, et, {0.0, c(0)}, {0.0, c(1)}, {0.0, std::sqrt(r)});
 
     ceres::Problem problem;
 
@@ -390,15 +392,15 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
             auto cf = TimeVaryingCircleFittingFactor::Create(event, 1.0);
             cf->AddParameterBlock(2);
             cf->AddParameterBlock(2);
-            cf->AddParameterBlock(3);
+            cf->AddParameterBlock(2);
             cf->SetNumResiduals(1);
 
             std::vector<double*> params;
             params.push_back(circle->cx.data());
             params.push_back(circle->cy.data());
-            params.push_back(circle->r2.data());
+            params.push_back(circle->m.data());
 
-            problem.AddResidualBlock(cf, new ceres::HuberLoss(avgDistThd), params);
+            problem.AddResidualBlock(cf, new ceres::HuberLoss(avgDistThd * avgDistThd), params);
         }
     };
 
@@ -414,21 +416,7 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
     if (auto radius = circle->RadiusAt(circle->et); radius < 1.0 /*pixel*/) {
         return nullptr;
     } else {
-        // compute average point to circle distance
-        double avgDist = 0.0;
-        for (const auto& event : ary1->GetEvents()) {
-            avgDist += circle->PointToCircleDistance(event);
-        }
-        for (const auto& event : ary2->GetEvents()) {
-            avgDist += circle->PointToCircleDistance(event);
-        }
-        avgDist /= static_cast<double>(ary1->GetEvents().size() + ary2->GetEvents().size());
-        // std::cout << "avgDist: " << avgDist << std::endl;
-        if (avgDist > avgDistThd) {
-            return nullptr;
-        } else {
-            return circle;
-        }
+        return circle;
     }
 }
 

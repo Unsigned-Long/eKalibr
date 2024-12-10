@@ -38,14 +38,12 @@ namespace ns_ekalibr {
 struct TimeVaryingCircleFittingFactor {
 private:
     Eigen::Vector2d tVec;
-    Eigen::Vector3d tVec2;
     double ex, ey;
     double weight;
 
 public:
     TimeVaryingCircleFittingFactor(const Event::Ptr &event, double weight)
         : tVec(event->GetTimestamp(), 1.0),
-          tVec2(event->GetTimestamp() * event->GetTimestamp(), event->GetTimestamp(), 1.0),
           ex(event->GetPos()(0)),
           ey(event->GetPos()(1)),
           weight(weight) {}
@@ -60,22 +58,23 @@ public:
 public:
     /**
      * param blocks:
-     * [ cx: b, c | cy: b, c | rx2: a, b, c | ry2: a, b, c ]
+     * [ cx: b, c | cy: b, c | m: b, c ]
      */
     template <class T>
     bool operator()(T const *const *params, T *residuals) const {
         Eigen::Map<const Eigen::Vector2<T>> cxParam(params[0]);
         Eigen::Map<const Eigen::Vector2<T>> cyParam(params[1]);
-        Eigen::Map<const Eigen::Vector3<T>> r2Param(params[2]);
+        Eigen::Map<const Eigen::Vector2<T>> mParam(params[2]);
 
         T cx = cxParam.dot(tVec.cast<T>());
         T cy = cyParam.dot(tVec.cast<T>());
-        T r2 = r2Param.dot(tVec2.cast<T>());
+        T m = mParam.dot(tVec.cast<T>());
+        T r = m * m;
 
-        T vx = (static_cast<T>(ex) - cx) * (static_cast<T>(ex) - cx);
-        T vy = (static_cast<T>(ey) - cy) * (static_cast<T>(ey) - cy);
+        T vx2 = (static_cast<T>(ex) - cx) * (static_cast<T>(ex) - cx);
+        T vy2 = (static_cast<T>(ey) - cy) * (static_cast<T>(ey) - cy);
 
-        residuals[0] = static_cast<T>(weight) * (vx + vy - r2);
+        residuals[0] = static_cast<T>(weight) * (vx2 + vy2 - r * r);
 
         return true;
     }

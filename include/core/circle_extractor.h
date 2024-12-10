@@ -34,6 +34,8 @@
 #include "set"
 #include "tiny-viewer/entity/utils.h"
 
+#include <ostream>
+
 namespace ns_ekalibr {
 
 struct NormFlow;
@@ -80,19 +82,19 @@ public:
         double st, et;
         Eigen::Vector2d cx;
         Eigen::Vector2d cy;
-        Eigen::Vector3d r2;
+        Eigen::Vector2d m;
 
         TimeVaryingCircle(double st,
                           double et,
                           const Eigen::Vector2d& cx,
                           const Eigen::Vector2d& cy,
-                          const Eigen::Vector3d& r2);
+                          const Eigen::Vector2d& m);
 
         static Ptr Create(double st,
                           double et,
                           const Eigen::Vector2d& cx,
                           const Eigen::Vector2d& cy,
-                          const Eigen::Vector3d& r2);
+                          const Eigen::Vector2d& m);
 
         Eigen::Vector2d PosAt(double t) const;
 
@@ -103,6 +105,11 @@ public:
         Circle CircleAt(double t) const { return {PosAt(t), RadiusAt(t)}; }
 
         double PointToCircleDistance(const EventPtr& event) const;
+
+        friend std::ostream& operator<<(std::ostream& os, const TimeVaryingCircle& obj) {
+            return os << "st: " << obj.st << " et: " << obj.et << " cx: " << obj.cx.transpose()
+                      << " cy: " << obj.cy.transpose() << " m: " << obj.m.transpose();
+        }
     };
 
 protected:
