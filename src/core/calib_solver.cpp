@@ -58,15 +58,6 @@ CalibSolver::~CalibSolver() {
     }
 }
 
-void CalibSolver::Process() {
-    /**
-     * load event data from the rosbag and align timestamps (temporal normalization)
-     */
-    this->LoadEventData();
-
-    _solveFinished = true;
-}
-
 void CalibSolver::LoadEventData() {
     /**
      * load raw event data from rosbag

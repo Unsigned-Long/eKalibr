@@ -33,6 +33,7 @@
 #include "filesystem"
 
 namespace ns_ekalibr {
+Configor::DataStream Configor::dataStream = {};
 std::map<std::string, Configor::DataStream::EventConfig> Configor::DataStream::EventTopics = {};
 std::string Configor::DataStream::BagPath = {};
 double Configor::DataStream::BeginTime = {};
@@ -41,6 +42,10 @@ std::string Configor::DataStream::OutputPath = {};
 const std::string Configor::DataStream::PkgPath = ros::package::getPath("ekalibr");
 const std::string Configor::DataStream::DebugPath = PkgPath + "/debug/";
 
+Configor::Prior Configor::prior = {};
+double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
+
+Configor::Preference Configor::preference = {};
 std::string Configor::Preference::OutputDataFormatStr = {};
 CerealArchiveType::Enum Configor::Preference::OutputDataFormat = CerealArchiveType::Enum::YAML;
 const std::map<CerealArchiveType::Enum, std::string> Configor::Preference::FileExtension = {
@@ -62,11 +67,11 @@ void Configor::PrintMainFields() {
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>30}: {}"
     spdlog::info("main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                     DESC_FORMAT DESC_FORMAT,
+                     DESC_FORMAT DESC_FORMAT DESC_FORMAT,
                  DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath),
                  DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
-                 DESC_FIELD(DataStream::OutputPath), "Preference::OutputDataFormat",
-                 Preference::OutputDataFormatStr);
+                 DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+                 "Preference::OutputDataFormat", Preference::OutputDataFormatStr);
 
 #undef DESC_FIELD
 #undef DESC_FORMAT
@@ -91,6 +96,12 @@ void Configor::CheckConfigure() {
         // if the output path doesn't exist and create it failed
         throw Status(Status::ERROR,
                      "the output path (i.e., DataStream::OutputPath) can not be created!");
+    }
+
+    if (Prior::DecayTimeOfActiveEvents < 1E-6) {
+        throw Status(Status::ERROR,
+                     "the decay time of the surface of active events (i.e., "
+                     "Prior::DecayTimeOfActiveEvents) should be positive!");
     }
 }
 

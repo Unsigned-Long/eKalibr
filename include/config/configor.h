@@ -74,6 +74,16 @@ public:
         }
     } dataStream;
 
+    static struct Prior {
+        static double DecayTimeOfActiveEvents;
+
+    public:
+        template <class Archive>
+        void serialize(Archive &ar) {
+            ar(CEREAL_NVP(DecayTimeOfActiveEvents));
+        }
+    } prior;
+
     static struct Preference {
         // str for file configuration, and enum for internal use
         static std::string OutputDataFormatStr;
@@ -112,7 +122,8 @@ protected:
 public:
     template <class Archive>
     void serialize(Archive &ar) {
-        ar(cereal::make_nvp("DataStream", dataStream), cereal::make_nvp("Preference", preference));
+        ar(cereal::make_nvp("DataStream", dataStream), cereal::make_nvp("Prior", prior),
+           cereal::make_nvp("Preference", preference));
     }
 };
 }  // namespace ns_ekalibr
