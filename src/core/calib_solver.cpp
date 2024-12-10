@@ -33,11 +33,13 @@
 #include "viewer/viewer.h"
 #include "util/status.hpp"
 #include "spdlog/spdlog.h"
+#include "tiny-viewer/core/pose.hpp"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver()
-    : _viewer(Viewer::Create()),
-      _solveFinished(false) {
+    : _viewer(Viewer::Create(5000)),
+      _solveFinished(false),
+      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
     // organize the default solver option
     _ceresOption.minimizer_type = ceres::TRUST_REGION;
     _ceresOption.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;

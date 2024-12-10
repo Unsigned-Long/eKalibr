@@ -36,6 +36,7 @@
 #include "opencv4/opencv2/highgui.hpp"
 #include "opencv4/opencv2/imgproc.hpp"
 #include "factor/time_varying_circle_fitting.hpp"
+#include "config/configor.h"
 
 namespace ns_ekalibr {
 /**
@@ -148,16 +149,16 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
 
     if (viewer != nullptr) {
         // cluster results
+        const auto& ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
         for (const auto& [evs1, evs2] : evsInEachCircleClusterPair) {
-            viewer->AddEventData(evs1, nfPack->timestamp, {0.01, 100}, {}, 4.0f);
-            viewer->AddEventData(evs2, nfPack->timestamp, {0.01, 100}, {}, 4.0f);
+            viewer->AddEventData(evs1, ptScale, {}, 4.0f);
+            viewer->AddEventData(evs2, ptScale, {}, 4.0f);
         }
-        viewer->AddEventData(nfPack->ActiveEvents(-1.0), nfPack->timestamp, {0.01, 100},
-                             ns_viewer::Colour::Black(), 1.0f);
+        viewer->AddEventData(nfPack->ActiveEvents(-1.0), ptScale, ns_viewer::Colour::Black(), 1.0f);
     }
 
     std::vector<TimeVaryingCircle::Ptr> tvCircles(evsInEachCircleClusterPair.size(), nullptr);
-    // #pragma omp parallel for
+#pragma omp parallel for
     for (int i = 0; i < static_cast<int>(evsInEachCircleClusterPair.size()); i++) {
         const auto& [evs1, evs2] = evsInEachCircleClusterPair.at(i);
         tvCircles.at(i) = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD);
@@ -208,9 +209,10 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
     indices.clear();
 
     if (viewer != nullptr) {
+        const auto& ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
         for (const auto& c : tvCircles) {
-            viewer->AddSpatioTemporalTrace(c->PosVecAt(1E-3), nfPack->timestamp, 2.0f,
-                                           ns_viewer::Colour::Green(), {0.01, 100});
+            viewer->AddSpatioTemporalTrace(c->PosVecAt(1E-3), 2.0f, ns_viewer::Colour::Green(),
+                                           ptScale);
         }
     }
 

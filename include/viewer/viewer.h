@@ -44,12 +44,13 @@ public:
     using Parent = ns_viewer::Viewer;
 
 private:
-    std::vector<std::size_t> _entities;
+    std::list<std::size_t> _entities;
+    const int keptEntityCount;
 
 public:
-    explicit Viewer();
+    explicit Viewer(int keptEntityCount = -1);
 
-    static Ptr Create();
+    static Ptr Create(int keptEntityCount = -1);
 
     Viewer &ClearViewer();
 
@@ -59,31 +60,27 @@ public:
 
     // add discrete pos
     Viewer &AddSpatioTemporalTrace(const std::vector<Eigen::Vector3d> &trace,
-                                   float sTime,
                                    float size = 0.5f,
                                    const ns_viewer::Colour &color = ns_viewer::Colour::Blue(),
                                    const std::pair<float, float> &ptScales = {0.01f, 2.0f});
 
     Viewer &AddEventData(const std::vector<EventArrayPtr>::const_iterator &sIter,
                          const std::vector<EventArrayPtr>::const_iterator &eIter,
-                         float sTime,
                          const std::pair<float, float> &ptScales = {0.01f, 2.0f},
                          float ptSize = 1.0f);
 
     Viewer &AddEventData(const EventArrayPtr &ary,
-                         float sTime,
                          const std::pair<float, float> &ptScales = {0.01f, 2.0f},
                          const std::optional<ns_viewer::Colour> &color = {},
                          float ptSize = 1.0f);
 
     Viewer &AddEventData(const std::list<EventPtr> &ary,
-                         float sTime,
                          const std::pair<float, float> &ptScales = {0.01f, 2.0f},
                          const std::optional<ns_viewer::Colour> &color = {},
                          float ptSize = 1.0f);
 
 protected:
-    ns_viewer::ViewerConfigor GenViewerConfigor();
+    static ns_viewer::ViewerConfigor GenViewerConfigor();
 };
 }  // namespace ns_ekalibr
 

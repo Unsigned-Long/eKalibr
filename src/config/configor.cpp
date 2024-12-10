@@ -55,6 +55,8 @@ const std::map<CerealArchiveType::Enum, std::string> Configor::Preference::FileE
     {CerealArchiveType::Enum::XML, ".xml"},
     {CerealArchiveType::Enum::BINARY, ".bin"}};
 
+std::pair<double, double> Configor::Preference::EventViewerSpatialTemporalScale = {0.01, 50.0};
+
 Configor::Configor() = default;
 
 void Configor::PrintMainFields() {

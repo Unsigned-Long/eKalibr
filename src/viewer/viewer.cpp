@@ -36,22 +36,26 @@ namespace ns_ekalibr {
 using ColorPoint = pcl::PointXYZRGBA;
 using ColorPointCloud = pcl::PointCloud<ColorPoint>;
 
-Viewer::Viewer()
-    : Parent(GenViewerConfigor()) {
+Viewer::Viewer(int keptEntityCount)
+    : Parent(GenViewerConfigor()),
+      keptEntityCount(keptEntityCount) {
     // run
     this->RunInMultiThread();
 }
 
-std::shared_ptr<Viewer> Viewer::Create() { return std::make_shared<Viewer>(); }
+std::shared_ptr<Viewer> Viewer::Create(int keptEntityCount) {
+    return std::make_shared<Viewer>(keptEntityCount);
+}
 
 ns_viewer::ViewerConfigor Viewer::GenViewerConfigor() {
     ns_viewer::ViewerConfigor viewConfig("eKalibr");
+    viewConfig.grid.showGrid = false;
     viewConfig.WithScreenShotSaveDir(Configor::DataStream::OutputPath);
     return viewConfig;
 }
 
 Viewer &Viewer::ClearViewer() {
-    this->RemoveEntity(_entities);
+    this->RemoveEntity({_entities.begin(), _entities.end()});
     _entities.clear();
     return *this;
 }
@@ -67,11 +71,17 @@ Viewer &Viewer::PopBackEntity() {
 Viewer &Viewer::AddEntityLocal(const std::vector<ns_viewer::Entity::Ptr> &entities) {
     auto ids = this->AddEntity(entities);
     _entities.insert(_entities.end(), ids.cbegin(), ids.cend());
+    if (keptEntityCount > 0 && _entities.size() > 1.2 * keptEntityCount) {
+        auto iter = _entities.cbegin();
+        std::advance(iter, _entities.size() - keptEntityCount);
+
+        this->RemoveEntity({_entities.cbegin(), iter});
+        _entities.erase(_entities.cbegin(), iter);
+    }
     return *this;
 }
 
 Viewer &Viewer::AddSpatioTemporalTrace(const std::vector<Eigen::Vector3d> &trace,
-                                       float sTime,
                                        float size,
                                        const ns_viewer::Colour &color,
                                        const std::pair<float, float> &ptScales) {
@@ -81,10 +91,10 @@ Viewer &Viewer::AddSpatioTemporalTrace(const std::vector<Eigen::Vector3d> &trace
         const Eigen::Vector3f &f2 = trace.at(i + 1).cast<float>();
 
         const Eigen::Vector2f &p1 = f1.tail<2>() * ptScales.first;
-        const auto z1 = (f1(0) - sTime) * ptScales.second;
+        const auto z1 = -f1(0) * ptScales.second;
 
         const Eigen::Vector2f &p2 = f2.tail<2>() * ptScales.first;
-        const auto z2 = (f2(0) - sTime) * ptScales.second;
+        const auto z2 = -f2(0) * ptScales.second;
 
         auto line = ns_viewer::Line::Create({p1(0), p1(1), z1}, {p2(0), p2(1), z2}, color, size);
         entities.push_back(line);
@@ -95,16 +105,15 @@ Viewer &Viewer::AddSpatioTemporalTrace(const std::vector<Eigen::Vector3d> &trace
 
 Viewer &Viewer::AddEventData(const std::vector<EventArray::Ptr>::const_iterator &sIter,
                              const std::vector<EventArray::Ptr>::const_iterator &eIter,
-                             float sTime,
                              const std::pair<float, float> &ptScales,
                              float ptSize) {
     pcl::PointCloud<ColorPoint>::Ptr cloud(new ColorPointCloud);
     for (auto iter = sIter; iter != eIter; ++iter) {
         for (const auto &event : (*iter)->GetEvents()) {
             Eigen::Vector2f p = event->GetPos().cast<float>() * ptScales.first;
-            float t = ((float)event->GetTimestamp() - sTime) * ptScales.second;
+            float t = (float)event->GetTimestamp() * ptScales.second;
             ColorPoint cp;
-            cp.x = p(0), cp.y = p(1), cp.z = t;
+            cp.x = p(0), cp.y = p(1), cp.z = -t;
             if (event->GetPolarity()) {
                 cp.b = 255;
                 cp.r = cp.g = 0;
@@ -121,7 +130,6 @@ Viewer &Viewer::AddEventData(const std::vector<EventArray::Ptr>::const_iterator 
 }
 
 Viewer &Viewer::AddEventData(const EventArray::Ptr &ary,
-                             float sTime,
                              const std::pair<float, float> &ptScales,
                              const std::optional<ns_viewer::Colour> &color,
                              float ptSize) {
@@ -132,9 +140,9 @@ Viewer &Viewer::AddEventData(const EventArray::Ptr &ary,
     const auto &events = ary->GetEvents();
     for (const auto &event : events) {
         Eigen::Vector2f p = event->GetPos().cast<float>() * ptScales.first;
-        float t = ((float)event->GetTimestamp() - sTime) * ptScales.second;
+        float t = (float)event->GetTimestamp() * ptScales.second;
         ColorPoint cp;
-        cp.x = p(0), cp.y = p(1), cp.z = t;
+        cp.x = p(0), cp.y = p(1), cp.z = -t;
         if (color == std::nullopt) {
             if (event->GetPolarity()) {
                 cp.b = 255;
@@ -157,7 +165,6 @@ Viewer &Viewer::AddEventData(const EventArray::Ptr &ary,
 }
 
 Viewer &Viewer::AddEventData(const std::list<EventPtr> &ary,
-                             float sTime,
                              const std::pair<float, float> &ptScales,
                              const std::optional<ns_viewer::Colour> &color,
                              float ptSize) {
@@ -165,6 +172,6 @@ Viewer &Viewer::AddEventData(const std::list<EventPtr> &ary,
         return *this;
     }
     auto eAry = EventArray::Create(ary.back()->GetTimestamp(), {ary.cbegin(), ary.cend()});
-    return AddEventData(eAry, sTime, ptScales, color, ptSize);
+    return AddEventData(eAry, ptScales, color, ptSize);
 }
 }  // namespace ns_ekalibr

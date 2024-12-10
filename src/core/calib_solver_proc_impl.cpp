@@ -48,6 +48,7 @@ void CalibSolver::Process() {
 
     const double decay = Configor::Prior::DecayTimeOfActiveEvents;
 
+    auto curViewCamPose = _viewCamPose;
     for (const auto &[topic, eventMes] : _evMes) {
         spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);
 
@@ -90,6 +91,10 @@ void CalibSolver::Process() {
 
                 // cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
 
+                /**
+                 * extract circle grid pattern
+                 */
+
                 auto circleExtractor = EventCircleExtractor::Create(
                     true, Configor::Prior::CircleExtractor.ValidClusterAreaThd,
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
@@ -97,15 +102,21 @@ void CalibSolver::Process() {
                 circleExtractor->ExtractCirclesGrid(nfPack, {4, 11}, _viewer);
                 circleExtractor->Visualization();
 
-                /**
-                 * extract circle grid pattern
-                 */
+                auto t = -timeLatest * Configor::Preference::EventViewerSpatialTemporalScale.second;
+                curViewCamPose.translation(0) =
+                    config.Width * 0.5 *
+                    Configor::Preference::EventViewerSpatialTemporalScale.first;
+                curViewCamPose.translation(1) =
+                    config.Height * 0.5 *
+                    Configor::Preference::EventViewerSpatialTemporalScale.first;
+                curViewCamPose.translation(2) = t + _viewCamPose.translation(2);
+                _viewer->SetCamView(curViewCamPose);
 
                 cv::waitKey(1);
-                _viewer->ClearViewer();
             }
         }
         bar->finish();
+        _viewer->ClearViewer();
     }
     cv::destroyAllWindows();
 

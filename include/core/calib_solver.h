@@ -31,6 +31,7 @@
 
 #include "memory"
 #include "ceres/ceres.h"
+#include "tiny-viewer/core/pose.hpp"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -54,6 +55,8 @@ protected:
     // start time, end time
     std::pair<double, double> _evDataRawTimestamp;
     std::pair<double, double> _evDataAlignedTimestamp;
+
+    ns_viewer::Posef _viewCamPose;
 
 public:
     CalibSolver();

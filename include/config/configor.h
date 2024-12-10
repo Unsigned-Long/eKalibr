@@ -106,6 +106,8 @@ public:
         static CerealArchiveType::Enum OutputDataFormat;
         const static std::map<CerealArchiveType::Enum, std::string> FileExtension;
 
+        static std::pair<double, double> EventViewerSpatialTemporalScale;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
