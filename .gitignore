@@ -18,3 +18,5 @@
 /data/*
 /thirdparty/tiny-viewer-build
 /thirdparty/tiny-viewer-install
+/thirdparty/opengv-build
+/thirdparty/opengv-install

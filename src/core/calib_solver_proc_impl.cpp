@@ -34,6 +34,7 @@
 #include "sensor/event.h"
 #include "viewer/viewer.h"
 #include "opencv4/opencv2/highgui.hpp"
+#include "core/norm_flow.h"
 
 namespace ns_ekalibr {
 
@@ -59,6 +60,9 @@ void CalibSolver::Process() {
             bar->progress(i, eventMes.size());
 
             for (const auto &event : eventMes.at(i)->GetEvents()) {
+                /**
+                 * create sae (surface of active events)
+                 */
                 sae->GrabEvent(event);
                 const auto timeLatest = sae->GetTimeLatest();
 
@@ -69,8 +73,22 @@ void CalibSolver::Process() {
                     lastUpdateTime = timeLatest;
                 }
 
-                auto dts = sae->DecayTimeSurface(true, 0, decay);
-                cv::imshow("Decay Surface Of Active Events", dts);
+                // auto dts = sae->DecayTimeSurface(true, 0, decay);
+                // cv::imshow("Decay Surface Of Active Events", dts);
+
+                /**
+                 * estimate norm flows using created sae
+                 */
+                auto nf = EventNormFlow(sae);
+                auto nfPack = nf.ExtractNormFlows(
+                    decay,  // decay seconds for time surface
+                    2,      // window size to fit local planes
+                    1,      // distance between neighbor norm flows
+                    0.8,    // the ratio, for ransac and in-range candidates
+                    2E-3,   // the point to plane threshold in temporal domain, unit (s)
+                    3);     // ransac iteration count
+
+                cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
 
                 cv::waitKey(0);
                 _viewer->ClearViewer();

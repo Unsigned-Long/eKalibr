@@ -141,6 +141,9 @@ find_package(yaml-cpp)
 set(tiny-viewer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-viewer-install/lib/cmake/tiny-viewer)
 find_package(tiny-viewer REQUIRED)
 
+set(opengv_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/opengv-install/lib/cmake/opengv-1.0)
+find_package(opengv)
+
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/config CONFIG_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/util UTIL_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/sensor SENSOR_SRC_FILES)
@@ -236,6 +239,7 @@ target_link_libraries(
         ${catkin_LIBRARIES}
         # thirdparty
         tiny-viewer
+        opengv
 )
 
 #####################
