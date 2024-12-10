@@ -54,8 +54,8 @@ const std::map<CerealArchiveType::Enum, std::string> Configor::Preference::FileE
     {CerealArchiveType::Enum::JSON, ".json"},
     {CerealArchiveType::Enum::XML, ".xml"},
     {CerealArchiveType::Enum::BINARY, ".bin"}};
-
 std::pair<double, double> Configor::Preference::EventViewerSpatialTemporalScale = {0.01, 50.0};
+bool Configor::Preference::Visualization = {};
 
 Configor::Configor() = default;
 
@@ -71,7 +71,7 @@ void Configor::PrintMainFields() {
 #define DESC_FORMAT "\n{:>40}: {}"
     spdlog::info(
         "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-            DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+            DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
         DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
         DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
         DESC_FIELD(Prior::DecayTimeOfActiveEvents),
@@ -79,7 +79,8 @@ void Configor::PrintMainFields() {
         "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
         "CircleExtractor::CircleClusterPairDirThd", Prior::CircleExtractor.CircleClusterPairDirThd,
         "CircleExtractor::PointToCircleDistThd", Prior::CircleExtractor.PointToCircleDistThd,
-        "Preference::OutputDataFormat", Preference::OutputDataFormatStr);
+        "Preference::OutputDataFormat", Preference::OutputDataFormatStr,
+        DESC_FIELD(Preference::Visualization));
 
 #undef DESC_FIELD
 #undef DESC_FORMAT

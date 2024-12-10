@@ -108,10 +108,13 @@ public:
 
         static std::pair<double, double> EventViewerSpatialTemporalScale;
 
+        static bool Visualization;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(cereal::make_nvp("OutputDataFormat", OutputDataFormatStr));
+            ar(cereal::make_nvp("OutputDataFormat", OutputDataFormatStr),
+               CEREAL_NVP(Visualization));
         }
     } preference;
 

@@ -96,30 +96,32 @@ void CalibSolver::Process() {
                  */
 
                 auto circleExtractor = EventCircleExtractor::Create(
-                    true, Configor::Prior::CircleExtractor.ValidClusterAreaThd,
+                    Configor::Preference::Visualization,
+                    Configor::Prior::CircleExtractor.ValidClusterAreaThd,
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
                 circleExtractor->ExtractCirclesGrid(nfPack, {4, 11}, _viewer);
                 circleExtractor->Visualization();
 
-                auto t = -timeLatest * Configor::Preference::EventViewerSpatialTemporalScale.second;
-                curViewCamPose.translation(0) =
-                    config.Width * 0.5 *
-                    Configor::Preference::EventViewerSpatialTemporalScale.first;
-                curViewCamPose.translation(1) =
-                    config.Height * 0.5 *
-                    Configor::Preference::EventViewerSpatialTemporalScale.first;
-                curViewCamPose.translation(2) = t + _viewCamPose.translation(2);
-                _viewer->SetCamView(curViewCamPose);
-
-                cv::waitKey(1);
+                if (Configor::Preference::Visualization) {
+                    auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+                    auto t = -timeLatest * ptScale.second;
+                    curViewCamPose.translation(0) = config.Width * 0.5 * ptScale.first;
+                    curViewCamPose.translation(1) = config.Height * 0.5 * ptScale.first;
+                    curViewCamPose.translation(2) = t + _viewCamPose.translation(2);
+                    _viewer->SetCamView(curViewCamPose);
+                    cv::waitKey(1);
+                }
             }
         }
         bar->finish();
-        _viewer->ClearViewer();
+        if (Configor::Preference::Visualization) {
+            _viewer->ClearViewer();
+        }
     }
-    cv::destroyAllWindows();
-
+    if (Configor::Preference::Visualization) {
+        cv::destroyAllWindows();
+    }
     _solveFinished = true;
 }
 }  // namespace ns_ekalibr
