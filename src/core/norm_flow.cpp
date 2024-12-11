@@ -171,7 +171,7 @@ EventNormFlow::NormFlowPack::Ptr EventNormFlow::ExtractNormFlows(double decaySec
     auto tsImg = _sea->DecayTimeSurface(true, 0, decaySec);
     const double timeLast = _sea->GetTimeLatest();
     cv::Mat mask;
-    cv::inRange(rtsMat, std::max(1E-3, timeLast - 1.5 * decaySec), timeLast, mask);
+    cv::inRange(rtsMat, std::max(1E-3, timeLast - decaySec), timeLast, mask);
 
     cv::cvtColor(tsImg, tsImg, cv::COLOR_GRAY2BGR);
     auto nfsImg = tsImg.clone();

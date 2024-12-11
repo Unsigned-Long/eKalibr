@@ -53,7 +53,7 @@ void CalibSolver::Process() {
 
     const auto &nfConfig = Configor::Prior::NormFlowEstimator;
     // nfConfig.WinSizeInPlaneFit >= 1
-    const auto neighborNormFlowDist = (nfConfig.WinSizeInPlaneFit - 1) * 2;
+    const auto neighborNormFlowDist = nfConfig.WinSizeInPlaneFit * 2 - 1;
 
     for (const auto &[topic, eventMes] : _evMes) {
         spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);
@@ -65,7 +65,7 @@ void CalibSolver::Process() {
         auto bar = std::make_shared<tqdm>();
 
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
-            bar->progress(i, eventMes.size());
+            bar->progress(i, static_cast<int>(eventMes.size()));
 
             for (const auto &event : eventMes.at(i)->GetEvents()) {
                 /**
