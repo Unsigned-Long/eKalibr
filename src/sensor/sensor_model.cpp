@@ -28,9 +28,11 @@
 
 #include "sensor/sensor_model.h"
 #include "spdlog/fmt/fmt.h"
+#include "util/enum_cast.hpp"
+#include "util/status.hpp"
 
 namespace ns_ekalibr {
-std::string EventModel::UnsupportedEventModelMsg(const std::string &modelStr) {
+std::string EventModel::UnsupportedEventModelMsg(const std::string& modelStr) {
     return fmt::format(
         "Unsupported Event Camera Type: '{}'. "
         "Currently supported event camera types are: \n"
@@ -42,4 +44,34 @@ std::string EventModel::UnsupportedEventModelMsg(const std::string &modelStr) {
         modelStr);
 }
 
+EventModelType EventModel::FromString(const std::string& modelStr) {
+    EventModelType model;
+    try {
+        model = EnumCast::stringToEnum<EventModelType>(modelStr);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedEventModelMsg(modelStr));
+    }
+    return model;
 }
+
+std::string CirclePattern::UnsupportedCirclePatternMsg(const std::string& modelStr) {
+    return fmt::format(
+        "Unsupported circle pattern: '{}'. "
+        "Currently supported circle patterns are: \n"
+        "1.  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html\n"
+        "2. ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html\n"
+        "...\n",
+        modelStr);
+}
+
+CirclePatternType CirclePattern::FromString(const std::string& modelStr) {
+    CirclePatternType model;
+    try {
+        model = EnumCast::stringToEnum<CirclePatternType>(modelStr);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedCirclePatternMsg(modelStr));
+    }
+    return model;
+}
+
+}  // namespace ns_ekalibr

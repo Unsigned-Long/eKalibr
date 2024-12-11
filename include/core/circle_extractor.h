@@ -33,8 +33,8 @@
 #include "core/norm_flow.h"
 #include "set"
 #include "tiny-viewer/entity/utils.h"
-
 #include <ostream>
+#include <sensor/sensor_model.h>
 
 namespace ns_ekalibr {
 
@@ -142,6 +142,7 @@ public:
     std::optional<std::vector<cv::Point2f>> ExtractCirclesGrid(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
         const cv::Size& gridSize,
+        CirclePatternType circlePatternType,
         const ViewerPtr& viewer = nullptr);
 
     void Visualization() const;

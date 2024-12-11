@@ -37,6 +37,7 @@
 #include "opencv4/opencv2/imgproc.hpp"
 #include "factor/time_varying_circle_fitting.hpp"
 #include "config/configor.h"
+#include <util/status.hpp>
 
 namespace ns_ekalibr {
 /**
@@ -230,6 +231,7 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
 std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid(
     const EventNormFlow::NormFlowPack::Ptr& nfPack,
     const cv::Size& gridSize,
+    CirclePatternType circlePatternType,
     const ViewerPtr& viewer) {
     auto [timestamp, circles] = ExtractCircles(nfPack, viewer);
 
@@ -241,13 +243,25 @@ std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid
 
     std::vector<cv::Point2f> centers;
 
+    int flags;
+    switch (circlePatternType) {
+        case CirclePatternType::SYMMETRIC_GRID:
+            flags = cv::CALIB_CB_SYMMETRIC_GRID;
+            break;
+        case CirclePatternType::ASYMMETRIC_GRID:
+            flags = cv::CALIB_CB_ASYMMETRIC_GRID;
+            break;
+        default:
+            throw Status(Status::ERROR, "Unknown CirclePatternType");
+    }
+
     auto res = FindCirclesGrid(
         matPoints,  // grid view of input circles
         gridSize,   // number of circles per row and column, patternSize = Size(row, colum)
         centers,    // output array of detected centers
-        cv::CALIB_CB_ASYMMETRIC_GRID,  // various operation flags
-        nullptr,  // feature detector that finds blobs like dark circles on light background, If
-                  // blobDetector is NULL then image represents point array of candidates
+        flags,      // various operation flags
+        nullptr,    // feature detector that finds blobs like dark circles on light background, If
+                    // blobDetector is NULL then image represents point array of candidates
         ns_cv_helper::CirclesGridFinderParameters());
 
     if (visualization) {

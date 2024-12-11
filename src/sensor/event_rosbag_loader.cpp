@@ -34,7 +34,6 @@
 #include "spdlog/spdlog.h"
 #include "rosbag/view.h"
 #include "util/tqdm.h"
-
 #include <config/configor.h>
 
 namespace ns_ekalibr {
@@ -149,12 +148,8 @@ EventDataLoader::EventDataLoader(EventModelType model)
 
 EventDataLoader::Ptr EventDataLoader::GetLoader(const std::string &modelStr) {
     // try extract radar model
-    EventModelType model;
-    try {
-        model = EnumCast::stringToEnum<EventModelType>(modelStr);
-    } catch (...) {
-        throw Status(Status::ERROR, EventModel::UnsupportedEventModelMsg(modelStr));
-    }
+    EventModelType model = EventModel::FromString(modelStr);
+
     EventDataLoader::Ptr dataLoader;
     switch (model) {
         case EventModelType::PROPHESEE_EVENT:

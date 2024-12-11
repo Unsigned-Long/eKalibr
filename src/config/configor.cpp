@@ -31,6 +31,7 @@
 #include "ros/package.h"
 #include "spdlog/spdlog.h"
 #include "filesystem"
+#include <sensor/sensor_model.h>
 
 namespace ns_ekalibr {
 Configor::DataStream Configor::dataStream = {};
@@ -43,6 +44,7 @@ const std::string Configor::DataStream::PkgPath = ros::package::getPath("ekalibr
 const std::string Configor::DataStream::DebugPath = PkgPath + "/debug/";
 
 Configor::Prior Configor::prior = {};
+Configor::Prior::CirclePatternConfig Configor::Prior::CirclePattern = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 
@@ -69,18 +71,25 @@ void Configor::PrintMainFields() {
 
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>40}: {}"
-    spdlog::info(
-        "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-            DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
-        DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
-        DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
-        DESC_FIELD(Prior::DecayTimeOfActiveEvents),
-        // fields for CircleExtractor
-        "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
-        "CircleExtractor::CircleClusterPairDirThd", Prior::CircleExtractor.CircleClusterPairDirThd,
-        "CircleExtractor::PointToCircleDistThd", Prior::CircleExtractor.PointToCircleDistThd,
-        "Preference::OutputDataFormat", Preference::OutputDataFormatStr,
-        DESC_FIELD(Preference::Visualization));
+    spdlog::info("main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+                     DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+                         DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+                 DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath),
+                 DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
+                 DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+                 // fields for CirclePattern
+                 "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
+                 "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)
+                 "CirclePattern::Rows", Prior::CirclePattern.Rows,  // number of circles (rows)
+                 "CirclePattern::SpacingMeters",
+                 Prior::CirclePattern.SpacingMeters,  // distance between circles
+                 // fields for CircleExtractor
+                 "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
+                 "CircleExtractor::CircleClusterPairDirThd",
+                 Prior::CircleExtractor.CircleClusterPairDirThd,
+                 "CircleExtractor::PointToCircleDistThd",
+                 Prior::CircleExtractor.PointToCircleDistThd, "Preference::OutputDataFormat",
+                 Preference::OutputDataFormatStr, DESC_FIELD(Preference::Visualization));
 
 #undef DESC_FIELD
 #undef DESC_FORMAT
@@ -92,6 +101,16 @@ void Configor::CheckConfigure() {
                      "the topic count of event cameras (i.e., DataStream::EventTopics) should be "
                      "larger equal than 1!");
     }
+
+    for (const auto &[topic, config] : DataStream::EventTopics) {
+        if (topic.empty()) {
+            throw Status(Status::ERROR, "the topic of event camera should not be empty string!");
+        }
+        // verify event camera type
+        EventModel::FromString(config.Type);
+    }
+    // verify circle pattern type
+    CirclePattern::FromString(Prior::CirclePattern.Type);
 
     if (!std::filesystem::exists(DataStream::BagPath)) {
         throw Status(Status::ERROR, "can not find the ros bag (i.e., DataStream::BagPath)!");
@@ -111,6 +130,24 @@ void Configor::CheckConfigure() {
         throw Status(Status::ERROR,
                      "the decay time of the surface of active events (i.e., "
                      "Prior::DecayTimeOfActiveEvents) should be positive!");
+    }
+
+    if (Prior::CirclePattern.Cols == 0) {
+        throw Status(Status::ERROR,
+                     "the columns of circle grid pattern (i.e., "
+                     "CirclePattern::Cols) should be positive!");
+    }
+
+    if (Prior::CirclePattern.Rows == 0) {
+        throw Status(Status::ERROR,
+                     "the rows of circle grid pattern (i.e., "
+                     "CirclePattern::Rows) should be positive!");
+    }
+
+    if (Prior::CirclePattern.SpacingMeters < 1E-6 /*m*/) {
+        throw Status(Status::ERROR,
+                     "the distance between circles in the circle pattern (i.e., "
+                     "CirclePattern::SpacingMeters) should be positive!");
     }
 
     if (Prior::CircleExtractor.ValidClusterAreaThd < 1 /*pixels*/) {

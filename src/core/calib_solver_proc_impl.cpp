@@ -47,8 +47,10 @@ void CalibSolver::Process() {
     this->LoadEventData();
 
     const double decay = Configor::Prior::DecayTimeOfActiveEvents;
+    const auto &pattern = Configor::Prior::CirclePattern;
+    auto circlePattern = CirclePattern::FromString(pattern.Type);
+    auto patternSize = cv::Size(pattern.Rows, pattern.Cols);
 
-    auto curViewCamPose = _viewCamPose;
     for (const auto &[topic, eventMes] : _evMes) {
         spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);
 
@@ -100,12 +102,13 @@ void CalibSolver::Process() {
                     Configor::Prior::CircleExtractor.ValidClusterAreaThd,
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
-                circleExtractor->ExtractCirclesGrid(nfPack, {4, 11}, _viewer);
+                circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern, _viewer);
                 circleExtractor->Visualization();
 
                 if (Configor::Preference::Visualization) {
                     auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
                     auto t = -timeLatest * ptScale.second;
+                    ns_viewer::Posef curViewCamPose = _viewCamPose;
                     curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
                     curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
                     curViewCamPose.translation(2) = float(t + _viewCamPose.translation(2));

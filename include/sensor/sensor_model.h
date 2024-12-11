@@ -37,12 +37,22 @@ struct EventModel {
     enum class EventModelType { PROPHESEE_EVENT, DVS_EVENT };
 
     static std::string UnsupportedEventModelMsg(const std::string &modelStr);
+
+    static EventModelType FromString(const std::string &modelStr);
 };
 
 using EventModelType = EventModel::EventModelType;
 
+struct CirclePattern {
+    enum class CirclePatternType { SYMMETRIC_GRID, ASYMMETRIC_GRID };
 
-}
+    static std::string UnsupportedCirclePatternMsg(const std::string &modelStr);
 
+    static CirclePatternType FromString(const std::string &modelStr);
+};
 
-#endif //SENSOR_MODEL_H
+using CirclePatternType = CirclePattern::CirclePatternType;
+
+}  // namespace ns_ekalibr
+
+#endif  // SENSOR_MODEL_H

@@ -75,6 +75,24 @@ public:
     } dataStream;
 
     static struct Prior {
+        struct CirclePatternConfig {
+        public:
+            std::string Type;
+            std::uint16_t Cols;
+            std::uint16_t Rows;
+            double SpacingMeters;
+
+            CirclePatternConfig() = default;
+
+        public:
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Cols), CEREAL_NVP(Rows), CEREAL_NVP(SpacingMeters));
+            }
+        };
+
+        static CirclePatternConfig CirclePattern;
+
         static double DecayTimeOfActiveEvents;
 
         struct CircleExtractorConfig {
@@ -96,7 +114,8 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(DecayTimeOfActiveEvents), CEREAL_NVP(CircleExtractor));
+            ar(CEREAL_NVP(CirclePattern), CEREAL_NVP(DecayTimeOfActiveEvents),
+               CEREAL_NVP(CircleExtractor));
         }
     } prior;
 
