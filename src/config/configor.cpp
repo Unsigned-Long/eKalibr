@@ -47,6 +47,7 @@ Configor::Prior Configor::prior = {};
 Configor::Prior::CirclePatternConfig Configor::Prior::CirclePattern = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
+Configor::Prior::NormFlowEstimatorConfig Configor::Prior::NormFlowEstimator = {};
 
 Configor::Preference Configor::preference = {};
 std::string Configor::Preference::OutputDataFormatStr = {};
@@ -58,6 +59,7 @@ const std::map<CerealArchiveType::Enum, std::string> Configor::Preference::FileE
     {CerealArchiveType::Enum::BINARY, ".bin"}};
 std::pair<double, double> Configor::Preference::EventViewerSpatialTemporalScale = {0.01, 50.0};
 bool Configor::Preference::Visualization = {};
+int Configor::Preference::MaxEntityCountInViewer = {};
 
 Configor::Configor() = default;
 
@@ -71,25 +73,33 @@ void Configor::PrintMainFields() {
 
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>40}: {}"
-    spdlog::info("main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                     DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                         DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
-                 DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath),
-                 DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
-                 DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
-                 // fields for CirclePattern
-                 "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
-                 "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)
-                 "CirclePattern::Rows", Prior::CirclePattern.Rows,  // number of circles (rows)
-                 "CirclePattern::SpacingMeters",
-                 Prior::CirclePattern.SpacingMeters,  // distance between circles
-                 // fields for CircleExtractor
-                 "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
-                 "CircleExtractor::CircleClusterPairDirThd",
-                 Prior::CircleExtractor.CircleClusterPairDirThd,
-                 "CircleExtractor::PointToCircleDistThd",
-                 Prior::CircleExtractor.PointToCircleDistThd, "Preference::OutputDataFormat",
-                 Preference::OutputDataFormatStr, DESC_FIELD(Preference::Visualization));
+    spdlog::info(
+        "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+            DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+                DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+                    DESC_FORMAT,
+        DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
+        DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
+        DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+        // fields for CirclePattern
+        "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
+        "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)
+        "CirclePattern::Rows", Prior::CirclePattern.Rows,  // number of circles (rows)
+        "CirclePattern::SpacingMeters",
+        Prior::CirclePattern.SpacingMeters,  // distance between circles
+        // fields for CircleExtractor
+        "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
+        "CircleExtractor::CircleClusterPairDirThd", Prior::CircleExtractor.CircleClusterPairDirThd,
+        "CircleExtractor::PointToCircleDistThd", Prior::CircleExtractor.PointToCircleDistThd,
+        // fields for NormFlowEstimator
+        "NormFlowEstimator::WinSizeInPlaneFit", Prior::NormFlowEstimator.WinSizeInPlaneFit,
+        "NormFlowEstimator::RansacMaxIterations", Prior::NormFlowEstimator.RansacMaxIterations,
+        "NormFlowEstimator::RansacInlierRatioThd", Prior::NormFlowEstimator.RansacInlierRatioThd,
+        "NormFlowEstimator::EventToPlaneTimeDistThd",
+        Prior::NormFlowEstimator.EventToPlaneTimeDistThd,
+        // Preference
+        "Preference::OutputDataFormat", Preference::OutputDataFormatStr,
+        DESC_FIELD(Preference::Visualization), DESC_FIELD(Preference::MaxEntityCountInViewer));
 
 #undef DESC_FIELD
 #undef DESC_FORMAT
@@ -166,6 +176,32 @@ void Configor::CheckConfigure() {
         throw Status(Status::ERROR,
                      "the point-to-circle threshold (i.e., "
                      "CircleExtractor::PointToCircleDistThd) should be positive!");
+    }
+
+    if (Prior::NormFlowEstimator.RansacMaxIterations < 1) {
+        throw Status(Status::ERROR,
+                     "the ransac max iterations (i.e., NormFlowEstimator::RansacMaxIterations) "
+                     "should be larger than zero!");
+    }
+
+    if (Prior::NormFlowEstimator.RansacInlierRatioThd <= 0.0 ||
+        Prior::NormFlowEstimator.RansacInlierRatioThd >= 1.0) {
+        throw Status(Status::ERROR,
+                     "the ransac inlier ratio threshold (i.e., "
+                     "NormFlowEstimator::RansacInlierRatioThd) should be in range of (0.0, 1.0)!");
+    }
+
+    if (Prior::NormFlowEstimator.WinSizeInPlaneFit < 1) {
+        throw Status(
+            Status::ERROR,
+            "the (half) window size in plane fitting (i.e., NormFlowEstimator::WinSizeInPlaneFit) "
+            "should be larger than zero!");
+    }
+
+    if (Prior::NormFlowEstimator.EventToPlaneTimeDistThd < 1E-6) {
+        throw Status(Status::ERROR,
+                     "the event-to-plane time dist threshold (i.e., "
+                     "NormFlowEstimator::EventToPlaneTimeDistThd) should be larger than zero!");
     }
 }
 

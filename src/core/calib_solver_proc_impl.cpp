@@ -51,6 +51,10 @@ void CalibSolver::Process() {
     auto circlePattern = CirclePattern::FromString(pattern.Type);
     auto patternSize = cv::Size(pattern.Cols, pattern.Rows);
 
+    const auto &nfConfig = Configor::Prior::NormFlowEstimator;
+    // nfConfig.WinSizeInPlaneFit >= 1
+    const auto neighborNormFlowDist = (nfConfig.WinSizeInPlaneFit - 1) * 2;
+
     for (const auto &[topic, eventMes] : _evMes) {
         spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);
 
@@ -84,12 +88,13 @@ void CalibSolver::Process() {
                  * estimate norm flows using created sae
                  */
                 auto nfPack = EventNormFlow(sae).ExtractNormFlows(
-                    decay,  // decay seconds for time surface
-                    2,      // window size to fit local planes
-                    1,      // distance between neighbor norm flows
-                    0.8,    // the ratio, for ransac and in-range candidates
-                    2E-3,   // the point to plane threshold in temporal domain, unit (s)
-                    3);     // ransac iteration count
+                    decay,                          // decay seconds for time surface
+                    nfConfig.WinSizeInPlaneFit,     // window size to fit local planes
+                    neighborNormFlowDist,           // distance between neighbor norm flows
+                    nfConfig.RansacInlierRatioThd,  // the ratio, for ransac and in-range candidates
+                    nfConfig.EventToPlaneTimeDistThd,  // the point to plane threshold in temporal
+                                                       // domain, unit (s)
+                    nfConfig.RansacMaxIterations);     // ransac iteration count
 
                 // cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
 

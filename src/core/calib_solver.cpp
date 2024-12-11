@@ -37,7 +37,9 @@
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver()
-    : _viewer(Configor::Preference::Visualization ? Viewer::Create(3000) : nullptr),
+    : _viewer(Configor::Preference::Visualization
+                  ? Viewer::Create(Configor::Preference::MaxEntityCountInViewer)
+                  : nullptr),
       _solveFinished(false),
       _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
     // organize the default solver option

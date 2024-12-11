@@ -40,6 +40,17 @@ Configor:
       Rows: 11
       # distance between circles [m]
       SpacingMeters: 0.02
+
+    # -------------------------------------------------------------------#
+    # The following settings generally do not need to be adjusted unless #
+    # the chessboard extraction performance is poor. The main reasons for#
+    # poor chessboard extraction include:                                #
+    # (1) small circular patterns on the chessboard. In this case, it is #
+    # recommended to reprint the chessboard with larger circular holes;  #
+    # (2) insufficient motion leading to sparse norm flow estimates.     #
+    # (3) ...                                                            #
+    # -------------------------------------------------------------------#
+
     # decay of the surface of active events, unit: sec
     DecayTimeOfActiveEvents: 0.02
     # extraction of circular shapes based on raw events
@@ -52,6 +63,17 @@ Configor:
       # When fitting a time-varying circular in the spatiotemporal domain,
       # the distance from the event to the circle should be less than the following threshold value, unit: pixels.
       PointToCircleDistThd: 2.0
+    NormFlowEstimator:
+      # The window radius used for solving the norm flow with the local plane, typically set to [1, 3].
+      WinSizeInPlaneFit: 1
+      # The number of iterations for fitting a plane using the RANSAC method.
+      RansacMaxIterations: 2
+      # The threshold for the required ratio of inliers when fitting a plane using the RANSAC method.
+      RansacInlierRatioThd: 0.8
+      # When fitting a plane using the RANSAC method, the distance from a point to the plane
+      # is computed in the time domain. The following value represents the distance threshold
+      # for classifying a point as an inlier.
+      EventToPlaneTimeDistThd: 2E-3
   Preference:
     # supported data output format:
     # 1. JSON
@@ -60,3 +82,6 @@ Configor:
     # 4. BINARY (not recommended)
     OutputDataFormat: "YAML"
     Visualization: true
+    # the max count of entities to visualize in the viewer, If the visualizer is lagging,
+    # please consider reducing this value appropriately.
+    MaxEntityCountInViewer: 3000

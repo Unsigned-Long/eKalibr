@@ -111,11 +111,28 @@ public:
 
         static CircleExtractorConfig CircleExtractor;
 
+        struct NormFlowEstimatorConfig {
+            std::uint16_t WinSizeInPlaneFit;
+            std::uint16_t RansacMaxIterations;
+            double RansacInlierRatioThd;
+            double EventToPlaneTimeDistThd;
+
+            NormFlowEstimatorConfig() = default;
+
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(WinSizeInPlaneFit), CEREAL_NVP(RansacMaxIterations),
+                   CEREAL_NVP(RansacInlierRatioThd), CEREAL_NVP(EventToPlaneTimeDistThd));
+            }
+        };
+
+        static NormFlowEstimatorConfig NormFlowEstimator;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
             ar(CEREAL_NVP(CirclePattern), CEREAL_NVP(DecayTimeOfActiveEvents),
-               CEREAL_NVP(CircleExtractor));
+               CEREAL_NVP(CircleExtractor), CEREAL_NVP(NormFlowEstimator));
         }
     } prior;
 
@@ -129,11 +146,13 @@ public:
 
         static bool Visualization;
 
+        static int MaxEntityCountInViewer;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(cereal::make_nvp("OutputDataFormat", OutputDataFormatStr),
-               CEREAL_NVP(Visualization));
+            ar(cereal::make_nvp("OutputDataFormat", OutputDataFormatStr), CEREAL_NVP(Visualization),
+               CEREAL_NVP(MaxEntityCountInViewer));
         }
     } preference;
 
