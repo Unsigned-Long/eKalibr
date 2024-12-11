@@ -64,6 +64,8 @@ void CalibSolver::Process() {
         double lastUpdateTime = eventMes.front()->GetTimestamp();
         auto bar = std::make_shared<tqdm>();
 
+        auto &curGridPoints2D = _extractedGridPoints2D[topic];
+
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
             bar->progress(i, static_cast<int>(eventMes.size()));
 
@@ -107,10 +109,17 @@ void CalibSolver::Process() {
                     Configor::Prior::CircleExtractor.ValidClusterAreaThd,
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
-                circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern, _viewer);
-                circleExtractor->Visualization();
+
+                auto gridPoints = circleExtractor->ExtractCirclesGrid(nfPack, patternSize,
+                                                                      circlePattern, _viewer);
+
+                if (gridPoints != std::nullopt) {
+                    curGridPoints2D.push_back(*gridPoints);
+                }
 
                 if (Configor::Preference::Visualization) {
+                    circleExtractor->Visualization();
+
                     auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
                     auto t = -timeLatest * ptScale.second;
                     ns_viewer::Posef curViewCamPose = _viewCamPose;
@@ -122,6 +131,9 @@ void CalibSolver::Process() {
                 }
             }
         }
+        spdlog::info("extracted circle grid pattern count for camera '{}': {}", topic,
+                     curGridPoints2D.size());
+
         bar->finish();
         if (Configor::Preference::Visualization) {
             _viewer->ClearViewer();

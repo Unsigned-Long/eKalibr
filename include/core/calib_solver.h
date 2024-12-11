@@ -32,6 +32,9 @@
 #include "memory"
 #include "ceres/ceres.h"
 #include "tiny-viewer/core/pose.hpp"
+#include <sensor/sensor_model.h>
+#include "opencv4/opencv2/core/types.hpp"
+#include "list"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -58,6 +61,11 @@ protected:
 
     ns_viewer::Posef _viewCamPose;
 
+    using GridPatternPoints2D = std::vector<cv::Point2f>;
+    using GridPatternPoints3D = std::vector<cv::Point3f>;
+
+    std::map<std::string, std::list<GridPatternPoints2D>> _extractedGridPoints2D;
+
 public:
     CalibSolver();
 
@@ -71,6 +79,11 @@ protected:
     void LoadEventData();
 
     void OutputDataStatus() const;
+
+    static GridPatternPoints3D CreateGridPointsInWordFrame(unsigned int rows,
+                                                           unsigned int cols,
+                                                           double spacing,
+                                                           CirclePatternType pattern);
 
 private:
     // remove the head data according to the pred
