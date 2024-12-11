@@ -49,7 +49,7 @@ void CalibSolver::Process() {
     const double decay = Configor::Prior::DecayTimeOfActiveEvents;
     const auto &pattern = Configor::Prior::CirclePattern;
     auto circlePattern = CirclePattern::FromString(pattern.Type);
-    auto patternSize = cv::Size(pattern.Rows, pattern.Cols);
+    auto patternSize = cv::Size(pattern.Cols, pattern.Rows);
 
     for (const auto &[topic, eventMes] : _evMes) {
         spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);

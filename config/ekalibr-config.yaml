@@ -18,15 +18,26 @@ Configor:
     Duration: -1
     OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
+    # +---------------+----------------+
+    # |SYMMETRIC_GRID | ASYMMETRIC_GRID|
+    # +---------------+----------------+
+    # |  (O) (O) (O)  |  (O) (O) (O)   |
+    # |  (O) (O) (O)  |    (O) (O) (O) |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |
+    # |  (O) (O) (O)  |    (O) (O) (O) |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |
+    # +---------------+----------------+
+    # |   C=3, R=5    | C=3, R=5 (odd) |
+    # +---------------+----------------+
     CirclePattern:
       # symmetric and asymmetric circle grids are supported
       # 1.  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
       # 2. ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
       Type: ASYMMETRIC_GRID
       # number of circles (cols)
-      Cols: 11
+      Cols: 4
       # number of circles (rows)
-      Rows: 4
+      Rows: 11
       # distance between circles [m]
       SpacingMeters: 0.02
     # decay of the surface of active events, unit: sec
