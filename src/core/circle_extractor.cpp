@@ -435,6 +435,7 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
+    options.max_num_iterations = 50;
     // options.minimizer_progress_to_stdout = true;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
