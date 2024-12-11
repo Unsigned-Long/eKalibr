@@ -18,17 +18,20 @@ Configor:
     Duration: -1
     OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
-    # +---------------+----------------+
-    # |SYMMETRIC_GRID | ASYMMETRIC_GRID|
-    # +---------------+----------------+
-    # |  (O) (O) (O)  |  (O) (O) (O)   |
-    # |  (O) (O) (O)  |    (O) (O) (O) |
-    # |  (O) (O) (O)  |  (O) (O) (O)   |
-    # |  (O) (O) (O)  |    (O) (O) (O) |
-    # |  (O) (O) (O)  |  (O) (O) (O)   |
-    # +---------------+----------------+
-    # |   C=3, R=5    | C=3, R=5 (odd) |
-    # +---------------+----------------+
+    # +---------------+----------------+        +---------------+----------------+
+    # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
+    # +---------------+----------------+        +---------------+----------------+
+    # |  (O) (O) (O)  |  (O) (O) (O)   |        |  (O)     (O)  |   (O)   (O)    |
+    # |  (O) (O) (O)  |    (O) (O) (O) |        |   |-------|   |    |--|        |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |  -->   | SpacingMeters |  SpacingMeters |
+    # |  (O) (O) (O)  |    (O) (O) (O) |        |   |-------|   |       |--|     |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |        |  (O)     (O)  |      (O)   (O) |
+    # +---------------+----------------+        +---------------+----------------+
+    # |   C=3, R=5    | C=3, R=5 (odd) |        |   C=3, R=5    | C=3, R=5 (odd) |
+    # +---------------+----------------+        +---------------+----------------+
+    # For the symmetric circle grid pattern, the square size is the distance between circle centers
+    # on a row or column. For the asymmetric circle grid pattern, the square size is half the distance
+    # between circle centers on a row or column.
     CirclePattern:
       # symmetric and asymmetric circle grids are supported
       # 1.  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
@@ -84,4 +87,4 @@ Configor:
     Visualization: true
     # the max count of entities to visualize in the viewer, If the visualizer is lagging,
     # please consider reducing this value appropriately.
-    MaxEntityCountInViewer: 3000
+    MaxEntityCountInViewer: 2000
