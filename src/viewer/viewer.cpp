@@ -31,6 +31,8 @@
 #include "sensor/event.h"
 #include "tiny-viewer/entity/line.h"
 #include "tiny-viewer/entity/point_cloud.hpp"
+#include "tiny-viewer/object/landmark.h"
+#include "pcl/point_types.h"
 
 namespace ns_ekalibr {
 using ColorPoint = pcl::PointXYZRGBA;
@@ -173,5 +175,42 @@ Viewer &Viewer::AddEventData(const std::list<EventPtr> &ary,
     }
     auto eAry = EventArray::Create(ary.back()->GetTimestamp(), {ary.cbegin(), ary.cend()});
     return AddEventData(eAry, ptScales, color, ptSize);
+}
+
+Viewer &Viewer::AddGridPattern(const std::vector<Eigen::Vector2f> &centers,
+                               double timestamp,
+                               const std::pair<float, float> &ptScales,
+                               const ns_viewer::Colour &color,
+                               float ptSize) {
+    const float z = -timestamp * ptScales.second;
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    cloud->resize(centers.size());
+    for (const auto &center : centers) {
+        pcl::PointXYZRGB p;
+        p.x = center(0) * ptScales.first;
+        p.y = center(1) * ptScales.first;
+        p.z = z;
+        p.r = color.r * 255;
+        p.g = color.g * 255;
+        p.b = color.b * 255;
+
+        cloud->push_back(p);
+    }
+    std::vector<ns_viewer::Entity::Ptr> entities;
+    entities.reserve(centers.size() * 2 - 1);
+    entities.push_back(std::make_shared<ns_viewer::Cloud<ns_viewer::Landmark>>(cloud, ptSize));
+
+    for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
+        int j = i + 1;
+        Eigen::Vector3f ci = centers.at(i).homogeneous();
+        ci *= ptScales.first;
+        ci(2) = z;
+        Eigen::Vector3f cj = centers.at(j).homogeneous();
+        cj *= ptScales.first;
+        cj(2) = z;
+        entities.push_back(ns_viewer::Line::Create(ci, cj, 40.0f * ptSize, color));
+    }
+
+    return AddEntityLocal(entities);
 }
 }  // namespace ns_ekalibr

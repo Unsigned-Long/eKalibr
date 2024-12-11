@@ -106,9 +106,9 @@ void CalibSolver::Process() {
                 if (Configor::Preference::Visualization) {
                     auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
                     auto t = -timeLatest * ptScale.second;
-                    curViewCamPose.translation(0) = config.Width * 0.5 * ptScale.first;
-                    curViewCamPose.translation(1) = config.Height * 0.5 * ptScale.first;
-                    curViewCamPose.translation(2) = t + _viewCamPose.translation(2);
+                    curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
+                    curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
+                    curViewCamPose.translation(2) = float(t + _viewCamPose.translation(2));
                     _viewer->SetCamView(curViewCamPose);
                     cv::waitKey(1);
                 }

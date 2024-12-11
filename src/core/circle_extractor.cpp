@@ -254,6 +254,16 @@ std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid
         cv::drawChessboardCorners(imgExtractCirclesGrid, gridSize, centers, res);
     }
 
+    if (viewer != nullptr && res == true) {
+        std::vector<Eigen::Vector2f> pattern(centers.size());
+        for (size_t i = 0; i < centers.size(); ++i) {
+            pattern.at(i) = Eigen::Vector2f(centers.at(i).x, centers.at(i).y);
+        }
+        const auto& ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+        viewer->AddGridPattern(pattern, nfPack->timestamp, ptScale,
+                               ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
+    }
+
     if (!res) {
         return {};
     } else {
