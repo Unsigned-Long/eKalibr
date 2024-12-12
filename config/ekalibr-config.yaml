@@ -9,6 +9,7 @@ Configor:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
+    IMUTopics:
     BagPath: "/home/csl/dataset/event_develop/data_2024_12_01.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
@@ -18,6 +19,8 @@ Configor:
     Duration: -1
     OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
+    # unit: m/s^2
+    GravityNorm: 9.8
     # +---------------+----------------+        +---------------+----------------+
     # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
     # +---------------+----------------+        +---------------+----------------+

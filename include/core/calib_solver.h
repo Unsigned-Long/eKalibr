@@ -47,12 +47,15 @@ struct CircleGrid3D;
 using CircleGrid3DPtr = std::shared_ptr<CircleGrid3D>;
 struct CircleGridPattern;
 using CircleGridPatternPtr = std::shared_ptr<CircleGridPattern>;
+class CalibParamManager;
+using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 
 class CalibSolver {
 public:
     using Ptr = std::shared_ptr<CalibSolver>;
 
 protected:
+    CalibParamManagerPtr _parMgr;
     // options used for ceres-related optimization
     ceres::Solver::Options _ceresOption;
     // viewer used to visualize entities in calibration
@@ -70,9 +73,9 @@ protected:
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
 
 public:
-    CalibSolver();
+    CalibSolver(CalibParamManagerPtr parMgr);
 
-    static Ptr Create();
+    static Ptr Create(const CalibParamManagerPtr &parMgr);
 
     virtual ~CalibSolver();
 

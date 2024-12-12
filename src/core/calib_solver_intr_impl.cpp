@@ -36,6 +36,7 @@
 #include "filesystem"
 #include "util/tqdm.h"
 #include "core/calib_param_mgr.h"
+#include <veta/camera/pinhole_brown.h>
 
 namespace ns_ekalibr {
 
@@ -180,7 +181,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
                 spdlog::warn("PnP solving temporally stamped at '{:.3f}' failed!!!",
                              grid2d->timestamp);
             } else {
-                curPoseVec.push_back({grid2d->timestamp, rVecs, tVecs});
+                curPoseVec.emplace_back(grid2d->timestamp, rVecs, tVecs);
             }
         }
         bar->finish();
@@ -189,7 +190,23 @@ void CalibSolver::EstimateCameraIntrinsics() {
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
         const auto &cameraMatrix = cameraMatrixMap.at(topic);
         const auto &distCoeffs = distCoeffsMap.at(topic);
+
+        _parMgr->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
+            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgWidth),   // w
+            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgHeight),  // h
+            cameraMatrix.at<double>(0, 0),                                 // fx
+            cameraMatrix.at<double>(1, 1),                                 // fy
+            cameraMatrix.at<double>(0, 2),                                 // cx
+            cameraMatrix.at<double>(1, 2),                                 // cy
+            distCoeffs.at<double>(0),                                      // k1
+            distCoeffs.at<double>(1),                                      // k2
+            distCoeffs.at<double>(4),                                      // k3
+            distCoeffs.at<double>(2),                                      // p1
+            distCoeffs.at<double>(3)                                       // p2
+        );
+
         const auto &curPoseVec = poseVecMap.at(topic);
+        // todo: store
     }
 }
 }  // namespace ns_ekalibr

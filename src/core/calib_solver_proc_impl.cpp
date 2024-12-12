@@ -38,6 +38,7 @@
 #include "core/circle_extractor.h"
 #include "core/circle_grid.h"
 #include "filesystem"
+#include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
 
@@ -203,6 +204,7 @@ void CalibSolver::Process() {
      * perform intrinsic calibration using opencv
      */
     this->EstimateCameraIntrinsics();
+    _parMgr->ShowParamStatus();
 
     _solveFinished = true;
 }

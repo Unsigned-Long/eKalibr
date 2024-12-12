@@ -35,6 +35,7 @@
 #include "util/utils_tpl.hpp"
 #include "filesystem"
 #include "core/calib_solver.h"
+#include "core/calib_param_mgr.h"
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ekalibr_prog");
@@ -70,8 +71,22 @@ int main(int argc, char **argv) {
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 
-        auto solver = ns_ekalibr::CalibSolver::Create();
+        // create parameter manager based on loaded configure information
+        auto parMgr = ns_ekalibr::CalibParamManager::InitParamsFromConfigor();
+        parMgr->ShowParamStatus();
+
+        // pass parameter manager to solver for solving
+        auto solver = ns_ekalibr::CalibSolver::Create(parMgr);
+        // the calibration results are stored in 'parMgr'
         solver->Process();
+
+        // solve finished, save calibration results (file type: JSON | YAML | XML | BINARY)
+        const auto filename = ns_ekalibr::Configor::DataStream::OutputPath + "/ikalibr_param" +
+                              ns_ekalibr::Configor::GetFormatExtension();
+        parMgr->Save(filename, ns_ekalibr::Configor::Preference::OutputDataFormat);
+
+        static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
+        spdlog::info(format(FStyle, "solving and outputting finished!!! Everything is fine!!!"));
 
     } catch (const ns_ekalibr::EKalibrStatus &status) {
         // if error happened, print it

@@ -85,7 +85,7 @@ CalibParamManager::Ptr CalibParamManager::InitParamsFromConfigor() {
     }
     for (const auto &[topic, config] : Configor::DataStream::EventTopics) {
         parMarg->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
-            config.Height, config.Height, config.Width * 0.5, config.Height * 0.5, 0.0, 0.0);
+            config.Width, config.Height, 0.0, 0.0, config.Width * 0.5, config.Height * 0.5);
     }
 
     // align to the negative 'z' axis
@@ -101,16 +101,17 @@ void CalibParamManager::ShowParamStatus() {
 #define PARAM(name) fmt::format(fmt::emphasis::bold | fmt::fg(fmt::color::steel_blue), name)
 #define STREAM_PACK(obj) stream << "-- " << obj << std::endl;
 
-    constexpr std::size_t n = 74;
+    constexpr std::size_t n = 71;
 
     STREAM_PACK(std::string(25, '-'))
     STREAM_PACK(ITEM("calibration parameters") << " --")
     STREAM_PACK(std::string(n, '-'))
 
-    // -------------------------
-    STREAM_PACK(ITEM("EXTRI"))
-    // -------------------------
-    STREAM_PACK("")
+    if (!Configor::DataStream::IMUTopics.empty()) {
+        // -------------------------
+        STREAM_PACK(ITEM("EXTRI"))
+        // -------------------------
+        STREAM_PACK("")
 
 #define OUTPUT_EXTRINSICS(SENSOR1, IDX1, SENSOR2, IDX2)                                           \
     const auto EULER = EXTRI.EULER_##SENSOR1##IDX1##To##SENSOR2##IDX2##_DEG(topic);               \
@@ -121,26 +122,26 @@ void CalibParamManager::ShowParamStatus() {
     STREAM_PACK(PARAM("  POS_" #SENSOR1 #IDX1 "In" #SENSOR2 #IDX2 ": ")                           \
                 << FormatValueVector<double>({"Px", "Py", "Pz"}, {POS(0), POS(1), POS(2)}))
 
-    // imus
-    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
-        STREAM_PACK("IMU: '" << topic << "'")
-        OUTPUT_EXTRINSICS(B, i, B, r)
+        // imus
+        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+            STREAM_PACK("IMU: '" << topic << "'")
+            OUTPUT_EXTRINSICS(B, i, B, r)
+            STREAM_PACK("")
+        }
+
+        // cameras
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            STREAM_PACK("Camera: '" << topic << "'")
+            OUTPUT_EXTRINSICS(C, j, B, r)
+            STREAM_PACK("")
+        }
+
+        STREAM_PACK(std::string(n, '-'))
+
+        // ----------------------------
+        STREAM_PACK(ITEM("TEMPORAL"))
+        // ----------------------------
         STREAM_PACK("")
-    }
-
-    // cameras
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        STREAM_PACK("Camera: '" << topic << "'")
-        OUTPUT_EXTRINSICS(C, j, B, r)
-        STREAM_PACK("")
-    }
-
-    STREAM_PACK(std::string(n, '-'))
-
-    // ----------------------------
-    STREAM_PACK(ITEM("TEMPORAL"))
-    // ----------------------------
-    STREAM_PACK("")
 
 #define OUTPUT_TEMPORAL(SENSOR1, IDX1, SENSOR2, IDX2)                                           \
     const auto TO = TEMPORAL.TO_##SENSOR1##IDX1##To##SENSOR2##IDX2.at(topic);                   \
@@ -148,21 +149,21 @@ void CalibParamManager::ShowParamStatus() {
         fmt::format("{}: {:+011.6f} (s)", PARAM("TO_" #SENSOR1 #IDX1 "To" #SENSOR2 #IDX2), TO)) \
                                                                                                 \
     // imus
-    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
-        STREAM_PACK("IMU: '" << topic << "'")
-        OUTPUT_TEMPORAL(B, i, B, r)
-        STREAM_PACK("")
+        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+            STREAM_PACK("IMU: '" << topic << "'")
+            OUTPUT_TEMPORAL(B, i, B, r)
+            STREAM_PACK("")
+        }
+
+        // cameras
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            STREAM_PACK("Camera: '" << topic << "'")
+            OUTPUT_TEMPORAL(C, j, B, r)
+            STREAM_PACK("")
+        }
+
+        STREAM_PACK(std::string(n, '-'))
     }
-
-    // cameras
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        STREAM_PACK("Camera: '" << topic << "'")
-        OUTPUT_TEMPORAL(C, j, B, r)
-        STREAM_PACK("")
-    }
-
-    STREAM_PACK(std::string(n, '-'))
-
     // -------------------------
     STREAM_PACK(ITEM("INTRI"))
     // -------------------------
@@ -209,7 +210,7 @@ void CalibParamManager::ShowParamStatus() {
 
         STREAM_PACK(
             PARAM("IMAGE     SIZE: ") << FormatValueVector<double>(
-                {" w", " h"}, {(double)intri->imgWidth, (double)intri->imgHeight}, "{:+011.5f}"))
+                {" w", " h"}, {(double)intri->imgWidth, (double)intri->imgHeight}, "{:+011.6f}"))
 
         STREAM_PACK(PARAM("FOCAL   LENGTH: ")
                     << FormatValueVector<double>({"fx", "fy"}, {pars.at(0), pars.at(1)}))
@@ -228,15 +229,16 @@ void CalibParamManager::ShowParamStatus() {
 
     STREAM_PACK(std::string(n, '-'))
 
-    // ------------------------------
-    STREAM_PACK(ITEM("OTHER FIELDS"))
-    // ------------------------------
-    STREAM_PACK("")
-    STREAM_PACK(PARAM("GRAVITY IN MAP: ") << FormatValueVector<double>(
-                    {"Gx", "Gy", "Gz"}, {GRAVITY(0), GRAVITY(1), GRAVITY(2)}))
+    if (!Configor::DataStream::IMUTopics.empty()) {
+        // ------------------------------
+        STREAM_PACK(ITEM("OTHER FIELDS"))
+        // ------------------------------
+        STREAM_PACK("")
+        STREAM_PACK(PARAM("GRAVITY IN MAP: ") << FormatValueVector<double>(
+                        {"Gx", "Gy", "Gz"}, {GRAVITY(0), GRAVITY(1), GRAVITY(2)}))
 
-    STREAM_PACK(std::string(n, '-'))
-
+        STREAM_PACK(std::string(n, '-'))
+    }
     spdlog::info("the detail calibration parameters are below: \n{}", stream.str());
 
 #undef ITEM

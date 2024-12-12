@@ -38,8 +38,9 @@
 #include "tiny-viewer/core/pose.hpp"
 
 namespace ns_ekalibr {
-CalibSolver::CalibSolver()
-    : _viewer(Configor::Preference::Visualization
+CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
+    : _parMgr(std::move(parMgr)),
+      _viewer(Configor::Preference::Visualization
                   ? Viewer::Create(Configor::Preference::MaxEntityCountInViewer)
                   : nullptr),
       _solveFinished(false),
@@ -51,7 +52,9 @@ CalibSolver::CalibSolver()
     _ceresOption.minimizer_progress_to_stdout = false;
 }
 
-CalibSolver::Ptr CalibSolver::Create() { return std::make_shared<CalibSolver>(); }
+CalibSolver::Ptr CalibSolver::Create(const CalibParamManagerPtr &parMgr) {
+    return std::make_shared<CalibSolver>(parMgr);
+}
 
 CalibSolver::~CalibSolver() {
     // solving is not performed or not finished as an exception is thrown
