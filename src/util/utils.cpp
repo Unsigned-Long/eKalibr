@@ -63,6 +63,15 @@ void PrintIKalibrLibInfo() {
     std::this_thread::sleep_for(std::chrono::seconds(1));
 }
 
+bool TryCreatePath(const std::string &path) {
+    if (!std::filesystem::exists(path) && !std::filesystem::create_directories(path)) {
+        spdlog::warn("create directory failed: '{}'", path);
+        return false;
+    } else {
+        return true;
+    }
+}
+
 std::string UpperString(std::string s) {
     std::transform(s.begin(), s.end(), s.begin(), [](char c) { return std::toupper(c); });
     return s;

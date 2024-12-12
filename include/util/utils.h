@@ -44,6 +44,8 @@ void ConfigSpdlog();
 
 void PrintIKalibrLibInfo();
 
+bool TryCreatePath(const std::string &path);
+
 // given n points and a x value, compute the y value using lagrange polynomial
 template <class Type, int N>
 double LagrangePolynomial(Type xQuery,

@@ -44,7 +44,7 @@ struct EventModel {
 using EventModelType = EventModel::EventModelType;
 
 struct CirclePattern {
-    enum class CirclePatternType { SYMMETRIC_GRID, ASYMMETRIC_GRID };
+    enum class CirclePatternType { SYMMETRIC_GRID = 0, ASYMMETRIC_GRID = 1 };
 
     static std::string UnsupportedCirclePatternMsg(const std::string &modelStr);
 

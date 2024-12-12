@@ -149,37 +149,6 @@ void CalibSolver::OutputDataStatus() const {
     }
 }
 
-CalibSolver::GridPatternPoints3D CalibSolver::CreateGridPointsInWordFrame(
-    unsigned int rows, unsigned int cols, double spacing, CirclePatternType pattern) {
-    auto GridCoordinatesToPoint = [cols](size_t r, size_t c) { return cols * r + c; };
-
-    GridPatternPoints3D points(rows * cols);
-
-    switch (pattern) {
-        case CirclePatternType::SYMMETRIC_GRID:
-            for (unsigned int r = 0; r < rows; r++) {
-                for (unsigned int c = 0; c < cols; c++) {
-                    points.at(GridCoordinatesToPoint(r, c)) =
-                        cv::Point3d(spacing * r, spacing * c, 0.0);
-                }
-            }
-            break;
-        case CirclePatternType::ASYMMETRIC_GRID:
-            for (unsigned int r = 0; r < rows; r++) {
-                for (unsigned int c = 0; c < cols; c++) {
-                    points.at(GridCoordinatesToPoint(r, c)) =
-                        cv::Point3d((2 * c + r % 2) * spacing, r * spacing, 0.0);
-                }
-            }
-            break;
-        default:
-            throw Status(Status::ERROR,
-                         "unsupported circle pattern!!! only 'SYMMETRIC_GRID' and "
-                         "'ASYMMETRIC_GRID' are supported!!!");
-    }
-    return points;
-}
-
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
                                    std::function<bool(const EventArrayPtr &)> pred,
                                    const std::string &errorMsg) const {

@@ -41,6 +41,12 @@ class Viewer;
 using ViewerPtr = std::shared_ptr<Viewer>;
 struct EventArray;
 using EventArrayPtr = std::shared_ptr<EventArray>;
+struct CircleGrid2D;
+using CircleGrid2DPtr = std::shared_ptr<CircleGrid2D>;
+struct CircleGrid3D;
+using CircleGrid3DPtr = std::shared_ptr<CircleGrid3D>;
+struct CircleGridPattern;
+using CircleGridPatternPtr = std::shared_ptr<CircleGridPattern>;
 
 class CalibSolver {
 public:
@@ -61,10 +67,7 @@ protected:
 
     ns_viewer::Posef _viewCamPose;
 
-    using GridPatternPoints2D = std::vector<cv::Point2f>;
-    using GridPatternPoints3D = std::vector<cv::Point3f>;
-
-    std::map<std::string, std::list<GridPatternPoints2D>> _extractedGridPoints2D;
+    std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
 
 public:
     CalibSolver();
@@ -79,11 +82,6 @@ protected:
     void LoadEventData();
 
     void OutputDataStatus() const;
-
-    static GridPatternPoints3D CreateGridPointsInWordFrame(unsigned int rows,
-                                                           unsigned int cols,
-                                                           double spacing,
-                                                           CirclePatternType pattern);
 
 private:
     // remove the head data according to the pred
