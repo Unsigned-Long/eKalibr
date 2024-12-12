@@ -161,6 +161,18 @@ std::string CalibSolver::GetDiskPathOfExtractedGridPatterns(const std::string &t
     return dir + "/patterns" + e;
 }
 
+std::string CalibSolver::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic) {
+    const std::string dir = Configor::DataStream::OutputPath + "/" + topic;
+    if (!TryCreatePath(dir)) {
+        spdlog::info(
+            "find directory '{}' to save/load extracted circle grid patterns of '{}' failed!!!",
+            dir, topic);
+        return {};
+    }
+    const auto &e = Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
+    return dir + "/intrinsics" + e;
+}
+
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
                                    std::function<bool(const EventArrayPtr &)> pred,
                                    const std::string &errorMsg) const {

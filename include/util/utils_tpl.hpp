@@ -30,6 +30,7 @@
 #define UTILS_TPL_HPP
 
 #include "util/utils.h"
+#include "ros/ros.h"
 
 namespace ns_ekalibr {
 // given n points and a x value, compute the y value using lagrange polynomial

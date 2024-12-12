@@ -85,6 +85,10 @@ protected:
 
     static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
 
+    static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
+
+    void EstimateCameraIntrinsics();
+
 private:
     // remove the head data according to the pred
     void EraseSeqHeadData(std::vector<EventArrayPtr> &seq,

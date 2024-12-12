@@ -119,6 +119,8 @@ public:
 
     const std::list<CircleGrid2D::Ptr>& GetGrid2d() const;
 
+    const CircleGrid3D::Ptr& GetGrid3d() const;
+
     // load configure information from file
     static Ptr Load(const std::string& filename,
                     double newTimeBias,
