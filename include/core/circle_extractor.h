@@ -161,13 +161,16 @@ protected:
 
     template <typename Type>
     static void RemoveElemBasedOnIndices(std::vector<Type>& vec,
-                                         const std::list<std::size_t>& indices) {
-        std::size_t backValidIdx = vec.size() - 1;
-        for (std::size_t index : indices) {
-            vec.at(index) = vec.at(backValidIdx);
-            --backValidIdx;
+                                         const std::set<std::size_t>& indices) {
+        std::vector<Type> newVec;
+        newVec.reserve(vec.size() - indices.size());
+        for (std::size_t i = 0; i < vec.size(); i++) {
+            if (indices.find(i) == indices.end()) {
+                // index 'i' is not in 'indices', need to be kpet
+                newVec.push_back(vec.at(i));
+            }
         }
-        vec.resize(backValidIdx + 1);
+        vec = std::move(newVec);
     }
 
 protected:

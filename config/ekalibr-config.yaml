@@ -10,7 +10,7 @@ Configor:
           Width: 346
           Height: 260
     IMUTopics:
-    BagPath: "/home/csl/dataset/event_develop/data_2024_12_01.bag"
+    BagPath: "/home/csl/ros_ws/E_Calib/data/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag
@@ -41,9 +41,9 @@ Configor:
       # 2. ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
       Type: ASYMMETRIC_GRID
       # number of circles (cols)
-      Cols: 4
+      Cols: 3
       # number of circles (rows)
-      Rows: 11
+      Rows: 9
       # distance between circles [m]
       SpacingMeters: 0.02
 

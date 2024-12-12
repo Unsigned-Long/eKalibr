@@ -165,14 +165,14 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
         tvCircles.at(i) = FitTimeVaryingCircle(evs1, evs2, POINT_TO_CIRCLE_AVG_THD);
     }
 
-    std::list<std::size_t> indices;
+    std::set<std::size_t> indices;
 
     /**
      * remove nullptr element
      */
     for (int i = 0; i < static_cast<int>(tvCircles.size()); i++) {
         if (tvCircles.at(i) == nullptr) {
-            indices.push_back(i);
+            indices.insert(i);
         }
     }
     RemoveElemBasedOnIndices(tvCircles, indices);
@@ -188,19 +188,29 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
     }
 
     for (int i = 0; i < static_cast<int>(tvCircles.size()); ++i) {
+        if (indices.find(i) != indices.end()) {
+            continue;
+        }
         const auto& curCircle = circles.at(i);
         // too small or large circle
-        if (curCircle.second < 1.0 /*pixel*/ || curCircle.second > 1000.0 /*pixel*/) {
-            indices.push_back(i);
+        if (curCircle.second < 1.0 /*pixel*/ || curCircle.second > 500.0 /*pixel*/) {
+            indices.insert(i);
             continue;
         }
         for (int j = i + 1; j < static_cast<int>(tvCircles.size()); ++j) {
+            if (indices.find(j) != indices.end()) {
+                continue;
+            }
             const auto& tarCircle = circles.at(j);
             const double distCenter = (curCircle.first - tarCircle.first).norm();
             if (distCenter < curCircle.second + tarCircle.second) {
-                // overlapped
-                indices.push_back(i);
-                break;
+                // overlapped, filter the bigger circle
+                if (curCircle.second > tarCircle.second) {
+                    indices.insert(i);
+                    break;
+                } else {
+                    indices.insert(j);
+                }
             }
         }
     }
@@ -435,12 +445,15 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
 
     ceres::Solver::Options options;
     options.linear_solver_type = ceres::DENSE_QR;
-    options.max_num_iterations = 50;
+    options.max_num_iterations = 30;
     // options.minimizer_progress_to_stdout = true;
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
-    if (auto radius = circle->RadiusAt(circle->et); radius < 1.0 /*pixel*/) {
+    if (summary.termination_type == ceres::NO_CONVERGENCE) {
+        return nullptr;
+    } else if (auto radius = circle->RadiusAt(circle->et);
+               radius < 1.0 || radius > 500.0 /*pixel*/) {
         return nullptr;
     } else {
         return circle;
