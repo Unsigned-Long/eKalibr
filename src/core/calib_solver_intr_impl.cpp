@@ -36,7 +36,9 @@
 #include "filesystem"
 #include "util/tqdm.h"
 #include "core/calib_param_mgr.h"
+#include <tiny-viewer/object/camera.h>
 #include <veta/camera/pinhole_brown.h>
+#include <viewer/viewer.h>
 
 namespace ns_ekalibr {
 
@@ -156,6 +158,9 @@ void CalibSolver::EstimateCameraIntrinsics() {
         int idx = 0;
         for (const auto &grid2d : patterns->GetGrid2d()) {
             bar->progress(idx++, static_cast<int>(patterns->GetGrid2d().size()));
+            // The estimated pose is thus the rotation (rvec) and the translation (tvec) vectors
+            // that allow transforming a 3D point expressed in the world frame into the camera
+            // frame.
             cv::Mat rVecs, tVecs;
             bool res = cv::solvePnP(
                 // Array of object points in the object coordinate space
@@ -206,7 +211,50 @@ void CalibSolver::EstimateCameraIntrinsics() {
         );
 
         const auto &curPoseVec = poseVecMap.at(topic);
-        // todo: store
+        auto &curCamPoses = _camPoses[topic];
+        curCamPoses.reserve(curPoseVec.size());
+        for (const auto &[timestamp, rVec, tVec] : curPoseVec) {
+            // rotation
+            cv::Mat rotMatrix;
+            cv::Rodrigues(rVec, rotMatrix);
+            Eigen::Matrix3d Rot_WtoCj;
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 3; j++) {
+                    Rot_WtoCj(i, j) = rotMatrix.at<double>(i, j);
+                }
+            }
+            Rot_WtoCj = Sophus::makeRotationMatrix(Rot_WtoCj);
+
+            // translation
+            Eigen::Vector3d Pos_WinCj;
+            for (int i = 0; i < 3; i++) {
+                Pos_WinCj(i) = tVec.at<double>(i);
+            }
+
+            // inverse
+            Eigen::Matrix3d R = Rot_WtoCj.transpose();
+            Eigen::Vector3d t = -Rot_WtoCj.transpose() * Pos_WinCj;
+
+            curCamPoses.push_back(ns_ctraj::Posed(R, t, timestamp));
+        }
+    }
+
+    // visualization
+    constexpr float scale = 15.0f;
+    for (const auto &[topic, curCamPoses] : _camPoses) {
+        // grid pattern
+        _viewer->AddGridPattern(_extractedPatterns.at(topic)->GetGrid3d()->points, scale,
+                                ns_viewer::Colour::Black());
+
+        // cameras
+        auto color = ns_viewer::Entity::GetUniqueColour();
+        std::vector<ns_viewer::Entity::Ptr> entities;
+        entities.reserve(curCamPoses.size());
+        for (const auto &pose : curCamPoses) {
+            auto vPose = ns_viewer::Posed(pose.so3.matrix(), pose.t * scale).cast<float>();
+            entities.push_back(ns_viewer::CubeCamera::Create(vPose, color, 0.05f));
+        }
+        _viewer->AddEntityLocal(entities);
     }
 }
 }  // namespace ns_ekalibr

@@ -35,6 +35,7 @@
 #include <sensor/sensor_model.h>
 #include "opencv4/opencv2/core/types.hpp"
 #include "list"
+#include "ctraj/core/pose.hpp"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -71,6 +72,8 @@ protected:
     ns_viewer::Posef _viewCamPose;
 
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
+    // from camera frame to world frame
+    std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;
 
 public:
     CalibSolver(CalibParamManagerPtr parMgr);

@@ -227,4 +227,37 @@ Viewer &Viewer::AddGridPattern(const std::vector<Eigen::Vector2f> &centers,
 
     return AddEntityLocal(entities);
 }
+
+Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
+                               const float &pScale,
+                               const ns_viewer::Colour &color,
+                               float ptSize) {
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
+    cloud->resize(centers.size());
+    for (const auto &center : centers) {
+        pcl::PointXYZRGB p;
+        p.x = center.x * pScale;
+        p.y = center.y * pScale;
+        p.z = center.z;
+        p.r = color.r * 255;
+        p.g = color.g * 255;
+        p.b = color.b * 255;
+
+        cloud->push_back(p);
+    }
+    std::vector<ns_viewer::Entity::Ptr> entities;
+    entities.reserve(centers.size() * 2 - 1);
+    entities.push_back(std::make_shared<ns_viewer::Cloud<ns_viewer::Landmark>>(cloud, ptSize));
+
+    for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
+        int j = i + 1;
+        Eigen::Vector3f ci(centers.at(i).x, centers.at(i).y, centers.at(i).z);
+        ci *= pScale;
+        Eigen::Vector3f cj(centers.at(j).x, centers.at(j).y, centers.at(j).z);
+        cj *= pScale;
+        entities.push_back(ns_viewer::Line::Create(ci, cj, 40.0f * ptSize, color));
+    }
+
+    return AddEntityLocal(entities);
+}
 }  // namespace ns_ekalibr
