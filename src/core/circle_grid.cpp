@@ -106,6 +106,26 @@ void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.pus
 
 const std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() const { return _grid2d; }
 
+CircleGridPattern::Ptr CircleGridPattern::Load(const std::string& filename,
+                                               CerealArchiveType::Enum archiveType) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return nullptr;
+    }
+    auto pattern = Create(nullptr, {});
+    try {
+        auto archive = GetInputArchiveVariant(file, archiveType);
+        SerializeByInputArchiveVariant(archive, archiveType,
+                                       cereal::make_nvp("CircleGridPattern", *pattern));
+    } catch (const cereal::Exception& exception) {
+        throw Status(Status::CRITICAL,
+                     "Can not load 'CircleGridPattern' file '{}' into eKalibr using cereal!!! "
+                     "Detailed cereal exception information: \n'{}'",
+                     filename, exception.what());
+    }
+    return pattern;
+}
+
 bool CircleGridPattern::Save(const std::string& filename, CerealArchiveType::Enum archiveType) {
     std::ofstream file(filename);
     if (!file.is_open()) {
@@ -115,5 +135,21 @@ bool CircleGridPattern::Save(const std::string& filename, CerealArchiveType::Enu
     SerializeByOutputArchiveVariant(archive, archiveType,
                                     cereal::make_nvp("CircleGridPattern", *this));
     return true;
+}
+
+std::string CircleGridPattern::InfoString() const {
+    std::stringstream ss;
+    ss << "CircleGridPattern [" << *this << ']';
+    return ss.str();
+}
+
+std::ostream& operator<<(std::ostream& os, const CircleGrid3D& obj) {
+    return os << "rows: " << obj.rows << ", cols: " << obj.cols << ", spacing: " << obj.spacing
+              << " (m), type: '" << CirclePattern::ToString(obj.type)
+              << "', points size: " << obj.points.size();
+}
+
+std::ostream& operator<<(std::ostream& os, const CircleGridPattern& obj) {
+    return os << "grid3d: [" << *obj._grid3d << "], grid2d size: " << obj._grid2d.size();
 }
 }  // namespace ns_ekalibr

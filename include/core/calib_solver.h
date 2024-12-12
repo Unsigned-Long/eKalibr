@@ -83,6 +83,8 @@ protected:
 
     void OutputDataStatus() const;
 
+    static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
+
 private:
     // remove the head data according to the pred
     void EraseSeqHeadData(std::vector<EventArrayPtr> &seq,

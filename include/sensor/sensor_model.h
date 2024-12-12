@@ -49,6 +49,8 @@ struct CirclePattern {
     static std::string UnsupportedCirclePatternMsg(const std::string &modelStr);
 
     static CirclePatternType FromString(const std::string &modelStr);
+
+    static std::string ToString(const CirclePatternType &model);
 };
 
 using CirclePatternType = CirclePattern::CirclePatternType;

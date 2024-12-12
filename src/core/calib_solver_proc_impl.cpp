@@ -36,8 +36,8 @@
 #include "opencv4/opencv2/highgui.hpp"
 #include "core/norm_flow.h"
 #include "core/circle_extractor.h"
-#include "util/utils.h"
 #include "core/circle_grid.h"
+#include "filesystem"
 
 namespace ns_ekalibr {
 
@@ -67,8 +67,30 @@ void CalibSolver::Process() {
     auto grid3D = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
                                        pattern.SpacingMeters /*unit: meters*/, circlePattern);
 
+    std::map<std::string, bool> patternLoadFromFile;
+
     for (const auto &[topic, eventMes] : _evMes) {
-        spdlog::info("perform norm-flow-based circle grid identification for camera '{}'", topic);
+        spdlog::info("try to load existing extracted circles grid patterns for camera '{}'...",
+                     topic);
+        auto path = GetDiskPathOfExtractedGridPatterns(topic);
+        if (std::filesystem::exists(path)) {
+            auto curPattern = CircleGridPattern::Load(path, Configor::Preference::OutputDataFormat);
+            if (curPattern != nullptr) {
+                _extractedPatterns[topic] = curPattern;
+                patternLoadFromFile[topic] = true;
+                spdlog::info(
+                    "load extracted circles grid patterns for camera '{}' success! "
+                    "details:\n{}\nif you want to use a different configuration for circle grid "
+                    "extraction, please delete existing grid pattern file first at '{}'",
+                    topic, curPattern->InfoString(), path);
+                continue;
+            }
+        }
+
+        spdlog::info(
+            "try to load extracted circles grid patterns failed! perform norm-flow-based circle "
+            "grid identification for camera '{}'",
+            topic);
 
         const auto &config = Configor::DataStream::EventTopics.at(topic);
         auto sae = ActiveEventSurface::Create(config.Width, config.Height, 0.01);
@@ -143,15 +165,17 @@ void CalibSolver::Process() {
                 }
             }
         }
-        spdlog::info("extracted circle grid pattern count for camera '{}': {}", topic,
-                     curPattern->GetGrid2d().size());
-
-        _extractedPatterns[topic] = curPattern;
 
         bar->finish();
         if (Configor::Preference::Visualization) {
             _viewer->ClearViewer();
         }
+
+        spdlog::info("extracted circle grid pattern count for camera '{}' finished! details:\n{}",
+                     topic, curPattern->InfoString());
+
+        _extractedPatterns[topic] = curPattern;
+        patternLoadFromFile[topic] = false;
     }
     if (Configor::Preference::Visualization) {
         cv::destroyAllWindows();
@@ -161,17 +185,14 @@ void CalibSolver::Process() {
      * save circle grid patterns to disk
      */
     for (const auto &[topic, patterns] : _extractedPatterns) {
-        std::string dir = Configor::DataStream::OutputPath + "/" + topic;
-        if (TryCreatePath(dir)) {
-            spdlog::info("saving extracted circle grid patterns of '{}' to dir: '{}'...", topic,
-                         dir);
-        } else {
+        if (patternLoadFromFile.at(topic)) {
             continue;
         }
-        auto path = dir + "/patterns" +
-                    Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
-        if (!patterns->Save(path, Configor::Preference::OutputDataFormat)) {
-            spdlog::warn("failed to save patterns of '{}' to path: {}", topic, path);
+        auto gridPatternPath = GetDiskPathOfExtractedGridPatterns(topic);
+        spdlog::info("saving extracted circle grid patterns of '{}' to path: '{}'...", topic,
+                     gridPatternPath);
+        if (!patterns->Save(gridPatternPath, Configor::Preference::OutputDataFormat)) {
+            spdlog::warn("failed to save patterns of '{}'!!!", topic);
         } else {
             spdlog::info("saved extracted patterns of '{}' to path finished!", topic);
         }

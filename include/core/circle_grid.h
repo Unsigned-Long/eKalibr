@@ -34,6 +34,8 @@
 #include "sensor/sensor_model.h"
 #include "list"
 
+#include <ostream>
+
 namespace cv {
 template <class Archive, typename ScaleType>
 void serialize(Archive& archive, Point_<ScaleType>& m) {
@@ -53,7 +55,7 @@ struct CircleGrid2D {
     double timestamp;
     std::vector<cv::Point2f> centers;
 
-    CircleGrid2D(double timestamp, const std::vector<cv::Point2f>& centers);
+    CircleGrid2D(double timestamp = 0.0, const std::vector<cv::Point2f>& centers = {});
 
     static Ptr Create(double timestamp, const std::vector<cv::Point2f>& centers);
 
@@ -73,7 +75,10 @@ struct CircleGrid3D {
     CirclePatternType type;
     std::vector<cv::Point3f> points;
 
-    CircleGrid3D(std::size_t rows, std::size_t cols, double spacing, CirclePatternType type);
+    CircleGrid3D(std::size_t rows = 0,
+                 std::size_t cols = 0,
+                 double spacing = 0.0,
+                 CirclePatternType type = CirclePatternType::ASYMMETRIC_GRID);
 
     static Ptr Create(std::size_t rows, std::size_t cols, double spacing, CirclePatternType type);
 
@@ -83,7 +88,8 @@ struct CircleGrid3D {
 
     cv::Point3f& GridCoordinatesToPoint(std::size_t r, std::size_t c);
 
-public:
+    friend std::ostream& operator<<(std::ostream& os, const CircleGrid3D& obj);
+
     template <class Archive>
     void serialize(Archive& ar) {
         ar(CEREAL_NVP(rows), CEREAL_NVP(cols), CEREAL_NVP(spacing), CEREAL_NVP(type),
@@ -111,12 +117,16 @@ public:
     const std::list<CircleGrid2D::Ptr>& GetGrid2d() const;
 
     // load configure information from file
-    static bool Load(const std::string& filename,
-                     CerealArchiveType::Enum archiveType = CerealArchiveType::Enum::YAML);
+    static Ptr Load(const std::string& filename,
+                    CerealArchiveType::Enum archiveType = CerealArchiveType::Enum::YAML);
 
     // save configure information to file
     bool Save(const std::string& filename,
               CerealArchiveType::Enum archiveType = CerealArchiveType::Enum::YAML);
+
+    friend std::ostream& operator<<(std::ostream& os, const CircleGridPattern& obj);
+
+    std::string InfoString() const;
 
 public:
     template <class Archive>

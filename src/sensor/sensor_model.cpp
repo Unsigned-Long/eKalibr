@@ -74,4 +74,14 @@ CirclePatternType CirclePattern::FromString(const std::string& modelStr) {
     return model;
 }
 
+std::string CirclePattern::ToString(const CirclePatternType& model) {
+    std::string modelStr;
+    try {
+        modelStr = EnumCast::enumToString(model);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedCirclePatternMsg(modelStr));
+    }
+    return modelStr;
+}
+
 }  // namespace ns_ekalibr

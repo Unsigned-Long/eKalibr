@@ -27,7 +27,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/calib_solver.h"
-
+#include "util/utils.h"
 #include <utility>
 #include "sensor/event_rosbag_loader.h"
 #include "config/configor.h"
@@ -147,6 +147,18 @@ void CalibSolver::OutputDataStatus() const {
             "(s)",
             topic, mes.size(), mes.front()->GetTimestamp(), mes.back()->GetTimestamp());
     }
+}
+
+std::string CalibSolver::GetDiskPathOfExtractedGridPatterns(const std::string &topic) {
+    const std::string dir = Configor::DataStream::OutputPath + "/" + topic;
+    if (!TryCreatePath(dir)) {
+        spdlog::info(
+            "find directory '{}' to save/load extracted circle grid patterns of '{}' failed!!!",
+            dir, topic);
+        return {};
+    }
+    const auto &e = Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
+    return dir + "/patterns" + e;
 }
 
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
