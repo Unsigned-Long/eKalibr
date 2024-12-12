@@ -140,11 +140,17 @@ find_package(yaml-cpp REQUIRED)
 
 find_package(Ceres REQUIRED)
 
-set(tiny-viewer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/tiny-viewer-install/lib/cmake/tiny-viewer)
-find_package(tiny-viewer REQUIRED)
+set(tiny-viewer_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ctraj/thirdparty/tiny-viewer-install/lib/cmake/tiny-viewer)
+find_package(tiny-viewer)
+
+set(ctraj_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/ctraj-install/lib/cmake/ctraj)
+find_package(ctraj)
 
 set(opengv_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/opengv-install/lib/cmake/opengv-1.0)
 find_package(opengv)
+
+set(veta_DIR ${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/veta-install/lib/cmake/veta)
+find_package(veta)
 
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/config CONFIG_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/util UTIL_SRC_FILES)
@@ -172,6 +178,7 @@ target_link_libraries(
         ${PROJECT_NAME}_util PUBLIC
         ${catkin_LIBRARIES}
         tiny-viewer
+        veta
 )
 
 #####################
@@ -195,6 +202,7 @@ target_link_libraries(
         ${catkin_LIBRARIES}
         # thirdparty
         ${YAML_CPP_LIBRARIES}
+        veta
 )
 
 
@@ -219,6 +227,7 @@ target_link_libraries(
         ${catkin_LIBRARIES}
         # thirdparty
         tiny-viewer
+        veta
 )
 ###################
 # libekalibr_core #
@@ -245,6 +254,7 @@ target_link_libraries(
         tiny-viewer
         opengv
         ${CERES_LIBRARIES}
+        veta
 )
 
 #####################
@@ -267,9 +277,9 @@ target_link_libraries(
         ${PROJECT_NAME}_viewer PUBLIC
         ${catkin_LIBRARIES}
         ${PROJECT_NAME}_sensor
-
         # thirdparty
         tiny-viewer
+        veta
 )
 ###########
 ## Build ##

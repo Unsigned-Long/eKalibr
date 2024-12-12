@@ -1,6 +1,9 @@
-[submodule "thirdparty/tiny-viewer"]
-	path = thirdparty/tiny-viewer
-	url = https://github.com/Unsigned-Long/tiny-viewer.git
 [submodule "thirdparty/opengv"]
 	path = thirdparty/opengv
 	url = https://github.com/laurentkneip/opengv.git
+[submodule "thirdparty/veta"]
+	path = thirdparty/veta
+	url = https://github.com/Unsigned-Long/veta.git
+[submodule "thirdparty/ctraj"]
+	path = thirdparty/ctraj
+	url = https://github.com/Unsigned-Long/CTraj.git

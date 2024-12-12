@@ -105,7 +105,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
                 cv::CALIB_USE_LU,
                 // Termination criteria for the iterative optimization algorithm
                 cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 1E-6));
-            spdlog::info("the overall RMS re-projection error in {:02}-th attempt: {:.3f}", i,
+            spdlog::info("the overall rmes (re-projection error) in {:02}-th attempt: {:.3f}", i,
                          rmse[i]);
         }
 

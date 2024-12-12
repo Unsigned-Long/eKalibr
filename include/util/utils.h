@@ -29,6 +29,7 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+#include "veta/type_def.hpp"
 #include "array"
 #include "opencv4/opencv2/core.hpp"
 #include "Eigen/Dense"

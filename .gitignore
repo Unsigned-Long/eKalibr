@@ -16,7 +16,9 @@
 *.mp4
 
 /data/*
-/thirdparty/tiny-viewer-build
-/thirdparty/tiny-viewer-install
+/thirdparty/ctraj-build
+/thirdparty/ctraj-install
 /thirdparty/opengv-build
 /thirdparty/opengv-install
+/thirdparty/veta-build
+/thirdparty/veta-install

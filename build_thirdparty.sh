@@ -19,17 +19,28 @@ echo "----------------------------------"
 echo "build thirdparty: 'tiny-viewer'..."
 echo "----------------------------------"
 
-mkdir ${EKALIBR_ROOT_PATH}/thirdparty/tiny-viewer-build
 # shellcheck disable=SC2164
-cd "${EKALIBR_ROOT_PATH}"/thirdparty/tiny-viewer-build
+cd "${EKALIBR_ROOT_PATH}"/thirdparty/ctraj
 
-cmake ../tiny-viewer
+chmod +x build_thirdparty.sh
+./build_thirdparty.sh
+
+# build ctraj
+echo "----------------------------"
+echo "build thirdparty: 'ctraj'..."
+echo "----------------------------"
+
+mkdir ${EKALIBR_ROOT_PATH}/thirdparty/ctraj-build
+# shellcheck disable=SC2164
+cd "${EKALIBR_ROOT_PATH}"/thirdparty/ctraj-build
+
+cmake ../ctraj
 echo current path: $PWD
-echo "-----------------------------"
-echo "start making 'tiny-viewer'..."
-echo "-----------------------------"
+echo "-----------------------"
+echo "start making 'ctraj'..."
+echo "-----------------------"
 make -j8
-cmake --install . --prefix ${EKALIBR_ROOT_PATH}/thirdparty/tiny-viewer-install
+cmake --install . --prefix "${EKALIBR_ROOT_PATH}/thirdparty/ctraj-install"
 
 # build opengv
 echo "-----------------------------"
@@ -47,3 +58,21 @@ echo "start making 'opengv'..."
 echo "------------------------"
 make -j8
 cmake --install . --prefix "${EKALIBR_ROOT_PATH}/thirdparty/opengv-install"
+
+
+# build veta
+echo "---------------------------"
+echo "build thirdparty: 'veta'..."
+echo "---------------------------"
+
+mkdir ${EKALIBR_ROOT_PATH}/thirdparty/veta-build
+# shellcheck disable=SC2164
+cd "${EKALIBR_ROOT_PATH}"/thirdparty/veta-build
+
+cmake ../veta
+echo current path: $PWD
+echo "----------------------"
+echo "start making 'veta'..."
+echo "----------------------"
+make -j8
+cmake --install . --prefix "${EKALIBR_ROOT_PATH}/thirdparty/veta-install"
