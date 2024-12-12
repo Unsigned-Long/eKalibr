@@ -26,64 +26,14 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef SENSOR_MODEL_H
-#define SENSOR_MODEL_H
+#ifndef IMU_HPP
+#define IMU_HPP
 
-#include "string"
+#include "ctraj/core/imu.h"
 
 namespace ns_ekalibr {
-
-struct IMUModel {
-    enum class IMUModelType : std::uint32_t {
-        /**
-         * @brief options
-         */
-        NONE = 1 << 0,
-        SBG_IMU = 1 << 1,
-        STD_SENSOR_IMU = 1 << 2,
-        G = 1 << 3,
-        G_NEG = 1 << 4,
-        RAD = 1 << 5,
-        DEG = 1 << 6,
-
-        SENSOR_IMU = STD_SENSOR_IMU | RAD,      // rad/s, m/s^2
-        SENSOR_IMU_G = SENSOR_IMU | G,          // rad/s, g
-        SENSOR_IMU_G_NEG = SENSOR_IMU | G_NEG,  // rad/s, -g
-
-        SENSOR_IMU_DEG = STD_SENSOR_IMU | DEG,          // deg/s, m/s^2
-        SENSOR_IMU_DEG_G = SENSOR_IMU_DEG | G,          // deg/s, g
-        SENSOR_IMU_DEG_G_NEG = SENSOR_IMU_DEG | G_NEG,  // deg/s, -g
-    };
-
-    static std::string UnsupportedIMUModelMsg(const std::string &modelStr);
-
-    static IMUModelType FromString(const std::string &modelStr);
-};
-
-using IMUModelType = IMUModel::IMUModelType;
-
-struct EventModel {
-    enum class EventModelType { PROPHESEE_EVENT, DVS_EVENT };
-
-    static std::string UnsupportedEventModelMsg(const std::string &modelStr);
-
-    static EventModelType FromString(const std::string &modelStr);
-};
-
-using EventModelType = EventModel::EventModelType;
-
-struct CirclePattern {
-    enum class CirclePatternType { SYMMETRIC_GRID = 0, ASYMMETRIC_GRID = 1 };
-
-    static std::string UnsupportedCirclePatternMsg(const std::string &modelStr);
-
-    static CirclePatternType FromString(const std::string &modelStr);
-
-    static std::string ToString(const CirclePatternType &model);
-};
-
-using CirclePatternType = CirclePattern::CirclePatternType;
-
+using IMUFrame = ns_ctraj::IMUFrame;
+using IMUFramePtr = IMUFrame::Ptr;
 }  // namespace ns_ekalibr
 
-#endif  // SENSOR_MODEL_H
+#endif  // IMU_HPP

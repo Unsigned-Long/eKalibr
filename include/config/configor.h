@@ -41,6 +41,24 @@ public:
 
 public:
     static struct DataStream {
+        struct IMUConfig {
+        public:
+            std::string Type;
+            double AcceWeight;
+            double GyroWeight;
+
+            IMUConfig()
+                : Type(),
+                  AcceWeight(),
+                  GyroWeight() {};
+
+        public:
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(Type), CEREAL_NVP(AcceWeight), CEREAL_NVP(GyroWeight));
+            }
+        };
+
         struct EventConfig {
         public:
             std::string Type;
@@ -56,6 +74,8 @@ public:
             }
         };
 
+        static std::map<std::string, IMUConfig> IMUTopics;
+
         static std::map<std::string, EventConfig> EventTopics;
 
         static std::string BagPath;
@@ -69,12 +89,14 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(EventTopics), CEREAL_NVP(BagPath), CEREAL_NVP(BeginTime),
-               CEREAL_NVP(Duration), CEREAL_NVP(OutputPath));
+            ar(CEREAL_NVP(IMUTopics), CEREAL_NVP(EventTopics), CEREAL_NVP(BagPath),
+               CEREAL_NVP(BeginTime), CEREAL_NVP(Duration), CEREAL_NVP(OutputPath));
         }
     } dataStream;
 
     static struct Prior {
+        static double GravityNorm;
+
         struct CirclePatternConfig {
         public:
             std::string Type;

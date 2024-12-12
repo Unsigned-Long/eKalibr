@@ -228,6 +228,7 @@ target_link_libraries(
         # thirdparty
         tiny-viewer
         veta
+        ctraj
 )
 ###################
 # libekalibr_core #
@@ -255,6 +256,7 @@ target_link_libraries(
         opengv
         ${CERES_LIBRARIES}
         veta
+        ctraj
 )
 
 #####################

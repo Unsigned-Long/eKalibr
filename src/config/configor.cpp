@@ -35,6 +35,7 @@
 
 namespace ns_ekalibr {
 Configor::DataStream Configor::dataStream = {};
+std::map<std::string, Configor::DataStream::IMUConfig> Configor::DataStream::IMUTopics = {};
 std::map<std::string, Configor::DataStream::EventConfig> Configor::DataStream::EventTopics = {};
 std::string Configor::DataStream::BagPath = {};
 double Configor::DataStream::BeginTime = {};
@@ -44,6 +45,7 @@ const std::string Configor::DataStream::PkgPath = ros::package::getPath("ekalibr
 const std::string Configor::DataStream::DebugPath = PkgPath + "/debug/";
 
 Configor::Prior Configor::prior = {};
+double Configor::Prior::GravityNorm = {};
 Configor::Prior::CirclePatternConfig Configor::Prior::CirclePattern = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
@@ -64,12 +66,16 @@ int Configor::Preference::MaxEntityCountInViewer = {};
 Configor::Configor() = default;
 
 void Configor::PrintMainFields() {
-    std::stringstream ssEventTopics;
+    std::stringstream ssEventTopics, ssIMUTopics;
     for (const auto &[topic, info] : DataStream::EventTopics) {
         ssEventTopics << topic << '[' << info.Type << '|' << info.Width << 'x' << info.Height
                       << "] ";
     }
+    for (const auto &[topic, info] : DataStream::IMUTopics) {
+        ssIMUTopics << topic << '[' << info.Type << "] ";
+    }
     std::string EventTopics = ssEventTopics.str();
+    std::string IMUTopics = ssIMUTopics.str();
 
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>40}: {}"
@@ -77,9 +83,10 @@ void Configor::PrintMainFields() {
         "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                    DESC_FORMAT,
-        DESC_FIELD(EventTopics), DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
-        DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
+                    DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+        DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::BagPath),
+        DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
+        DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::GravityNorm),
         DESC_FIELD(Prior::DecayTimeOfActiveEvents),
         // fields for CirclePattern
         "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
@@ -118,6 +125,13 @@ void Configor::CheckConfigure() {
         }
         // verify event camera type
         EventModel::FromString(config.Type);
+    }
+    for (const auto &[topic, config] : DataStream::IMUTopics) {
+        if (topic.empty()) {
+            throw Status(Status::ERROR, "the topic of imu should not be empty string!");
+        }
+        // verify imu type
+        IMUModel::FromString(config.Type);
     }
     // verify circle pattern type
     CirclePattern::FromString(Prior::CirclePattern.Type);

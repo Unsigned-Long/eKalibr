@@ -35,6 +35,7 @@
 #include "util/utils_tpl.hpp"
 #include "filesystem"
 #include "util/tqdm.h"
+#include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
 
