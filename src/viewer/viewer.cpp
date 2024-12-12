@@ -56,9 +56,23 @@ ns_viewer::ViewerConfigor Viewer::GenViewerConfigor() {
     return viewConfig;
 }
 
+pangolin::OpenGlRenderState Viewer::GetInitRenderState() const {
+    const auto &c = _configor.camera;
+    auto camView = pangolin::OpenGlRenderState(
+        pangolin::ProjectionMatrix(c.width, c.height, c.fx, c.fy, c.cx, c.cy, c.near, c.far),
+        pangolin::ModelViewLookAt(ExpandStdVec3(_configor.camera.initPos),
+                                  ExpandStdVec3(_configor.camera.initViewPoint), pangolin::AxisZ));
+    return camView;
+}
+
 Viewer &Viewer::ClearViewer() {
     this->RemoveEntity({_entities.begin(), _entities.end()});
     _entities.clear();
+    return *this;
+}
+
+Viewer &Viewer::ResetViewerCamera() {
+    this->SetCamView(this->GetInitRenderState());
     return *this;
 }
 

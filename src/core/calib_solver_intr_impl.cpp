@@ -34,6 +34,7 @@
 #include "util/utils.h"
 #include "util/utils_tpl.hpp"
 #include "filesystem"
+#include "util/tqdm.h"
 
 namespace ns_ekalibr {
 
@@ -141,10 +142,53 @@ void CalibSolver::EstimateCameraIntrinsics() {
         distCoeffsMap[topic] = distCoeffs[idx];
     }
 
+    // topic, timestamp, rVec, tVec
+    std::map<std::string, std::list<std::tuple<double, cv::Mat, cv::Mat>>> poseVecMap;
+
+    for (const auto &[topic, patterns] : _extractedPatterns) {
+        spdlog::info("perform PnP solving to obtain poses of all timestamps for camera '{}'...",
+                     topic);
+        auto &curPoseVec = poseVecMap[topic];
+
+        auto bar = std::make_shared<tqdm>();
+        int idx = 0;
+        for (const auto &grid2d : patterns->GetGrid2d()) {
+            bar->progress(idx++, static_cast<int>(patterns->GetGrid2d().size()));
+            cv::Mat rVecs, tVecs;
+            bool res = cv::solvePnP(
+                // Array of object points in the object coordinate space
+                patterns->GetGrid3d()->points,
+                // Array of corresponding image points
+                grid2d->centers,
+                // camera intrinsics
+                cameraMatrixMap.at(topic),
+                // Input vector of distortion coefficients
+                distCoeffsMap.at(topic),
+                // Output rotation vector (see @ref Rodrigues ) that, together with tvec, brings
+                // points from the model coordinate system to the camera coordinate system
+                rVecs,
+                // Output translation vector
+                tVecs,
+                // Parameter used for #SOLVEPNP_ITERATIVE. If true, the function uses the provided
+                // rvec and tvec values as initial approximations of the rotation and translation
+                // vectors, respectively, and further optimizes them.
+                false,
+                // Iterative method is based on a Levenberg-Marquardt optimization
+                cv::SOLVEPNP_ITERATIVE);
+            if (!res) {
+                spdlog::warn("PnP solving temporally stamped at '{:.3f}' failed!!!",
+                             grid2d->timestamp);
+            } else {
+                curPoseVec.push_back({grid2d->timestamp, rVecs, tVecs});
+            }
+        }
+        bar->finish();
+    }
+
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        auto cameraMatrix = cameraMatrixMap.at(topic);
-        auto distCoeffs = distCoeffsMap.at(topic);
-        // todo: organize as veta intrinsics
+        const auto &cameraMatrix = cameraMatrixMap.at(topic);
+        const auto &distCoeffs = distCoeffsMap.at(topic);
+        const auto &curPoseVec = poseVecMap.at(topic);
     }
 }
 }  // namespace ns_ekalibr

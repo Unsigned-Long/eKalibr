@@ -171,6 +171,8 @@ void CalibSolver::Process() {
         bar->finish();
         if (Configor::Preference::Visualization) {
             _viewer->ClearViewer();
+            _viewer->ResetViewerCamera();
+            cv::destroyAllWindows();
         }
 
         spdlog::info("extracted circle grid pattern count for camera '{}' finished! details:\n{}",
@@ -178,9 +180,6 @@ void CalibSolver::Process() {
 
         _extractedPatterns[topic] = curPattern;
         patternLoadFromFile[topic] = false;
-    }
-    if (Configor::Preference::Visualization) {
-        cv::destroyAllWindows();
     }
 
     /**

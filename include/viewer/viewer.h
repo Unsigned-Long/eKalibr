@@ -54,6 +54,8 @@ public:
 
     Viewer &ClearViewer();
 
+    Viewer &ResetViewerCamera();
+
     Viewer &PopBackEntity();
 
     Viewer &AddEntityLocal(const std::vector<ns_viewer::Entity::Ptr> &entities);
@@ -87,6 +89,8 @@ public:
 
 protected:
     static ns_viewer::ViewerConfigor GenViewerConfigor();
+
+    pangolin::OpenGlRenderState GetInitRenderState() const;
 };
 }  // namespace ns_ekalibr
 
