@@ -82,7 +82,7 @@ Configor:
     # 1. JSON
     # 2. XML
     # 3. YAML
-    # 4. BINARY (not recommended)
+    # 4. BINARY
     OutputDataFormat: "YAML"
     Visualization: true
     # the max count of entities to visualize in the viewer, If the visualizer is lagging,

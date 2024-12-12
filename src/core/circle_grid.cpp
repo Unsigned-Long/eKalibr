@@ -93,13 +93,16 @@ cv::Point3f& CircleGrid3D::GridCoordinatesToPoint(std::size_t r, std::size_t c) 
 }
 
 CircleGridPattern::CircleGridPattern(CircleGrid3D::Ptr grid3d,
+                                     double timeBias,
                                      const std::list<CircleGrid2D::Ptr>& grid2d)
-    : _grid3d(std::move(grid3d)),
+    : _timeBias(timeBias),
+      _grid3d(std::move(grid3d)),
       _grid2d(grid2d) {}
 
 CircleGridPattern::Ptr CircleGridPattern::Create(const CircleGrid3D::Ptr& grid3d,
+                                                 double timeBias,
                                                  const std::list<CircleGrid2D::Ptr>& grid2d) {
-    return std::make_shared<CircleGridPattern>(grid3d, grid2d);
+    return std::make_shared<CircleGridPattern>(grid3d, timeBias, grid2d);
 }
 
 void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.push_back(grid2d); }
@@ -107,6 +110,7 @@ void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.pus
 const std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() const { return _grid2d; }
 
 CircleGridPattern::Ptr CircleGridPattern::Load(const std::string& filename,
+                                               double newTimeBias,
                                                CerealArchiveType::Enum archiveType) {
     std::ifstream file(filename);
     if (!file.is_open()) {
@@ -123,6 +127,10 @@ CircleGridPattern::Ptr CircleGridPattern::Load(const std::string& filename,
                      "Detailed cereal exception information: \n'{}'",
                      filename, exception.what());
     }
+    for (const auto& grid2d : pattern->GetGrid2d()) {
+        grid2d->timestamp = grid2d->timestamp + pattern->_timeBias - newTimeBias;
+    }
+    pattern->_timeBias = newTimeBias;
     return pattern;
 }
 
@@ -150,6 +158,7 @@ std::ostream& operator<<(std::ostream& os, const CircleGrid3D& obj) {
 }
 
 std::ostream& operator<<(std::ostream& os, const CircleGridPattern& obj) {
-    return os << "grid3d: [" << *obj._grid3d << "], grid2d size: " << obj._grid2d.size();
+    return os << "time bias: " << obj._timeBias << " (sec), grid3d: [" << *obj._grid3d
+              << "], grid2d size: " << obj._grid2d.size();
 }
 }  // namespace ns_ekalibr

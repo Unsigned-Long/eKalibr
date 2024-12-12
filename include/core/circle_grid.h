@@ -102,14 +102,17 @@ public:
     using Ptr = std::shared_ptr<CircleGridPattern>;
 
 protected:
+    double _timeBias;
     CircleGrid3D::Ptr _grid3d;
     std::list<CircleGrid2D::Ptr> _grid2d;
 
 public:
     explicit CircleGridPattern(CircleGrid3D::Ptr grid3d,
+                               double timeBias,
                                const std::list<CircleGrid2D::Ptr>& grid2d = {});
 
     static Ptr Create(const CircleGrid3D::Ptr& grid3d,
+                      double timeBias,
                       const std::list<CircleGrid2D::Ptr>& grid2d = {});
 
     void AddGrid2d(const CircleGrid2D::Ptr& grid2d);
@@ -118,6 +121,7 @@ public:
 
     // load configure information from file
     static Ptr Load(const std::string& filename,
+                    double newTimeBias,
                     CerealArchiveType::Enum archiveType = CerealArchiveType::Enum::YAML);
 
     // save configure information to file
@@ -131,7 +135,8 @@ public:
 public:
     template <class Archive>
     void serialize(Archive& ar) {
-        ar(cereal::make_nvp("grid3d", _grid3d), cereal::make_nvp("grid2d", _grid2d));
+        ar(cereal::make_nvp("time_bias", _timeBias), cereal::make_nvp("grid_3d", _grid3d),
+           cereal::make_nvp("grid_2d", _grid2d));
     }
 };
 }  // namespace ns_ekalibr
