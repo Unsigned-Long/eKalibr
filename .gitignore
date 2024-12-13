@@ -22,3 +22,8 @@
 /thirdparty/opengv-install
 /thirdparty/veta-build
 /thirdparty/veta-install
+
+/script/*
+!/script/gen_pattern.py
+!/script/svgfig.py
+!/script/example.sh
