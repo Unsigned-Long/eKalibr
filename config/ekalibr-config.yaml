@@ -42,6 +42,13 @@ Configor:
   Prior:
     # unit: m/s^2
     GravityNorm: 9.8
+    # the range where the time offsets would be optimized.
+    # make sure this range contains the ground truth of time offsets
+    # If you're not sure, make this field large, but this could lead to longer optimization time
+    TimeOffsetPadding: 0.10
+    # if sensor are hardware-synchronized, you could choose to fix temporal parameters
+    # by setting this field to 'false'
+    OptTemporalParams: true
     # +---------------+----------------+        +---------------+----------------+
     # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
     # +---------------+----------------+        +---------------+----------------+
@@ -71,6 +78,12 @@ Configor:
       Rows: 7
       # distance between circles [m]
       SpacingMeters: 0.02
+    # the time distance of two neighbor control points, which determines the accuracy
+    # of the representation of the B-splines. Smaller distance would lead to longer optimization time
+    # common choices: from '0.02' to '0.10'
+    KnotTimeDist:
+      So3Spline: 0.05
+      ScaleSpline: 0.05
 
     # -------------------------------------------------------------------#
     # The following settings generally do not need to be adjusted unless #

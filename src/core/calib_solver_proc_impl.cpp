@@ -211,9 +211,20 @@ void CalibSolver::Process() {
         return;
     }
 
-    // todo: perform visual-inertial spatiotemporal calibration
     _viewer->ClearViewer();
     _viewer->ResetViewerCamera();
+
+    // create so3 and linear scale splines given start and end times, knot distances
+    _splines = this->CreateSplineBundle(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
+                                        Configor::Prior::KnotTimeDist.So3Spline,
+                                        Configor::Prior::KnotTimeDist.ScaleSpline);
+
+    /* initialize (recover) the rotation spline using raw angular velocity measurements from the
+     * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time
+     * offsets would be also recovered
+     */
+    this->InitSO3Spline();
+
     _solveFinished = true;
 }
 }  // namespace ns_ekalibr

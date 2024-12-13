@@ -47,10 +47,13 @@ const std::string Configor::DataStream::DebugPath = PkgPath + "/debug/";
 
 Configor::Prior Configor::prior = {};
 double Configor::Prior::GravityNorm = {};
+double Configor::Prior::TimeOffsetPadding = {};
+bool Configor::Prior::OptTemporalParams = {};
 Configor::Prior::CirclePatternConfig Configor::Prior::CirclePattern = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 Configor::Prior::NormFlowEstimatorConfig Configor::Prior::NormFlowEstimator = {};
+Configor::Prior::KnotTimeDistConfig Configor::Prior::KnotTimeDist = {};
 
 Configor::Preference Configor::preference = {};
 std::string Configor::Preference::OutputDataFormatStr = {};
@@ -63,6 +66,8 @@ const std::map<CerealArchiveType::Enum, std::string> Configor::Preference::FileE
 std::pair<double, double> Configor::Preference::EventViewerSpatialTemporalScale = {0.01, 50.0};
 bool Configor::Preference::Visualization = {};
 int Configor::Preference::MaxEntityCountInViewer = {};
+const std::string Configor::Preference::SO3_SPLINE = "SO3_SPLINE";
+const std::string Configor::Preference::SCALE_SPLINE = "SCALE_SPLINE";
 
 Configor::Configor() = default;
 
@@ -79,16 +84,18 @@ void Configor::PrintMainFields() {
     std::string IMUTopics = ssIMUTopics.str();
 
 #define DESC_FIELD(field) #field, field
-#define DESC_FORMAT "\n{:>40}: {}"
+#define DESC_FORMAT "\n{:>42}: {}"
     spdlog::info(
         "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                    DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+                    DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
+                        DESC_FORMAT DESC_FORMAT,
         DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::RefIMUTopic),
         DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
         DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
-        DESC_FIELD(Prior::GravityNorm), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+        DESC_FIELD(Prior::GravityNorm), DESC_FIELD(Prior::TimeOffsetPadding),
+        DESC_FIELD(Prior::OptTemporalParams), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
         // fields for CirclePattern
         "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
         "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)
@@ -105,6 +112,9 @@ void Configor::PrintMainFields() {
         "NormFlowEstimator::RansacInlierRatioThd", Prior::NormFlowEstimator.RansacInlierRatioThd,
         "NormFlowEstimator::EventToPlaneTimeDistThd",
         Prior::NormFlowEstimator.EventToPlaneTimeDistThd,
+        // fields for KnotTimeDist
+        "KnotTimeDist::So3Spline", Prior::KnotTimeDist.So3Spline, "KnotTimeDist::ScaleSpline",
+        Prior::KnotTimeDist.ScaleSpline,
         // Preference
         "Preference::OutputDataFormat", Preference::OutputDataFormatStr,
         DESC_FIELD(Preference::Visualization), DESC_FIELD(Preference::MaxEntityCountInViewer));
@@ -182,7 +192,21 @@ void Configor::CheckConfigure() {
         throw Status(Status::ERROR,
                      "the output path (i.e., DataStream::OutputPath) can not be created!");
     }
-
+    if (Prior::TimeOffsetPadding <= 0.0) {
+        throw Status(
+            Status::ERROR,
+            "the time offset padding (i.e., Prior::TimeOffsetPadding) should be positive!");
+    }
+    if (Prior::KnotTimeDist.So3Spline <= 0.0) {
+        throw Status(Status::ERROR,
+                     "the knot time distance of so3 spline (i.e., Prior::KnotTimeDist::So3Spline) "
+                     "should be positive!");
+    }
+    if (Prior::KnotTimeDist.ScaleSpline <= 0.0) {
+        throw Status(Status::ERROR,
+                     "the knot time distance of scale spline (i.e., "
+                     "Prior::KnotTimeDist::ScaleSpline) should be positive!");
+    }
     if (Prior::DecayTimeOfActiveEvents < 1E-6) {
         throw Status(Status::ERROR,
                      "the decay time of the surface of active events (i.e., "

@@ -40,21 +40,18 @@
 #include "rosbag/bag.h"
 #include "filesystem"
 #include "rosbag/view.h"
+#include "core/estimator.h"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
     : _parMgr(std::move(parMgr)),
+      _splines(nullptr),
+      _ceresOption(Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, false)),
       _viewer(Configor::Preference::Visualization
                   ? Viewer::Create(Configor::Preference::MaxEntityCountInViewer)
                   : nullptr),
       _solveFinished(false),
-      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
-    // organize the default solver option
-    _ceresOption.minimizer_type = ceres::TRUST_REGION;
-    _ceresOption.linear_solver_type = ceres::SPARSE_NORMAL_CHOLESKY;
-    _ceresOption.trust_region_strategy_type = ceres::LEVENBERG_MARQUARDT;
-    _ceresOption.minimizer_progress_to_stdout = false;
-}
+      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {}
 
 CalibSolver::Ptr CalibSolver::Create(const CalibParamManagerPtr &parMgr) {
     return std::make_shared<CalibSolver>(parMgr);
@@ -228,6 +225,23 @@ void CalibSolver::OutputDataStatus() const {
             "(s)",
             topic, mes.size(), mes.front()->GetTimestamp(), mes.back()->GetTimestamp());
     }
+}
+
+ns_ctraj::SplineBundle<4>::Ptr CalibSolver::CreateSplineBundle(double st,
+                                                               double et,
+                                                               double so3Dt,
+                                                               double scaleDt) {
+    // create splines
+    auto so3SplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SO3_SPLINE,
+                                              ns_ctraj::SplineType::So3Spline, st, et, so3Dt);
+    auto scaleSplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SCALE_SPLINE,
+                                                ns_ctraj::SplineType::RdSpline, st, et, scaleDt);
+    spdlog::info(
+        "create spline bundle: start time: '{:.5f}', end time: '{:.5f}', so3 dt : '{:.5f}', "
+        "scale "
+        "dt: '{:.5f}'",
+        st, et, so3Dt, scaleDt);
+    return SplineBundleType::Create({so3SplineInfo, scaleSplineInfo});
 }
 
 std::string CalibSolver::GetDiskPathOfExtractedGridPatterns(const std::string &topic) {

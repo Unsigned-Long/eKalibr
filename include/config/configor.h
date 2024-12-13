@@ -96,7 +96,11 @@ public:
     } dataStream;
 
     static struct Prior {
+        static constexpr int SplineOrder = 4;
+
         static double GravityNorm;
+        static double TimeOffsetPadding;
+        static bool OptTemporalParams;
 
         struct CirclePatternConfig {
         public:
@@ -151,11 +155,27 @@ public:
 
         static NormFlowEstimatorConfig NormFlowEstimator;
 
+        struct KnotTimeDistConfig {
+            double So3Spline;
+            double ScaleSpline;
+
+            KnotTimeDistConfig() = default;
+
+        public:
+            template <class Archive>
+            void serialize(Archive &ar) {
+                ar(CEREAL_NVP(So3Spline), CEREAL_NVP(ScaleSpline));
+            }
+        };
+
+        static KnotTimeDistConfig KnotTimeDist;
+
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(CirclePattern), CEREAL_NVP(DecayTimeOfActiveEvents),
-               CEREAL_NVP(CircleExtractor), CEREAL_NVP(NormFlowEstimator));
+            ar(CEREAL_NVP(GravityNorm), CEREAL_NVP(TimeOffsetPadding), CEREAL_NVP(CirclePattern),
+               CEREAL_NVP(DecayTimeOfActiveEvents), CEREAL_NVP(CircleExtractor),
+               CEREAL_NVP(NormFlowEstimator), CEREAL_NVP(KnotTimeDist));
         }
     } prior;
 
@@ -170,6 +190,8 @@ public:
         static bool Visualization;
 
         static int MaxEntityCountInViewer;
+
+        const static std::string SO3_SPLINE, SCALE_SPLINE;
 
     public:
         template <class Archive>

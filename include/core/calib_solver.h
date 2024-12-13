@@ -36,6 +36,8 @@
 #include "opencv4/opencv2/core/types.hpp"
 #include "ctraj/core/pose.hpp"
 #include "sensor/imu.hpp"
+#include "ctraj/core/spline_bundle.h"
+#include "config/configor.h"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -50,13 +52,18 @@ struct CircleGridPattern;
 using CircleGridPatternPtr = std::shared_ptr<CircleGridPattern>;
 class CalibParamManager;
 using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
+class Estimator;
+using EstimatorPtr = std::shared_ptr<Estimator>;
+enum class OptOption : std::uint64_t;
 
 class CalibSolver {
 public:
     using Ptr = std::shared_ptr<CalibSolver>;
+    using SplineBundleType = ns_ctraj::SplineBundle<Configor::Prior::SplineOrder>;
 
 protected:
     CalibParamManagerPtr _parMgr;
+    SplineBundleType::Ptr _splines;
     // options used for ceres-related optimization
     ceres::Solver::Options _ceresOption;
     // viewer used to visualize entities in calibration
@@ -89,11 +96,34 @@ protected:
 
     void OutputDataStatus() const;
 
+    static SplineBundleType::Ptr CreateSplineBundle(double st,
+                                                    double et,
+                                                    double so3Dt,
+                                                    double scaleDt);
+
     static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
 
     static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
 
     void EstimateCameraIntrinsics();
+
+    /**
+     * initialize (recover) the rotation spline using raw angular velocity measurements from
+     * the gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and
+     * time offsets would be also recovered
+     */
+    void InitSO3Spline() const;
+
+protected:
+    /**
+     * add gyroscope factors for the IMU to the estimator
+     * @param estimator the estimator
+     * @param imuTopic the ros topic of this IMU
+     * @param option the option for the optimization
+     */
+    void AddGyroFactor(EstimatorPtr &estimator,
+                       const std::string &imuTopic,
+                       OptOption option) const;
 
 private:
     // remove the head data according to the pred
