@@ -85,7 +85,7 @@ public:
     void Process();
 
 protected:
-    void LoadEventData();
+    void LoadDataFromRosBag();
 
     void OutputDataStatus() const;
 

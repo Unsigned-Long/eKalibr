@@ -71,7 +71,7 @@ CalibSolver::~CalibSolver() {
     }
 }
 
-void CalibSolver::LoadEventData() {
+void CalibSolver::LoadDataFromRosBag() {
     /**
      * load raw event data from rosbag
      */

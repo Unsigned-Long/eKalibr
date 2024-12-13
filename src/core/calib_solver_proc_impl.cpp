@@ -46,8 +46,8 @@ void CalibSolver::Process() {
     /**
      * load event data from the rosbag and align timestamps (temporal normalization)
      */
-    spdlog::info("load event data from the rosbag and align timestamps...");
-    this->LoadEventData();
+    spdlog::info("load data from the rosbag and align timestamps...");
+    this->LoadDataFromRosBag();
 
     /**
      * perform circle grid pattern extraction from raw event data stream:
@@ -206,6 +206,14 @@ void CalibSolver::Process() {
     this->EstimateCameraIntrinsics();
     _parMgr->ShowParamStatus();
 
+    if (Configor::DataStream::IMUTopics.empty()) {
+        _solveFinished = true;
+        return;
+    }
+
+    // todo: perform visual-inertial spatiotemporal calibration
+    _viewer->ClearViewer();
+    _viewer->ResetViewerCamera();
     _solveFinished = true;
 }
 }  // namespace ns_ekalibr

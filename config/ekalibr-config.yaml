@@ -2,7 +2,7 @@ Configor:
   DataStream:
     # key: event camera topic, value: event type. Supported event types:
     # (1) PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
-    # (2) DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
+    # (2)       DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
     EventTopics:
       - key: "/dvs/events"
         value:
@@ -10,6 +10,8 @@ Configor:
           Width: 346
           Height: 260
           Weight: 100.0
+    # if the 'IMUTopics' field is empty, only visual intrinsic calibration
+    # is performed for multiple event cameras!!!
     # key: IMU topic, value: IMU type. Supported IMU types are:
     # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git
     # (2)           SENSOR_IMU: gyro unit (rad/s), acce unit (m/s^2)
@@ -60,8 +62,8 @@ Configor:
     #---------------------------------------------------------------------------------------------#
     CirclePattern:
       # symmetric and asymmetric circle grids are supported
-      # 1.  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
-      # 2. ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
+      # (1)  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
+      # (2) ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
       Type: ASYMMETRIC_GRID
       # number of circles (cols)
       Cols: 3
