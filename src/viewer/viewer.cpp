@@ -37,6 +37,7 @@
 #include "tiny-viewer/core/pose.hpp"
 #include "tiny-viewer/entity/arrow.h"
 #include "core/calib_param_mgr.h"
+#include <spdlog/spdlog.h>
 
 namespace ns_ekalibr {
 using ColorPoint = pcl::PointXYZRGBA;
@@ -49,6 +50,10 @@ Viewer::Viewer(int keptEntityCount)
       _splines(nullptr) {
     // run
     this->RunInMultiThread();
+    std::cout << "\033[92m\033[3m[Viewer] "
+                 "use 'a' and 'd' keys to spatially zoom out and in viewer in run time, and 's' "
+                 "and 'w' to temporally to zoom out and in viewer in run time!\033[0m"
+              << std::endl;
 }
 
 std::shared_ptr<Viewer> Viewer::Create(int keptEntityCount) {
@@ -59,6 +64,12 @@ ns_viewer::ViewerConfigor Viewer::GenViewerConfigor() {
     ns_viewer::ViewerConfigor viewConfig("eKalibr");
     viewConfig.grid.showGrid = false;
     viewConfig.WithScreenShotSaveDir(Configor::DataStream::OutputPath);
+
+    viewConfig.callBacks.insert({'a', [this] { ZoomOutSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'d', [this] { ZoomInSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'s', [] { ZoomOutTemporalScaleCallBack(); }});
+    viewConfig.callBacks.insert({'w', [] { ZoomInTemporalScaleCallBack(); }});
+
     return viewConfig;
 }
 
@@ -316,5 +327,31 @@ void Viewer::SetParMgr(const CalibParamManagerPtr &parMgr) { _parMagr = parMgr; 
 ns_viewer::Entity::Ptr Viewer::Gravity() const {
     return ns_viewer::Arrow::Create(_parMagr->GRAVITY.normalized().cast<float>(),
                                     Eigen::Vector3f::Zero(), ns_viewer::Colour::Blue());
+}
+
+void Viewer::ZoomInSpatialScaleCallBack() {
+    Configor::Preference::EventViewerSpatialTemporalScale.first += 0.005;
+    if (_splines != nullptr) {
+        UpdateSplineViewer();
+    }
+}
+
+void Viewer::ZoomOutSpatialScaleCallBack() {
+    if (Configor::Preference::EventViewerSpatialTemporalScale.first >= 0.01) {
+        Configor::Preference::EventViewerSpatialTemporalScale.first -= 0.005;
+    }
+    if (_splines != nullptr) {
+        UpdateSplineViewer();
+    }
+}
+
+void Viewer::ZoomInTemporalScaleCallBack() {
+    Configor::Preference::EventViewerSpatialTemporalScale.second += 5.0;
+}
+
+void Viewer::ZoomOutTemporalScaleCallBack() {
+    if (Configor::Preference::EventViewerSpatialTemporalScale.second >= 10.0) {
+        Configor::Preference::EventViewerSpatialTemporalScale.second -= 5.0;
+    }
 }
 }  // namespace ns_ekalibr

@@ -114,9 +114,17 @@ public:
     ns_viewer::Entity::Ptr Gravity() const;
 
 protected:
-    static ns_viewer::ViewerConfigor GenViewerConfigor();
+    ns_viewer::ViewerConfigor GenViewerConfigor();
 
     pangolin::OpenGlRenderState GetInitRenderState() const;
+
+    void ZoomInSpatialScaleCallBack();
+
+    void ZoomOutSpatialScaleCallBack();
+
+    static void ZoomInTemporalScaleCallBack();
+
+    static void ZoomOutTemporalScaleCallBack();
 };
 }  // namespace ns_ekalibr
 
