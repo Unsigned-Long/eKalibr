@@ -32,21 +32,29 @@
 #include "tiny-viewer/core/viewer.h"
 #include "tiny-viewer/entity/entity.h"
 #include <opencv2/core/types.hpp>
+#include "ctraj/core/spline_bundle.h"
+#include "config/configor.h"
 
 namespace ns_ekalibr {
 struct EventArray;
 using EventArrayPtr = std::shared_ptr<EventArray>;
 struct Event;
 using EventPtr = std::shared_ptr<Event>;
+struct CalibParamManager;
+using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 
 class Viewer : public ns_viewer::Viewer {
 public:
     using Ptr = std::shared_ptr<Viewer>;
     using Parent = ns_viewer::Viewer;
+    using SplineBundleType = ns_ctraj::SplineBundle<Configor::Prior::SplineOrder>;
 
 private:
     std::list<std::size_t> _entities;
     const int keptEntityCount;
+
+    CalibParamManagerPtr _parMagr;
+    SplineBundleType::Ptr _splines;
 
 public:
     explicit Viewer(int keptEntityCount = -1);
@@ -94,6 +102,16 @@ public:
         const float &pScale = 0.01f,
         const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
         float ptSize = 0.05f);
+
+    Viewer &UpdateSplineViewer(
+        const float &pScale = Configor::Preference::EventViewerSpatialTemporalScale.first,
+        double dt = 0.005);
+
+    void SetSpline(const SplineBundleType::Ptr &splines);
+
+    void SetParMgr(const CalibParamManagerPtr &parMgr);
+
+    ns_viewer::Entity::Ptr Gravity() const;
 
 protected:
     static ns_viewer::ViewerConfigor GenViewerConfigor();

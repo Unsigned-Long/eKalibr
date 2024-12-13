@@ -119,6 +119,8 @@ Configor:
       # for classifying a point as an inlier.
       EventToPlaneTimeDistThd: 2E-3
   Preference:
+    Outputs:
+      - NONE
     # supported data output format:
     # (1) JSON
     # (2) XML

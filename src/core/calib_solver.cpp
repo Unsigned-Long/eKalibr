@@ -28,6 +28,7 @@
 
 #include "core/calib_solver.h"
 #include "util/utils.h"
+#include "util/utils_tpl.hpp"
 #include <utility>
 #include "sensor/event_rosbag_loader.h"
 #include "sensor/imu_rosbag_loader.h"
@@ -41,6 +42,7 @@
 #include "filesystem"
 #include "rosbag/view.h"
 #include "core/estimator.h"
+#include "core/ceres_callback.h"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
@@ -51,7 +53,19 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
                   ? Viewer::Create(Configor::Preference::MaxEntityCountInViewer)
                   : nullptr),
       _solveFinished(false),
-      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {}
+      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
+    // pass the 'CeresViewerCallBack' to ceres option so that update the viewer after every
+    // iteration in ceres
+    if (Configor::Preference::Visualization) {
+        _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer));
+        _ceresOption.update_state_every_iteration = true;
+    }
+    // output spatiotemporal parameters after each iteration if needed
+    if (IsOptionWith(OutputOption::ParamInEachIter, Configor::Preference::Outputs)) {
+        _ceresOption.callbacks.push_back(new CeresDebugCallBack(_parMgr));
+        _ceresOption.update_state_every_iteration = true;
+    }
+}
 
 CalibSolver::Ptr CalibSolver::Create(const CalibParamManagerPtr &parMgr) {
     return std::make_shared<CalibSolver>(parMgr);

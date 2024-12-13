@@ -32,8 +32,18 @@
 #include "spdlog/spdlog.h"
 #include "filesystem"
 #include <sensor/sensor_model.h>
+#include "magic_enum_flags.hpp"
+#include "cereal/types/set.hpp"
 
 namespace ns_ekalibr {
+const static std::map<std::string, OutputOption> OutputOptionMap = {
+    {"NONE", OutputOption::NONE},         {"ParamInEachIter", OutputOption::ParamInEachIter},
+    {"BSplines", OutputOption::BSplines}, {"HessianMat", OutputOption::HessianMat},
+    {"ALL", OutputOption::ALL},
+};
+
+using namespace magic_enum::bitwise_operators;
+
 Configor::DataStream Configor::dataStream = {};
 std::map<std::string, Configor::DataStream::IMUConfig> Configor::DataStream::IMUTopics = {};
 std::map<std::string, Configor::DataStream::EventConfig> Configor::DataStream::EventTopics = {};
@@ -55,6 +65,8 @@ Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 Configor::Prior::NormFlowEstimatorConfig Configor::Prior::NormFlowEstimator = {};
 Configor::Prior::KnotTimeDistConfig Configor::Prior::KnotTimeDist = {};
 
+OutputOption Configor::Preference::Outputs = OutputOption::NONE;
+std::set<std::string> Configor::Preference::OutputsStr = {};
 Configor::Preference Configor::preference = {};
 std::string Configor::Preference::OutputDataFormatStr = {};
 CerealArchiveType::Enum Configor::Preference::OutputDataFormat = CerealArchiveType::Enum::YAML;
@@ -82,6 +94,12 @@ void Configor::PrintMainFields() {
     }
     std::string EventTopics = ssEventTopics.str();
     std::string IMUTopics = ssIMUTopics.str();
+
+    auto GetOptString = [](OutputOption opt) -> std::string {
+        std::stringstream stringStream;
+        stringStream << magic_enum::enum_flags_name(opt);
+        return stringStream.str();
+    };
 
 #define DESC_FIELD(field) #field, field
 #define DESC_FORMAT "\n{:>42}: {}"
@@ -116,8 +134,9 @@ void Configor::PrintMainFields() {
         "KnotTimeDist::So3Spline", Prior::KnotTimeDist.So3Spline, "KnotTimeDist::ScaleSpline",
         Prior::KnotTimeDist.ScaleSpline,
         // Preference
-        "Preference::OutputDataFormat", Preference::OutputDataFormatStr,
-        DESC_FIELD(Preference::Visualization), DESC_FIELD(Preference::MaxEntityCountInViewer));
+        "Preference::Outputs", GetOptString(Preference::Outputs), "Preference::OutputDataFormat",
+        Preference::OutputDataFormatStr, DESC_FIELD(Preference::Visualization),
+        DESC_FIELD(Preference::MaxEntityCountInViewer));
 
 #undef DESC_FIELD
 #undef DESC_FORMAT
@@ -312,7 +331,20 @@ bool Configor::LoadConfigure(const std::string &filename, CerealArchiveType::Enu
         throw Status(Status::CRITICAL, "unsupported data format '{}' for io!!!",
                      Preference::OutputDataFormatStr);
     }
-
+    for (const auto &output : Preference::OutputsStr) {
+        // when the enum is out of range of [MAGIC_ENUM_RANGE_MIN, MAGIC_ENUM_RANGE_MAX],
+        // magic_enum would not work
+        // try {
+        //     Configor::Preference::Outputs |= EnumCast::stringToEnum<OutputOption>(output);
+        // } catch (...) {
+        //     throw Status(Status::CRITICAL, "unsupported output context: '{}'!!!", output);
+        // }
+        if (auto iter = OutputOptionMap.find(output); iter == OutputOptionMap.cend()) {
+            throw Status(Status::CRITICAL, "unsupported output context: '{}'!!!", output);
+        } else {
+            Configor::Preference::Outputs |= iter->second;
+        }
+    }
     // perform checking
     CheckConfigure();
     return true;

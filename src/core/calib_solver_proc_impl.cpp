@@ -219,6 +219,9 @@ void CalibSolver::Process() {
                                         Configor::Prior::KnotTimeDist.So3Spline,
                                         Configor::Prior::KnotTimeDist.ScaleSpline);
 
+    _viewer->SetParMgr(_parMgr);
+    _viewer->SetSpline(_splines);
+
     /* initialize (recover) the rotation spline using raw angular velocity measurements from the
      * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time
      * offsets would be also recovered

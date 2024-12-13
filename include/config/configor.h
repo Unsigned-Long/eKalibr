@@ -35,6 +35,18 @@
 #include "cereal/types/string.hpp"
 
 namespace ns_ekalibr {
+enum class OutputOption : std::uint32_t {
+    /**
+     * @brief options
+     */
+    NONE = 1 << 0,
+    ParamInEachIter = 1 << 1,
+    BSplines = 1 << 2,
+    HessianMat = 1 << 3,
+
+    ALL = ParamInEachIter | BSplines | HessianMat
+};
+
 struct Configor {
 public:
     using Ptr = std::shared_ptr<Configor>;
@@ -180,6 +192,8 @@ public:
     } prior;
 
     static struct Preference {
+        static OutputOption Outputs;
+        static std::set<std::string> OutputsStr;
         // str for file configuration, and enum for internal use
         static std::string OutputDataFormatStr;
         static CerealArchiveType::Enum OutputDataFormat;
@@ -196,7 +210,8 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(cereal::make_nvp("OutputDataFormat", OutputDataFormatStr), CEREAL_NVP(Visualization),
+            ar(cereal::make_nvp("Outputs", OutputsStr),
+               cereal::make_nvp("OutputDataFormat", OutputDataFormatStr), CEREAL_NVP(Visualization),
                CEREAL_NVP(MaxEntityCountInViewer));
         }
     } preference;

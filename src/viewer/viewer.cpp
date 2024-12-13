@@ -33,6 +33,10 @@
 #include "tiny-viewer/entity/point_cloud.hpp"
 #include "tiny-viewer/object/landmark.h"
 #include "pcl/point_types.h"
+#include "tiny-viewer/entity/coordinate.h"
+#include "tiny-viewer/core/pose.hpp"
+#include "tiny-viewer/entity/arrow.h"
+#include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
 using ColorPoint = pcl::PointXYZRGBA;
@@ -40,7 +44,9 @@ using ColorPointCloud = pcl::PointCloud<ColorPoint>;
 
 Viewer::Viewer(int keptEntityCount)
     : Parent(GenViewerConfigor()),
-      keptEntityCount(keptEntityCount) {
+      keptEntityCount(keptEntityCount),
+      _parMagr(nullptr),
+      _splines(nullptr) {
     // run
     this->RunInMultiThread();
 }
@@ -259,5 +265,56 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
     }
 
     return AddEntityLocal(entities);
+}
+
+Viewer &Viewer::UpdateSplineViewer(const float &pScale, double dt) {
+    ClearViewer();
+
+    // spline poses
+    std::vector<ns_viewer::Entity::Ptr> entities;
+    const auto &so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    const auto &scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+    double minTime = std::max(so3Spline.MinTime(), scaleSpline.MinTime());
+    double maxTime = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime());
+    for (double t = minTime; t < maxTime;) {
+        if (!_splines->TimeInRange(t, so3Spline) || !_splines->TimeInRange(t, scaleSpline)) {
+            t += dt;
+            continue;
+        }
+
+        Sophus::SO3d so3 = so3Spline.Evaluate(t);
+        Eigen::Vector3d linScale = scaleSpline.Evaluate(t) * pScale;
+        // coordinate
+        entities.push_back(ns_viewer::Coordinate::Create(
+            ns_viewer::Posed(so3.matrix(), linScale).cast<float>(), 0.1f));
+        t += dt;
+    }
+    const auto &knots = scaleSpline.GetKnots();
+    for (const auto &k : knots) {
+        entities.push_back(ns_viewer::Landmark::Create(k.cast<float>() * pScale, 0.1f,
+                                                       ns_viewer::Colour::Black()));
+    }
+    for (int i = 0; i < static_cast<int>(knots.size()) - 1; ++i) {
+        const int j = i + 1;
+        const Eigen::Vector3d ki = knots.at(i) * pScale;
+        const Eigen::Vector3d kj = knots.at(j) * pScale;
+        entities.push_back(ns_viewer::Line::Create(ki.cast<float>(), kj.cast<float>(), 0.1f,
+                                                   ns_viewer::Colour::Black()));
+    }
+    // gravity
+    entities.push_back(Gravity());
+
+    this->AddEntityLocal(entities);
+
+    return *this;
+}
+
+void Viewer::SetSpline(const SplineBundleType::Ptr &splines) { _splines = splines; }
+
+void Viewer::SetParMgr(const CalibParamManagerPtr &parMgr) { _parMagr = parMgr; }
+
+ns_viewer::Entity::Ptr Viewer::Gravity() const {
+    return ns_viewer::Arrow::Create(_parMagr->GRAVITY.normalized().cast<float>(),
+                                    Eigen::Vector3f::Zero(), ns_viewer::Colour::Blue());
 }
 }  // namespace ns_ekalibr
