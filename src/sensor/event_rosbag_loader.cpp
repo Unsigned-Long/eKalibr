@@ -34,9 +34,76 @@
 #include "spdlog/spdlog.h"
 #include "rosbag/view.h"
 #include "util/tqdm.h"
-#include <config/configor.h>
+#include "config/configor.h"
 
 namespace ns_ekalibr {
+
+std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
+    rosbag::Bag *bag,
+    const std::map<std::string, std::string> &topics,
+    const ros::Time &begTime,
+    const ros::Time &endTime) {
+    if (topics.empty() || bag == nullptr) {
+        return {};
+    }
+    auto view = rosbag::View();
+
+    std::vector<std::string> topicsToQuery;
+    // add topics to vector
+    for (const auto &[topic, _] : topics) {
+        topicsToQuery.push_back(topic);
+    }
+    view.addQuery(*bag, rosbag::TopicQuery(topicsToQuery), begTime, endTime);
+
+    // create data loader
+    std::map<std::string, EventDataLoader::Ptr> eventDataLoaders;
+    std::map<std::string, std::vector<EventArray::Ptr>> eventMes;
+
+    auto MessageNumInTopic = [](const rosbag::Bag *bag, const std::string &topic,
+                                const ros::Time &begTime, const ros::Time &endTime) {
+        auto view = rosbag::View();
+        view.addQuery(*bag, rosbag::TopicQuery({topic}), begTime, endTime);
+        return view.size();
+    };
+
+    // get type enum from the string
+    for (const auto &[topic, type] : topics) {
+        eventDataLoaders.insert({topic, EventDataLoader::GetLoader(type)});
+        // reserve tp speed up the data loading
+        auto size = MessageNumInTopic(bag, topic, begTime, endTime);
+        if (size > 0) {
+            eventMes[topic].reserve(size);
+        }
+    }
+
+    // read raw data
+    auto bar = std::make_shared<tqdm>();
+    int idx = 0;
+    for (auto iter = view.begin(); iter != view.end(); ++iter, ++idx) {
+        bar->progress(idx, static_cast<int>(view.size()));
+        const auto &item = *iter;
+        const std::string &topic = item.getTopic();
+        if (eventDataLoaders.cend() != eventDataLoaders.find(topic)) {
+            // an event array
+            auto mes = eventDataLoaders.at(topic)->UnpackData(item);
+            if (mes != nullptr) {
+                eventMes.at(topic).push_back(mes);
+            }
+        }
+    }
+    bar->finish();
+
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        if (auto iter = eventMes.find(topic); iter == eventMes.end() || iter->second.empty()) {
+            throw Status(Status::CRITICAL,
+                         "there is no data in topic '{}'! "
+                         "check your configure file and rosbag!",
+                         topic);
+        }
+    }
+
+    return eventMes;
+}
 
 std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
     const std::string &bagPath,
@@ -50,8 +117,6 @@ std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
     } else {
         bag->open(bagPath, rosbag::BagMode::Read);
     }
-
-    auto view = rosbag::View();
 
     // using a temp view to check the time range of the source ros bag
     auto viewTemp = rosbag::View();
@@ -90,57 +155,10 @@ std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
     spdlog::info("expect data duration: from '{:.5f}' to '{:.5f}'.", begTime.toSec(),
                  endTime.toSec());
 
-    view.addQuery(*bag, rosbag::TopicQuery(topicsToQuery), begTime, endTime);
-
-    // create data loader
-    std::map<std::string, EventDataLoader::Ptr> eventDataLoaders;
-    std::map<std::string, std::vector<EventArray::Ptr>> eventMes;
-
-    auto MessageNumInTopic = [](const rosbag::Bag *bag, const std::string &topic,
-                                const ros::Time &begTime, const ros::Time &endTime) {
-        auto view = rosbag::View();
-        view.addQuery(*bag, rosbag::TopicQuery({topic}), begTime, endTime);
-        return view.size();
-    };
-
-    // get type enum from the string
-    for (const auto &[topic, type] : topics) {
-        eventDataLoaders.insert({topic, EventDataLoader::GetLoader(type)});
-        // reserve tp speed up the data loading
-        auto size = MessageNumInTopic(bag.get(), topic, begTime, endTime);
-        if (size > 0) {
-            eventMes[topic].reserve(size);
-        }
-    }
-
-    // read raw data
-    auto bar = std::make_shared<tqdm>();
-    int idx = 0;
-    for (auto iter = view.begin(); iter != view.end(); ++iter, ++idx) {
-        bar->progress(idx, static_cast<int>(view.size()));
-        const auto &item = *iter;
-        const std::string &topic = item.getTopic();
-        if (eventDataLoaders.cend() != eventDataLoaders.find(topic)) {
-            // an event array
-            auto mes = eventDataLoaders.at(topic)->UnpackData(item);
-            if (mes != nullptr) {
-                eventMes.at(topic).push_back(mes);
-            }
-        }
-    }
-    bar->finish();
+    auto mes = LoadEventsFromROSBag(bag.get(), topics, begTime, endTime);
     bag->close();
 
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        if (auto iter = eventMes.find(topic); iter == eventMes.end() || iter->second.empty()) {
-            throw Status(Status::CRITICAL,
-                         "there is no data in topic '{}'! "
-                         "check your configure file and rosbag!",
-                         topic);
-        }
-    }
-
-    return eventMes;
+    return mes;
 }
 
 EventDataLoader::EventDataLoader(EventModelType model)

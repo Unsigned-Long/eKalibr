@@ -76,7 +76,7 @@ void CalibSolver::Process() {
             "try to load existing extracted circles grid patterns for camera '{}' from '{}'...",
             topic, path);
         if (std::filesystem::exists(path)) {
-            auto curPattern = CircleGridPattern::Load(path, _evDataRawTimestamp.first,
+            auto curPattern = CircleGridPattern::Load(path, _dataRawTimestamp.first,
                                                       Configor::Preference::OutputDataFormat);
             if (curPattern != nullptr) {
                 _extractedPatterns[topic] = curPattern;
@@ -101,7 +101,7 @@ void CalibSolver::Process() {
         double lastUpdateTime = eventMes.front()->GetTimestamp();
         auto bar = std::make_shared<tqdm>();
 
-        auto curPattern = CircleGridPattern::Create(grid3D, _evDataRawTimestamp.first);
+        auto curPattern = CircleGridPattern::Create(grid3D, _dataRawTimestamp.first);
 
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
             bar->progress(i, static_cast<int>(eventMes.size()));

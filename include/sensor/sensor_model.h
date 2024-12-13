@@ -58,6 +58,8 @@ struct IMUModel {
     static std::string UnsupportedIMUModelMsg(const std::string &modelStr);
 
     static IMUModelType FromString(const std::string &modelStr);
+
+    static std::string ToString(IMUModelType model);
 };
 
 using IMUModelType = IMUModel::IMUModelType;
@@ -68,6 +70,8 @@ struct EventModel {
     static std::string UnsupportedEventModelMsg(const std::string &modelStr);
 
     static EventModelType FromString(const std::string &modelStr);
+
+    static std::string ToString(EventModelType model);
 };
 
 using EventModelType = EventModel::EventModelType;

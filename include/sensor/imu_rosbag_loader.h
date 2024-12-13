@@ -26,13 +26,12 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef EVENT_ROSBAG_LOADER_H
-#define EVENT_ROSBAG_LOADER_H
+#ifndef IMU_ROSBAG_LOADER_H
+#define IMU_ROSBAG_LOADER_H
 
-#include "sensor/event.h"
-#include "sensor/sensor_model.h"
+#include "sensor/imu.hpp"
+#include "sensor_model.h"
 #include "util/enum_cast.hpp"
-#include "map"
 
 namespace ros {
 class Time;
@@ -45,73 +44,69 @@ class MessageInstance;
 
 namespace ns_ekalibr {
 
-std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
+std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
     rosbag::Bag *bag,
     // topic, type
     const std::map<std::string, std::string> &topics,
     const ros::Time &begTime,
     const ros::Time &endTime);
 
-std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
-    const std::string &bagPath,
-    // topic, type
-    const std::map<std::string, std::string> &topics,
-    // negative values mean loading all data
-    double beginTime = -1.0,
-    double duration = -1.0);
-
-class EventDataLoader {
+class IMUDataLoader {
 public:
-    using Ptr = std::shared_ptr<EventDataLoader>;
+    using Ptr = std::shared_ptr<IMUDataLoader>;
+    // trans degree angle to radian angle
+    constexpr static double DEG_TO_RAD = M_PI / 180.0;
 
 protected:
-    EventModelType _model;
+    IMUModelType _imuModel;
 
 public:
-    explicit EventDataLoader(EventModelType model);
+    explicit IMUDataLoader(IMUModelType imuModel);
 
-    virtual EventArray::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) = 0;
+    virtual IMUFrame::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) = 0;
 
-    static EventDataLoader::Ptr GetLoader(const std::string &modelStr);
+    static IMUDataLoader::Ptr GetLoader(const std::string &imuModelStr, const double gravityNorm);
 
-    [[nodiscard]] EventModelType GetEventModel() const;
+    [[nodiscard]] IMUModelType GetIMUModel() const;
 
-    virtual ~EventDataLoader() = default;
+    virtual ~IMUDataLoader() = default;
 
 protected:
     template <class MsgType>
     void CheckMessage(typename MsgType::ConstPtr msg) {
         if (msg == nullptr) {
             throw std::runtime_error(
-                "Wrong sensor model: '" + std::string(EnumCast::enumToString(GetEventModel())) +
-                "' for event cameras! It's incompatible with the type of ros message to load in!");
+                "Wrong sensor model: '" + std::string(EnumCast::enumToString(GetIMUModel())) +
+                "' for IMUs! It's incompatible with the type of ros message to load in!");
         }
     }
 };
 
-class PropheseeEventDataLoader : public EventDataLoader {
+class SensorIMULoader : public IMUDataLoader {
 public:
-    using Ptr = std::shared_ptr<PropheseeEventDataLoader>;
+    using Ptr = std::shared_ptr<SensorIMULoader>;
+    const double g2StdUnit;
+    const double a2StdUnit;
 
 public:
-    explicit PropheseeEventDataLoader(EventModelType model);
+    explicit SensorIMULoader(IMUModelType imuModel, double g2StdUnit, double a2StdUnit);
 
-    static Ptr Create(EventModelType model);
+    static SensorIMULoader::Ptr Create(IMUModelType imuModel, double g2StdUnit, double a2StdUnit);
 
-    EventArray::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) override;
+    IMUFrame::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) override;
 };
 
-class DVSEventDataLoader : public EventDataLoader {
+class SbgIMULoader : public IMUDataLoader {
 public:
-    using Ptr = std::shared_ptr<DVSEventDataLoader>;
+    using Ptr = std::shared_ptr<SbgIMULoader>;
 
 public:
-    explicit DVSEventDataLoader(EventModelType model);
+    explicit SbgIMULoader(IMUModelType imuModel);
 
-    static Ptr Create(EventModelType model);
+    static SbgIMULoader::Ptr Create(IMUModelType imuModel);
 
-    EventArray::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) override;
+    IMUFrame::Ptr UnpackData(const rosbag::MessageInstance &msgInstance) override;
 };
-
 }  // namespace ns_ekalibr
-#endif  // EVENT_ROSBAG_LOADER_H
+
+#endif  // IMU_ROSBAG_LOADER_H

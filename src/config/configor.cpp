@@ -37,6 +37,7 @@ namespace ns_ekalibr {
 Configor::DataStream Configor::dataStream = {};
 std::map<std::string, Configor::DataStream::IMUConfig> Configor::DataStream::IMUTopics = {};
 std::map<std::string, Configor::DataStream::EventConfig> Configor::DataStream::EventTopics = {};
+std::string Configor::DataStream::RefIMUTopic = {};
 std::string Configor::DataStream::BagPath = {};
 double Configor::DataStream::BeginTime = {};
 double Configor::DataStream::Duration = {};
@@ -83,11 +84,11 @@ void Configor::PrintMainFields() {
         "main fields of configor:" DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                    DESC_FORMAT DESC_FORMAT DESC_FORMAT,
-        DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::BagPath),
-        DESC_FIELD(DataStream::BeginTime), DESC_FIELD(DataStream::Duration),
-        DESC_FIELD(DataStream::OutputPath), DESC_FIELD(Prior::GravityNorm),
-        DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+                    DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+        DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::RefIMUTopic),
+        DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
+        DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
+        DESC_FIELD(Prior::GravityNorm), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
         // fields for CirclePattern
         "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
         "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)
@@ -118,13 +119,18 @@ void Configor::CheckConfigure() {
                      "the topic count of event cameras (i.e., DataStream::EventTopics) should be "
                      "larger equal than 1!");
     }
-
+    std::multiset<std::string> topics;
     for (const auto &[topic, config] : DataStream::EventTopics) {
         if (topic.empty()) {
             throw Status(Status::ERROR, "the topic of event camera should not be empty string!");
         }
         // verify event camera type
         EventModel::FromString(config.Type);
+
+        if (config.Weight <= 0.0) {
+            throw Status(Status::ERROR, "weight of event camera '{}' should be positive!", topic);
+        }
+        topics.insert(topic);
     }
     for (const auto &[topic, config] : DataStream::IMUTopics) {
         if (topic.empty()) {
@@ -132,7 +138,34 @@ void Configor::CheckConfigure() {
         }
         // verify imu type
         IMUModel::FromString(config.Type);
+
+        if (config.AcceWeight <= 0.0) {
+            throw Status(Status::ERROR, "accelerator weight of IMU '{}' should be positive!",
+                         topic);
+        }
+        if (config.GyroWeight <= 0.0) {
+            throw Status(Status::ERROR, "gyroscope weight of IMU '{}' should be positive!", topic);
+        }
+        topics.insert(topic);
     }
+    for (const auto &topic : topics) {
+        if (topics.count(topic) != 1) {
+            throw Status(Status::ERROR,
+                         "the topic of '{}' is ambiguous, associated to not unique sensors!",
+                         topic);
+        }
+    }
+
+    // the reference imu should be one of multiple imus
+    if (!DataStream::IMUTopics.empty() &&
+        DataStream::IMUTopics.find(DataStream::RefIMUTopic) == DataStream::IMUTopics.cend()) {
+        auto oldRefIMUTopics = DataStream::RefIMUTopic;
+        DataStream::RefIMUTopic = DataStream::IMUTopics.cbegin()->first;
+        spdlog::warn(
+            "the reference IMU, i.e., '{}', is not one of the IMUs! set '{}' as the reference IMU!",
+            oldRefIMUTopics, DataStream::RefIMUTopic);
+    }
+
     // verify circle pattern type
     CirclePattern::FromString(Prior::CirclePattern.Type);
 

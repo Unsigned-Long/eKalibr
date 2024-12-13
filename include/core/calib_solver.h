@@ -34,8 +34,8 @@
 #include "tiny-viewer/core/pose.hpp"
 #include <sensor/sensor_model.h>
 #include "opencv4/opencv2/core/types.hpp"
-#include "list"
 #include "ctraj/core/pose.hpp"
+#include "sensor/imu.hpp"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -65,10 +65,10 @@ protected:
     bool _solveFinished;
 
     std::map<std::string, std::vector<EventArrayPtr>> _evMes;
+    std::map<std::string, std::vector<IMUFramePtr>> _imuMes;
     // start time, end time
-    std::pair<double, double> _evDataRawTimestamp;
-    std::pair<double, double> _evDataAlignedTimestamp;
-
+    std::pair<double, double> _dataRawTimestamp;
+    std::pair<double, double> _dataAlignedTimestamp;
     ns_viewer::Posef _viewCamPose;
 
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
@@ -104,6 +104,16 @@ private:
     // remove the tail data according to the pred
     void EraseSeqTailData(std::vector<EventArrayPtr> &seq,
                           std::function<bool(const EventArrayPtr &)> pred,
+                          const std::string &errorMsg) const;
+
+    // remove the head data according to the pred
+    void EraseSeqHeadData(std::vector<IMUFramePtr> &seq,
+                          std::function<bool(const IMUFramePtr &)> pred,
+                          const std::string &errorMsg) const;
+
+    // remove the tail data according to the pred
+    void EraseSeqTailData(std::vector<IMUFramePtr> &seq,
+                          std::function<bool(const IMUFramePtr &)> pred,
                           const std::string &errorMsg) const;
 };
 }  // namespace ns_ekalibr

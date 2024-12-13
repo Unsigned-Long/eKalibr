@@ -47,10 +47,7 @@ public:
             double AcceWeight;
             double GyroWeight;
 
-            IMUConfig()
-                : Type(),
-                  AcceWeight(),
-                  GyroWeight() {};
+            IMUConfig() = default;
 
         public:
             template <class Archive>
@@ -64,19 +61,22 @@ public:
             std::string Type;
             std::uint16_t Width;
             std::uint16_t Height;
+            double Weight;
 
             EventConfig() = default;
 
         public:
             template <class Archive>
             void serialize(Archive &ar) {
-                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height));
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height), CEREAL_NVP(Weight));
             }
         };
 
         static std::map<std::string, IMUConfig> IMUTopics;
 
         static std::map<std::string, EventConfig> EventTopics;
+
+        static std::string RefIMUTopic;
 
         static std::string BagPath;
         static double BeginTime;
@@ -89,8 +89,9 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(IMUTopics), CEREAL_NVP(EventTopics), CEREAL_NVP(BagPath),
-               CEREAL_NVP(BeginTime), CEREAL_NVP(Duration), CEREAL_NVP(OutputPath));
+            ar(CEREAL_NVP(IMUTopics), CEREAL_NVP(EventTopics), CEREAL_NVP(RefIMUTopic),
+               CEREAL_NVP(BagPath), CEREAL_NVP(BeginTime), CEREAL_NVP(Duration),
+               CEREAL_NVP(OutputPath));
         }
     } dataStream;
 

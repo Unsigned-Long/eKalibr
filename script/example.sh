@@ -33,7 +33,7 @@
 #---------------------------#
 # (1) Circles are arranged evenly in rows and columns
 # (2) Dimensions are measured in number of circles as [height width], where height is the number of circles in one row and width is the number of circles in one column.
-# (3) Cannot be used to calibrate stereo cameras due to 180-degree ambiguity.
+# (3) Cannot be used to calibrate stereo-visual/inertial-visual suites due to 180-degree ambiguity.
 #------------------------#
 # Asymmetric (recommend) #
 #------------------------#
@@ -43,7 +43,7 @@
 #     of circles across two adjacent columns (or rows) in the dimension where the two columns (or rows)
 #     contain an unequal number of circles.
 # (2) Greater density of points for the same circle radius.
-# (3) Can be used to calibrate stereo cameras. No 180-degree ambiguity
+# (3) Can be used to calibrate stereo-visual/inertial-visual suites. No 180-degree ambiguity
 
 python3 gen_pattern.py -o acircleboard-7x3-50mm.svg \
         --rows            7                         \

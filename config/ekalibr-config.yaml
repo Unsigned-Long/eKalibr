@@ -1,15 +1,34 @@
 Configor:
   DataStream:
     # key: event camera topic, value: event type. Supported event types:
-    # 1. PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
-    # 2. DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
+    # (1) PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
+    # (2) DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
     EventTopics:
       - key: "/dvs/events"
         value:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
+          Weight: 100.0
+    # key: IMU topic, value: IMU type. Supported IMU types are:
+    # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git
+    # (2)           SENSOR_IMU: gyro unit (rad/s), acce unit (m/s^2)
+    #                           https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Imu.html
+    # (3)         SENSOR_IMU_G: gyro unit (rad/s), acce unit (G)
+    # (4)     SENSOR_IMU_G_NEG: gyro unit (rad/s), acce unit (-G)
+    # (5)       SENSOR_IMU_DEG: gyro unit (deg/s), acce unit (m/s^2)
+    #                           https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Imu.html
+    # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)
+    # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)
     IMUTopics:
+      - key: /dvs/imu
+        value:
+          Type: SENSOR_IMU
+          # the weights should be set based on the noise level of your own IMUs
+          # large noise level points to small weight
+          AcceWeight: 17.68
+          GyroWeight: 57.66
+    RefIMUTopic: /dvs/imu
     BagPath: "/home/csl/ros_ws/E_Calib/data/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
@@ -35,6 +54,10 @@ Configor:
     # For the symmetric circle grid pattern, the square size is the distance between circle centers
     # on a row or column. For the asymmetric circle grid pattern, the square size is half the distance
     # between circle centers on a row or column.
+    #---------------------------------------------------------------------------------------------#
+    # Attention: symmetric circle grid pattern cannot be used to calibrate inertial-visual suites #
+    # due to 180-degree ambiguity!!!!!!!!!!!!!!!!!!!!!                                            #
+    #---------------------------------------------------------------------------------------------#
     CirclePattern:
       # symmetric and asymmetric circle grids are supported
       # 1.  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
@@ -43,7 +66,7 @@ Configor:
       # number of circles (cols)
       Cols: 3
       # number of circles (rows)
-      Rows: 9
+      Rows: 7
       # distance between circles [m]
       SpacingMeters: 0.02
 
@@ -82,10 +105,10 @@ Configor:
       EventToPlaneTimeDistThd: 2E-3
   Preference:
     # supported data output format:
-    # 1. JSON
-    # 2. XML
-    # 3. YAML
-    # 4. BINARY
+    # (1) JSON
+    # (2) XML
+    # (3) YAML
+    # (4) BINARY
     OutputDataFormat: "YAML"
     Visualization: true
     # the max count of entities to visualize in the viewer, If the visualizer is lagging,

@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
         rospy
         std_msgs
         cv_bridge
+        sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -65,6 +66,9 @@ add_message_files(
 
         DVSEvent.msg
         DVSEventArray.msg
+
+        SbgImuData.msg
+        SbgImuStatus.msg
 )
 
 ## Generate services in the 'srv' folder

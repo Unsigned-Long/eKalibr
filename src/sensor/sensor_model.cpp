@@ -61,6 +61,15 @@ IMUModelType IMUModel::FromString(const std::string& modelStr) {
     }
     return model;
 }
+std::string IMUModel::ToString(IMUModelType model) {
+    std::string modelStr;
+    try {
+        modelStr = EnumCast::enumToString(model);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedIMUModelMsg(modelStr));
+    }
+    return modelStr;
+}
 
 std::string EventModel::UnsupportedEventModelMsg(const std::string& modelStr) {
     return fmt::format(
@@ -82,6 +91,16 @@ EventModelType EventModel::FromString(const std::string& modelStr) {
         throw Status(Status::ERROR, UnsupportedEventModelMsg(modelStr));
     }
     return model;
+}
+
+std::string EventModel::ToString(EventModelType model) {
+    std::string modelStr;
+    try {
+        modelStr = EnumCast::enumToString(model);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedEventModelMsg(modelStr));
+    }
+    return modelStr;
 }
 
 std::string CirclePattern::UnsupportedCirclePatternMsg(const std::string& modelStr) {
