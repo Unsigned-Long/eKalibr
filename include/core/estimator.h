@@ -159,6 +159,14 @@ public:
                                const std::string &topic,
                                Opt option,
                                double gyroWeight);
+
+    void AddHandEyeRotAlignment(const std::string &camTopic,
+                                double tLastByCj,
+                                double tCurByCj,
+                                const Sophus::SO3d &so3LastCjToW,
+                                const Sophus::SO3d &so3CurCjToW,
+                                Opt option,
+                                double weight);
 };
 }  // namespace ns_ekalibr
 

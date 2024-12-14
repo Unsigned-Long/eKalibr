@@ -27,7 +27,9 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "factor/imu_gyro_factor.hpp"
+#include "factor/hand_eye_rot_align_factor.hpp"
 
 namespace ns_ekalibr {
 template struct IMUGyroFactor<Configor ::Prior::SplineOrder>;
+template struct HandEyeRotationAlignFactor<Configor::Prior::SplineOrder>;
 }

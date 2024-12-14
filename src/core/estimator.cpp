@@ -33,6 +33,7 @@
 #include "util/utils_tpl.hpp"
 #include "factor/imu_gyro_factor.hpp"
 #include <sensor/imu_intrinsic.h>
+#include "factor/hand_eye_rot_align_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -382,6 +383,98 @@ void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
         // set bound
         this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0, -Configor::Prior::TimeOffsetPadding);
         this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0, Configor::Prior::TimeOffsetPadding);
+    }
+}
+
+void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
+                                       double tLastByCj,
+                                       double tCurByCj,
+                                       const Sophus::SO3d &so3LastCjToW,
+                                       const Sophus::SO3d &so3CurCjToW,
+                                       Opt option,
+                                       double weight) {
+    // prepare metas for splines
+    SplineMetaType so3Meta;
+
+    // different relative control points finding [single vs. range]
+    if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        double lastMinTime = tLastByCj - Configor::Prior::TimeOffsetPadding;
+        double lastMaxTime = tLastByCj + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!splines->TimeInRangeForSo3(lastMinTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForSo3(lastMaxTime, Configor::Preference::SO3_SPLINE)) {
+            return;
+        }
+
+        double curMinTime = tCurByCj - Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = tCurByCj + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!splines->TimeInRangeForSo3(curMinTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForSo3(curMaxTime, Configor::Preference::SO3_SPLINE)) {
+            return;
+        }
+
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
+                                        {{lastMinTime, lastMaxTime}, {curMinTime, curMaxTime}},
+                                        so3Meta);
+    } else {
+        double lastTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+        double curTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+
+        // check point time stamp
+        if (!splines->TimeInRangeForSo3(lastTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE)) {
+            return;
+        }
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
+                                        {{lastTime, lastTime}, {curTime, curTime}}, so3Meta);
+    }
+
+    // create a cost function
+    auto costFunc = HandEyeRotationAlignFactor<Configor::Prior::SplineOrder>::Create(
+        so3Meta, tLastByCj, tCurByCj, so3LastCjToW.inverse() * so3CurCjToW, weight);
+
+    // so3 knots param block [each has four sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+
+    // SO3_CmToBr
+    costFunc->AddParameterBlock(4);
+    // TO_CmToBr
+    costFunc->AddParameterBlock(1);
+
+    // set Residuals
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
+                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+
+    auto SO3_CmToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
+    paramBlockVec.push_back(SO3_CmToBr);
+
+    auto TO_CmToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+    paramBlockVec.push_back(TO_CmToBr);
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+    this->SetManifold(SO3_CmToBr, QUATER_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
+        this->SetParameterBlockConstant(SO3_CmToBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
+        this->SetParameterBlockConstant(TO_CmToBr);
+    } else {
+        // set bound
+        this->SetParameterLowerBound(TO_CmToBr, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CmToBr, 0, Configor::Prior::TimeOffsetPadding);
     }
 }
 }  // namespace ns_ekalibr

@@ -31,6 +31,7 @@
 #include "core/extr_rot_estimator.h"
 #include <util/tqdm.h>
 #include "util//status.hpp"
+#include <core/estimator.h>
 
 namespace ns_ekalibr {
 void CalibSolver::EventInertialAlignment() const {
@@ -114,6 +115,33 @@ void CalibSolver::EventInertialAlignment() const {
                 "refine event-inertial extrinsic rotation and time offsets between '{}' and '{}' "
                 "based on continuous-time rotation-only hand-eye alignment...",
                 topic, Configor::DataStream::RefIMUTopic);
+
+            const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+
+            auto estimator = Estimator::Create(_splines, _parMgr);
+            const auto optOption = OptOption::OPT_SO3_CjToBr | OptOption::OPT_TO_CjToBr;
+            const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
+
+            for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
+                const auto& sPose = poseVec.at(i);
+                const auto& ePose = poseVec.at(i + ALIGN_STEP);
+
+                if (sPose.timeStamp + TO_CjToBr < st || ePose.timeStamp + TO_CjToBr > et) {
+                    continue;
+                }
+
+                estimator->AddHandEyeRotAlignment(
+                    topic,            // the ros topic
+                    sPose.timeStamp,  // the time of start rotation stamped by the camera
+                    ePose.timeStamp,  // the time of end rotation stamped by the camera
+                    sPose.so3,        // the start rotation
+                    ePose.so3,        // the end rotation
+                    optOption,        // the optimization option
+                    weight            // the weight
+                );
+            }
+            auto sum = estimator->Solve(_ceresOption);
+            spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
         }
     }
 }
