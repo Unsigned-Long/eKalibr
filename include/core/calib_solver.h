@@ -114,6 +114,8 @@ protected:
      */
     void InitSO3Spline() const;
 
+    void EventInertialAlignment() const;
+
 protected:
     /**
      * add gyroscope factors for the IMU to the estimator

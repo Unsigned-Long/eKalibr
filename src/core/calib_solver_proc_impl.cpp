@@ -215,9 +215,9 @@ void CalibSolver::Process() {
     _viewer->ResetViewerCamera();
 
     // create so3 and linear scale splines given start and end times, knot distances
-    _splines = this->CreateSplineBundle(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
-                                        Configor::Prior::KnotTimeDist.So3Spline,
-                                        Configor::Prior::KnotTimeDist.ScaleSpline);
+    _splines = CreateSplineBundle(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
+                                  Configor::Prior::KnotTimeDist.So3Spline,
+                                  Configor::Prior::KnotTimeDist.ScaleSpline);
 
     _viewer->SetParMgr(_parMgr);
     _viewer->SetSpline(_splines);
@@ -227,6 +227,12 @@ void CalibSolver::Process() {
      * offsets would be also recovered
      */
     this->InitSO3Spline();
+
+    /**
+     * perform sensor-inertial alignment to recover the gravity vector and extrinsic translations.
+     */
+    this->EventInertialAlignment();
+    _parMgr->ShowParamStatus();
 
     _solveFinished = true;
 }
