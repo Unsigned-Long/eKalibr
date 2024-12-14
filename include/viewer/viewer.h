@@ -51,7 +51,7 @@ public:
 
 private:
     std::list<std::size_t> _entities;
-    const int keptEntityCount;
+    int keptEntityCount;
 
     CalibParamManagerPtr _parMagr;
     SplineBundleType::Ptr _splines;
@@ -110,6 +110,8 @@ public:
     void SetSpline(const SplineBundleType::Ptr &splines);
 
     void SetParMgr(const CalibParamManagerPtr &parMgr);
+
+    void SetKeptEntityCount(int val = -1);
 
     ns_viewer::Entity::Ptr Gravity() const;
 

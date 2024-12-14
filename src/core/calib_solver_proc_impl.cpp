@@ -184,6 +184,11 @@ void CalibSolver::Process() {
     }
 
     /**
+     * we want to keep al added entities in the viewer, and do not just keep a const count of them
+     */
+    _viewer->SetKeptEntityCount(-1);
+
+    /**
      * save circle grid patterns to disk
      */
     for (const auto &[topic, patterns] : _extractedPatterns) {

@@ -324,6 +324,8 @@ void Viewer::SetSpline(const SplineBundleType::Ptr &splines) { _splines = spline
 
 void Viewer::SetParMgr(const CalibParamManagerPtr &parMgr) { _parMagr = parMgr; }
 
+void Viewer::SetKeptEntityCount(int val) { keptEntityCount = val; }
+
 ns_viewer::Entity::Ptr Viewer::Gravity() const {
     return ns_viewer::Arrow::Create(_parMagr->GRAVITY.normalized().cast<float>(),
                                     Eigen::Vector3f::Zero(), ns_viewer::Colour::Blue());
