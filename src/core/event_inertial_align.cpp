@@ -46,14 +46,18 @@ void CalibSolver::EventInertialAlignment() const {
                       Configor::Prior::TimeOffsetPadding;
 
     static constexpr double DESIRED_TIME_INTERVAL = 0.1 /* 0.1 sed */;
-    static constexpr double MIN_ALIGN_TIME = 1E-3 /* 0.001 sed */;
-    static constexpr double MAX_ALIGN_TIME = 0.5 /* 0.5 sed */;
-
     const int ALIGN_STEP = std::max(
         1, static_cast<int>(DESIRED_TIME_INTERVAL / Configor::Prior::DecayTimeOfActiveEvents));
 
+    /**
+     * using the estimated rotations of cameras from the 'cv::solvePnP', we perform extrinsic
+     * rotation recovery based on discrete-time rotation-only hand-eye alignment
+     */
     for (const auto& [topic, poseVec] : _camPoses) {
-        spdlog::info("recover event-inertial extrinsic rotation for '{}'...", topic);
+        spdlog::info(
+            "recover event-inertial extrinsic rotation between '{}' and '{}' based on "
+            "discrete-time rotation-only hand-eye alignment...",
+            topic, Configor::DataStream::RefIMUTopic);
 
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
 
@@ -61,6 +65,7 @@ void CalibSolver::EventInertialAlignment() const {
         const auto rotEstimator = ExtrRotEstimator::Create();
 
         ExtrRotEstimator::RelRotationSequence relRotSequence;
+        relRotSequence.reserve(poseVec.size());
 
         auto bar = std::make_shared<tqdm>();
         for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
@@ -72,10 +77,7 @@ void CalibSolver::EventInertialAlignment() const {
             if (sPose.timeStamp + TO_CjToBr < st || ePose.timeStamp + TO_CjToBr > et) {
                 continue;
             }
-            if (ePose.timeStamp - sPose.timeStamp < MIN_ALIGN_TIME ||
-                ePose.timeStamp - sPose.timeStamp > MAX_ALIGN_TIME) {
-                continue;
-            }
+
             auto Rot_EndToStart = sPose.so3.inverse() /*from w to s*/ * ePose.so3 /*from e to w*/;
             relRotSequence.emplace_back(sPose.timeStamp, ePose.timeStamp, Rot_EndToStart);
 
@@ -98,6 +100,20 @@ void CalibSolver::EventInertialAlignment() const {
         } else {
             spdlog::info("extrinsic rotation of '{}' is recovered using '{:06}' frames", topic,
                          relRotSequence.size());
+        }
+    }
+
+    /**
+     * in last step, we use a discrete-time rotation-only hand-eye alignment, where only the
+     * extrinsic rotations are considered, but here we use a continuous-time rotation-only
+     * hand-eye alignment where both extrinsic rotations and temporal parameters are considered.
+     */
+    if (Configor::Prior::OptTemporalParams) {
+        for (const auto& [topic, poseVec] : _camPoses) {
+            spdlog::info(
+                "refine event-inertial extrinsic rotation and time offsets between '{}' and '{}' "
+                "based on continuous-time rotation-only hand-eye alignment...",
+                topic, Configor::DataStream::RefIMUTopic);
         }
     }
 }

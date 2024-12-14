@@ -185,7 +185,8 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(GravityNorm), CEREAL_NVP(TimeOffsetPadding), CEREAL_NVP(CirclePattern),
+            ar(CEREAL_NVP(GravityNorm), CEREAL_NVP(TimeOffsetPadding),
+               CEREAL_NVP(OptTemporalParams), CEREAL_NVP(CirclePattern),
                CEREAL_NVP(DecayTimeOfActiveEvents), CEREAL_NVP(CircleExtractor),
                CEREAL_NVP(NormFlowEstimator), CEREAL_NVP(KnotTimeDist));
         }
