@@ -267,6 +267,12 @@ void CalibSolver::Process() {
             "details:\n{}",
             _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
     }
+    _splineSegments.reserve(_validTimeSegments.size());
+    for (const auto &[st, et] : _validTimeSegments) {
+        auto so3Spline = this->CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);
+        auto posSpline = this->CreatePosSpline(st, et, Configor::Prior::KnotTimeDist.ScaleSpline);
+        _splineSegments.emplace_back(so3Spline, posSpline);
+    }
 
     /**
      * recover the linear scale spline using quantities from the one-shot sensor-inertial alignment

@@ -92,6 +92,7 @@ protected:
     std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;
     // start time, end  time
     std::vector<std::pair<double, double>> _validTimeSegments;
+    std::vector<std::pair<So3SplineType, PosSplineType>> _splineSegments;
     // the full so3 spline
     So3SplineType _fullSo3Spline;
     // options used for ceres-related optimization
@@ -135,20 +136,20 @@ protected:
     int IsTimeInValidSegment(double timeByBr) const;
 
 protected:
-    void AddGyroFactor(const EstimatorPtr &estimator,
-                       const So3SplineType &so3Spline,
-                       const std::string &imuTopic,
-                       OptOption option,
-                       bool useThoseInSegments,
-                       const std::optional<double> &weight) const;
+    void AddGyroFactorToFullSo3Spline(const EstimatorPtr &estimator,
+                                      const std::string &imuTopic,
+                                      OptOption option,
+                                      const std::optional<double> &weight) const;
 
-    void AddAcceFactor(const EstimatorPtr &estimator,
-                       const So3SplineType &so3Spline,
-                       const PosSplineType &posSpline,
-                       const std::string &imuTopic,
-                       OptOption option,
-                       bool useThoseInSegments,
-                       const std::optional<double> &weight) const;
+    void AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
+                                       const std::string &imuTopic,
+                                       OptOption option,
+                                       const std::optional<double> &weight) const;
+
+    void AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
+                                       const std::string &imuTopic,
+                                       OptOption option,
+                                       const std::optional<double> &weight) const;
 
 private:
     // remove the head data according to the pred

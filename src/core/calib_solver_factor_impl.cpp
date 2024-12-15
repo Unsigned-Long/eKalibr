@@ -31,39 +31,47 @@
 #include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
-void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
-                                const SplineBundleType::So3SplineType &so3Spline,
-                                const std::string &imuTopic,
-                                Estimator::Opt option,
-                                bool useThoseInSegments,
-                                const std::optional<double> &w) const {
+void CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &estimator,
+                                               const std::string &imuTopic,
+                                               Estimator::Opt option,
+                                               const std::optional<double> &w) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
-    const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
 
-    for (const auto &item : _imuMes.at(imuTopic)) {
-        if (useThoseInSegments &&
-            this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
-            continue;
-        }
-        estimator->AddIMUGyroMeasurement(so3Spline, item, imuTopic, option, weight);
+    for (const auto &frame : _imuMes.at(imuTopic)) {
+        estimator->AddIMUGyroMeasurement(_fullSo3Spline, frame, imuTopic, option, weight);
     }
 }
 
-void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
-                                const SplineBundleType::So3SplineType &so3Spline,
-                                const SplineBundleType::RdSplineType &posSpline,
-                                const std::string &imuTopic,
-                                OptOption option,
-                                bool useThoseInSegments,
-                                const std::optional<double> &w) const {
+void CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
+                                                const std::string &imuTopic,
+                                                OptOption option,
+                                                const std::optional<double> &w) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
-    for (const auto &item : _imuMes.at(imuTopic)) {
-        if (useThoseInSegments &&
-            this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
+    for (const auto &frame : _imuMes.at(imuTopic)) {
+        auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
         }
-        estimator->AddIMUAcceMeasurement(so3Spline, posSpline, item, imuTopic, option, weight);
+        estimator->AddIMUGyroMeasurement(_splineSegments.at(idx).first, frame, imuTopic, option,
+                                         weight);
+    }
+}
+
+void CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
+                                                const std::string &imuTopic,
+                                                OptOption option,
+                                                const std::optional<double> &w) const {
+    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    for (const auto &frame : _imuMes.at(imuTopic)) {
+        auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            continue;
+        }
+        estimator->AddIMUAcceMeasurement(_splineSegments.at(idx).first,
+                                         _splineSegments.at(idx).second, frame, imuTopic, option,
+                                         weight);
     }
 }
 }  // namespace ns_ekalibr

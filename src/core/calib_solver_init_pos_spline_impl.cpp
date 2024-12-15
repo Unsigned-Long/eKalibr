@@ -40,11 +40,8 @@ void CalibSolver::InitPosSpline() const {
      * we throw the head and tail data as the rotations from the fitted SO3 Spline in that range are
      * poor
      */
-    const double st = _fullSo3Spline.MinTime() + Configor::Prior::TimeOffsetPadding;
-    const double et = _fullSo3Spline.MaxTime() - Configor::Prior::TimeOffsetPadding;
-
-    auto estimator = Estimator::Create(_parMgr);
-    auto optOption = OptOption::OPT_SCALE_SPLINE;
+    // auto estimator = Estimator::Create(_parMgr);
+    // auto optOption = OptOption::OPT_SCALE_SPLINE;
 
     // add camera position constraints
     // for (const auto& [topic, poseVec] : _camPoses) {

@@ -60,8 +60,8 @@ void CalibSolver::InitSo3Spline() const {
 
     auto estimator = Estimator::Create(_parMgr);
     // we initialize the rotation spline first use only the measurements from the reference imu
-    this->AddGyroFactor(estimator, _fullSo3Spline, Configor::DataStream::RefIMUTopic,
-                        OptOption::OPT_SO3_SPLINE, false, 1.0);
+    this->AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
+                                       OptOption::OPT_SO3_SPLINE, 1.0);
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
@@ -73,7 +73,7 @@ void CalibSolver::InitSo3Spline() const {
             optOption |= OptOption::OPT_TO_BiToBr;
         }
         for (const auto& [topic, _] : Configor::DataStream::IMUTopics) {
-            this->AddGyroFactor(estimator, _fullSo3Spline, topic, optOption, false, 1.0);
+            this->AddGyroFactorToFullSo3Spline(estimator, topic, optOption, 1.0);
         }
         // make this problem full rank
         estimator->SetRefIMUParamsConstant();

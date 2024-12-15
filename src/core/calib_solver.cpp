@@ -253,8 +253,8 @@ CalibSolver::So3SplineType CalibSolver::CreateSo3Spline(double st, double et, do
     auto so3SplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SO3_SPLINE,
                                               ns_ctraj::SplineType::So3Spline, st, et, so3Dt);
     auto bundle = SplineBundleType::Create({so3SplineInfo});
-    spdlog::info("create so3 spline: start time: '{:.5f}', end time: '{:.5f}', dt : '{:.5f}'", st,
-                 et, so3Dt);
+    spdlog::info("create so3 spline: start time: '{:07.3f}', end time: '{:07.3f}', dt : '{:07.3f}'",
+                 st, et, so3Dt);
     return bundle->GetSo3Spline(Configor::Preference::SO3_SPLINE);
 }
 
@@ -262,8 +262,8 @@ CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st, double et, do
     auto posSplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SCALE_SPLINE,
                                               ns_ctraj::SplineType::RdSpline, st, et, posDt);
     auto bundle = SplineBundleType::Create({posSplineInfo});
-    spdlog::info("create pos spline: start time: '{:.5f}', end time: '{:.5f}', dt : '{:.5f}'", st,
-                 et, posDt);
+    spdlog::info("create pos spline: start time: '{:07.3f}', end time: '{:07.3f}', dt : '{:07.3f}'",
+                 st, et, posDt);
     return bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
 }
 
