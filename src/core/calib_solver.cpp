@@ -289,7 +289,7 @@ std::string CalibSolver::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string 
     return dir + "/intrinsics" + e;
 }
 
-bool CalibSolver::IsTimeInValidSegment(double timeByBr) const {
+int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
 }
 
@@ -407,22 +407,25 @@ std::vector<std::pair<double, double>> CalibSolver::ContinuousSegments(
     return {mergedSegments.cbegin(), mergedSegments.cend()};
 }
 
-bool CalibSolver::IsTimeInSegment(
+int CalibSolver::IsTimeInSegment(
     double t, const std::vector<std::pair<double, double>> &mergedSegmentsBoundary) {
     // Perform binary search to find the segment that might contain time point t
-    auto it = std::lower_bound(mergedSegmentsBoundary.begin(), mergedSegmentsBoundary.end(), t,
-                               [](const std::pair<double, double> &seg, double time) {
-                                   return seg.second < time;  // Sort by end time
-                               });
+    auto it = std::lower_bound(
+        mergedSegmentsBoundary.begin(), mergedSegmentsBoundary.end(), t,
+        [](const std::pair<double, double> &seg, double time) { return seg.first < time; });
 
     // If no segment found, return false
     if (it == mergedSegmentsBoundary.begin()) {
-        return false;
+        return -1;
     }
 
     --it;  // Move back to the segment that may contain the time point t
 
     // Check if time point t is within the current segment
-    return t >= it->first && t <= it->second;
+    if (t >= it->first && t <= it->second) {
+        return std::distance(mergedSegmentsBoundary.begin(), it);
+    } else {
+        return -1;
+    }
 }
 }  // namespace ns_ekalibr

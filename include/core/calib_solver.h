@@ -121,7 +121,7 @@ protected:
 
     void InitPosSpline() const;
 
-    bool IsTimeInValidSegment(double timeByBr) const;
+    int IsTimeInValidSegment(double timeByBr) const;
 
 protected:
     /**
@@ -177,7 +177,7 @@ private:
     static std::vector<std::pair<double, double>> ContinuousSegments(
         const std::list<std::pair<double, double>> &segBoundary, const double neighborTimeDistThd);
 
-    static bool IsTimeInSegment(
+    static int IsTimeInSegment(
         double t, const std::vector<std::pair<double, double>> &mergedSegmentsBoundary);
 };
 }  // namespace ns_ekalibr

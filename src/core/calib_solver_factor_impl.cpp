@@ -40,7 +40,8 @@ void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
 
     for (const auto &item : _imuMes.at(imuTopic)) {
-        if (useThoseInSegments && !this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr)) {
+        if (useThoseInSegments &&
+            this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
             continue;
         }
         estimator->AddIMUGyroMeasurement(item, imuTopic, option, weight);
@@ -55,7 +56,8 @@ void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     for (const auto &item : _imuMes.at(imuTopic)) {
-        if (useThoseInSegments && !this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr)) {
+        if (useThoseInSegments &&
+            this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
             continue;
         }
         estimator->AddIMUAcceMeasurement(item, imuTopic, option, weight);
