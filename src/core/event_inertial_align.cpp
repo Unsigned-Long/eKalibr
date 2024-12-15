@@ -246,7 +246,6 @@ void CalibSolver::EventInertialAlignment() const {
     sum = estimator->Solve(_ceresOption);
     estimator = nullptr;
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-    _viewer->UpdateSplineViewer();
 }
 
 }  // namespace ns_ekalibr

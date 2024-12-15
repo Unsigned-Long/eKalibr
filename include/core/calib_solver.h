@@ -112,9 +112,11 @@ protected:
      * the gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and
      * time offsets would be also recovered
      */
-    void InitSO3Spline() const;
+    void InitSo3Spline() const;
 
     void EventInertialAlignment() const;
+
+    void InitPosSpline() const;
 
 protected:
     /**

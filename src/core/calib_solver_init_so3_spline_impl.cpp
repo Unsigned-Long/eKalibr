@@ -32,7 +32,7 @@
 
 namespace ns_ekalibr {
 
-void CalibSolver::InitSO3Spline() const {
+void CalibSolver::InitSo3Spline() const {
     /**
      * this function would initialize the rotation spline, as well as the extrinsic rotations and
      * time offsets between multiple imus, if they are integrated

@@ -231,12 +231,19 @@ void CalibSolver::Process() {
      * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time
      * offsets would be also recovered
      */
-    this->InitSO3Spline();
+    this->InitSo3Spline();
+    _parMgr->ShowParamStatus();
 
     /**
      * perform sensor-inertial alignment to recover the gravity vector and extrinsic translations.
      */
     this->EventInertialAlignment();
+    _parMgr->ShowParamStatus();
+
+    /**
+     * recover the linear scale spline using quantities from the one-shot sensor-inertial alignment
+     */
+    this->InitPosSpline();
     _parMgr->ShowParamStatus();
 
     _solveFinished = true;
