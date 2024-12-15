@@ -77,7 +77,7 @@ Configor:
       # number of circles (rows)
       Rows: 7
       # distance between circles [m]
-      SpacingMeters: 0.02
+      SpacingMeters: 0.05
     # the time distance of two neighbor control points, which determines the accuracy
     # of the representation of the B-splines. Smaller distance would lead to longer optimization time
     # common choices: from '0.02' to '0.10'

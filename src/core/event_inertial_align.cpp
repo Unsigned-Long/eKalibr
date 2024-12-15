@@ -32,10 +32,11 @@
 #include <util/tqdm.h>
 #include "util//status.hpp"
 #include <core/estimator.h>
+#include <viewer/viewer.h>
 
 namespace ns_ekalibr {
 void CalibSolver::EventInertialAlignment() const {
-    const auto& so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    auto& so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
     const auto& scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
     /**
      * we throw the head and tail data as the rotations from the fitted SO3 Spline in that range are
@@ -143,6 +144,58 @@ void CalibSolver::EventInertialAlignment() const {
             auto sum = estimator->Solve(_ceresOption);
             spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
         }
+    }
+
+    /**
+     * We then transform the initialized SO3 spline to the world coordinate system (grid pattern
+     * coordinate system), which can be achieved by using the least-squares method to solve a pose
+     * from the origin of the SO3 spline to the world coordinate system
+     */
+    spdlog::info(
+        "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
+        "system to transform the initialized SO3 spline to the world frame...");
+    auto estimator = Estimator::Create(_splines, _parMgr);
+    Sophus::SO3d SO3_Br0ToW;
+    for (const auto& [topic, poseVec] : _camPoses) {
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
+
+        for (const auto& pose : poseVec) {
+            if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
+                continue;
+            }
+            estimator->AddSo3SplineAlignToWorldConstraint(&SO3_Br0ToW, topic, pose.timeStamp,
+                                                          pose.so3, OptOption::NONE, weight);
+        }
+    }
+    auto sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+
+    // transform the initialized SO3 spline to the world coordinate system
+    for (int i = 0; i < static_cast<int>(so3Spline.GetKnots().size()); ++i) {
+        so3Spline.GetKnot(i) = SO3_Br0ToW * so3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
+    }
+    _viewer->UpdateSplineViewer();
+
+    /**
+     * the gravity vector would be recovered in this stage, for better converage performance, we
+     * assign the gravity roughly, f = a - g, g = a - f
+     */
+    Eigen::Vector3d firRefAcce = _imuMes.at(Configor::DataStream::RefIMUTopic).front()->GetAcce();
+    // g = gDir * gNorm, where gDir = normalize(a - f), by assume the acceleration is zero
+    _parMgr->GRAVITY = -firRefAcce.normalized() * Configor::Prior::GravityNorm;
+    spdlog::info("rough assigned gravity in world frame: ['{:.3f}', '{:.3f}', '{:.3f}']",
+                 _parMgr->GRAVITY(0), _parMgr->GRAVITY(1), _parMgr->GRAVITY(2));
+
+    auto optOption = OptOption::OPT_POS_CjInBr |  // camera extrinsic translations
+                     OptOption::OPT_POS_BiInBr |  // imu extrinsic translations
+                     OptOption::OPT_GRAVITY;      // gravity
+
+    static constexpr double MIN_ALIGN_TIME = 1E-3 /* 0.001 sed */;
+    static constexpr double MAX_ALIGN_TIME = 1.0 /* 1.0 sed */;
+
+    std::map<std::string, std::vector<Eigen::Vector3d>> linVelSeqCm;
+    for (const auto& [topic, poseVec] : _camPoses) {
     }
 }
 

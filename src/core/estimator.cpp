@@ -34,6 +34,7 @@
 #include "factor/imu_gyro_factor.hpp"
 #include <sensor/imu_intrinsic.h>
 #include "factor/hand_eye_rot_align_factor.hpp"
+#include "factor/so3_spline_world_align.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -469,7 +470,96 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
         this->SetParameterBlockConstant(SO3_CmToBr);
     }
 
+    if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        this->SetParameterBlockConstant(TO_CmToBr);
+    } else {
+        // set bound
+        this->SetParameterLowerBound(TO_CmToBr, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CmToBr, 0, Configor::Prior::TimeOffsetPadding);
+    }
+}
+
+/**
+ * param blocks:
+ * [ SO3 | ... | SO3 | SO3_CjToBr | TO_CjToBr | SO3_Br0ToW ]
+ */
+void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
+                                                   const std::string &camTopic,
+                                                   double timeByCj,
+                                                   const Sophus::SO3d &SO3_CurCjToW,
+                                                   Opt option,
+                                                   double weight) {
+    // prepare metas for splines
+    SplineMetaType so3Meta;
+
+    // different relative control points finding [single vs. range]
+    if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        double curMinTime = timeByCj - Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = timeByCj + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!splines->TimeInRangeForSo3(curMinTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForSo3(curMaxTime, Configor::Preference::SO3_SPLINE)) {
+            return;
+        }
+
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
+                                        {{curMinTime, curMaxTime}}, so3Meta);
+    } else {
+        double curTime = timeByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+
+        // check point time stamp
+        if (!splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE)) {
+            return;
+        }
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{curTime, curTime}},
+                                        so3Meta);
+    }
+
+    // create a cost function
+    auto costFunc = So3SplineAlignToWorldFactor<Configor::Prior::SplineOrder>::Create(
+        so3Meta, timeByCj, SO3_CurCjToW, weight);
+
+    // so3 knots param block [each has four sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+
+    // SO3_CjToBr
+    costFunc->AddParameterBlock(4);
+    // TO_CjToBr
+    costFunc->AddParameterBlock(1);
+    // SO3_Br0ToW
+    costFunc->AddParameterBlock(4);
+
+    // set Residuals
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
+                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+
+    auto SO3_CmToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
+    paramBlockVec.push_back(SO3_CmToBr);
+
+    auto TO_CmToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+    paramBlockVec.push_back(TO_CmToBr);
+
+    paramBlockVec.push_back(SO3_Br0ToW->data());
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+    this->SetManifold(SO3_CmToBr, QUATER_MANIFOLD.get());
+    this->SetManifold(SO3_Br0ToW->data(), QUATER_MANIFOLD.get());
+
     if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
+        this->SetParameterBlockConstant(SO3_CmToBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
         this->SetParameterBlockConstant(TO_CmToBr);
     } else {
         // set bound

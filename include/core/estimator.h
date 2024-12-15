@@ -167,6 +167,13 @@ public:
                                 const Sophus::SO3d &so3CurCjToW,
                                 Opt option,
                                 double weight);
+
+    void AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
+                                            const std::string &camTopic,
+                                            double timeByCj,
+                                            const Sophus::SO3d &SO3_CurCjToW,
+                                            Opt option,
+                                            double weight);
 };
 }  // namespace ns_ekalibr
 
