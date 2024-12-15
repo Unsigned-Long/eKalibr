@@ -28,26 +28,37 @@
 
 #include "core/calib_solver.h"
 #include "core/estimator.h"
+#include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
 void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
                                 const std::string &imuTopic,
-                                Estimator::Opt option) const {
-    double weight = Configor::DataStream::IMUTopics.at(imuTopic).GyroWeight;
+                                Estimator::Opt option,
+                                bool useThoseInSegments,
+                                const std::optional<double> &w) const {
+    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
 
     for (const auto &item : _imuMes.at(imuTopic)) {
+        if (useThoseInSegments && !this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr)) {
+            continue;
+        }
         estimator->AddIMUGyroMeasurement(item, imuTopic, option, weight);
     }
 }
 
 void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
                                 const std::string &imuTopic,
-                                OptOption option) const {
-    double weight = Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight;
-
+                                OptOption option,
+                                bool useThoseInSegments,
+                                const std::optional<double> &w) const {
+    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     for (const auto &item : _imuMes.at(imuTopic)) {
+        if (useThoseInSegments && !this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr)) {
+            continue;
+        }
         estimator->AddIMUAcceMeasurement(item, imuTopic, option, weight);
     }
 }
-
 }  // namespace ns_ekalibr

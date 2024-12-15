@@ -131,7 +131,9 @@ protected:
      */
     void AddGyroFactor(const EstimatorPtr &estimator,
                        const std::string &imuTopic,
-                       OptOption option) const;
+                       OptOption option,
+                       bool useThoseInSegments,
+                       const std::optional<double> &weight) const;
 
     /**
      * add accelerometer factors for the IMU to the estimator
@@ -142,7 +144,9 @@ protected:
      */
     void AddAcceFactor(const EstimatorPtr &estimator,
                        const std::string &imuTopic,
-                       OptOption option) const;
+                       OptOption option,
+                       bool useThoseInSegments,
+                       const std::optional<double> &weight) const;
 
 private:
     // remove the head data according to the pred
