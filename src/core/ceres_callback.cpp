@@ -79,7 +79,8 @@ CeresViewerCallBack::CeresViewerCallBack(Viewer::Ptr viewer)
     : _viewer(std::move(viewer)) {}
 
 ceres::CallbackReturnType CeresViewerCallBack::operator()(const ceres::IterationSummary &summary) {
-    _viewer->UpdateSplineViewer();
+    const float scale = Configor::Preference::SplineViewerSpatialScale;
+    _viewer->UpdateSplineViewer(scale);
     return ceres::CallbackReturnType::SOLVER_CONTINUE;
 }
 }  // namespace ns_ekalibr

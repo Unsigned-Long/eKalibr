@@ -103,9 +103,8 @@ public:
         const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
         float ptSize = 0.05f);
 
-    Viewer &UpdateSplineViewer(
-        const float &pScale = Configor::Preference::EventViewerSpatialTemporalScale.first,
-        double dt = 0.005);
+    Viewer &UpdateSplineViewer(const float &pScale = Configor::Preference::SplineViewerSpatialScale,
+                               double dt = 0.005);
 
     void SetSpline(const SplineBundleType::Ptr &splines);
 

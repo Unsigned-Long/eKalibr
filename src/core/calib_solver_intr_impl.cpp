@@ -242,7 +242,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
     }
 
     // visualization
-    constexpr float scale = 15.0f;
+    const float scale = Configor::Preference::SplineViewerSpatialScale;
     for (const auto &[topic, curCamPoses] : _camPoses) {
         // grid pattern
         _viewer->AddGridPattern(_extractedPatterns.at(topic)->GetGrid3d()->points, scale,

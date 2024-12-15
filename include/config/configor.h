@@ -201,6 +201,7 @@ public:
         const static std::map<CerealArchiveType::Enum, std::string> FileExtension;
 
         static std::pair<double, double> EventViewerSpatialTemporalScale;
+        static double SplineViewerSpatialScale;
 
         static bool Visualization;
 

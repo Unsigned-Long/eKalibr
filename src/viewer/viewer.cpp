@@ -333,8 +333,10 @@ ns_viewer::Entity::Ptr Viewer::Gravity() const {
 
 void Viewer::ZoomInSpatialScaleCallBack() {
     Configor::Preference::EventViewerSpatialTemporalScale.first += 0.005;
+
+    Configor::Preference::SplineViewerSpatialScale += 1.0;
     if (_splines != nullptr) {
-        UpdateSplineViewer();
+        UpdateSplineViewer(Configor::Preference::SplineViewerSpatialScale);
     }
 }
 
@@ -342,8 +344,12 @@ void Viewer::ZoomOutSpatialScaleCallBack() {
     if (Configor::Preference::EventViewerSpatialTemporalScale.first >= 0.01) {
         Configor::Preference::EventViewerSpatialTemporalScale.first -= 0.005;
     }
+
+    if (Configor::Preference::SplineViewerSpatialScale >= 5.0) {
+        Configor::Preference::SplineViewerSpatialScale -= 1.0;
+    }
     if (_splines != nullptr) {
-        UpdateSplineViewer();
+        UpdateSplineViewer(Configor::Preference::SplineViewerSpatialScale);
     }
 }
 
