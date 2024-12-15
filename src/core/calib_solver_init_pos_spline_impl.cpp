@@ -47,7 +47,7 @@ void CalibSolver::InitPosSpline() const {
     const double et = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime()) -  // the min as end
                       Configor::Prior::TimeOffsetPadding;
 
-    auto estimator = Estimator::Create(_splines, _parMgr);
+    auto estimator = Estimator::Create(_parMgr);
     auto optOption = OptOption::OPT_SCALE_SPLINE;
 
     // add camera position constraints
@@ -62,11 +62,13 @@ void CalibSolver::InitPosSpline() const {
                 continue;
             }
             const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
-            estimator->AddPositionConstraint(timeByBr, SE3_BrToW.translation(), optOption, 10.0);
+            estimator->AddPositionConstraint(scaleSpline, timeByBr, SE3_BrToW.translation(),
+                                             optOption, 10.0);
         }
     }
 
-    this->AddAcceFactor(estimator, Configor::DataStream::RefIMUTopic, optOption, true, 1.0);
+    this->AddAcceFactor(estimator, so3Spline, scaleSpline, Configor::DataStream::RefIMUTopic,
+                        optOption, true, 1.0);
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }

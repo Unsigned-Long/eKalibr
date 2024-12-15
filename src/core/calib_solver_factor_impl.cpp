@@ -32,6 +32,7 @@
 
 namespace ns_ekalibr {
 void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
+                                const SplineBundleType::So3SplineType &so3Spline,
                                 const std::string &imuTopic,
                                 Estimator::Opt option,
                                 bool useThoseInSegments,
@@ -44,11 +45,13 @@ void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
             this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
             continue;
         }
-        estimator->AddIMUGyroMeasurement(item, imuTopic, option, weight);
+        estimator->AddIMUGyroMeasurement(so3Spline, item, imuTopic, option, weight);
     }
 }
 
 void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
+                                const SplineBundleType::So3SplineType &so3Spline,
+                                const SplineBundleType::RdSplineType &posSpline,
                                 const std::string &imuTopic,
                                 OptOption option,
                                 bool useThoseInSegments,
@@ -60,7 +63,7 @@ void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
             this->IsTimeInValidSegment(item->GetTimestamp() + To_BiToBr) >= 0) {
             continue;
         }
-        estimator->AddIMUAcceMeasurement(item, imuTopic, option, weight);
+        estimator->AddIMUAcceMeasurement(so3Spline, posSpline, item, imuTopic, option, weight);
     }
 }
 }  // namespace ns_ekalibr

@@ -124,26 +124,16 @@ protected:
     int IsTimeInValidSegment(double timeByBr) const;
 
 protected:
-    /**
-     * add gyroscope factors for the IMU to the estimator
-     * @param estimator the estimator
-     * @param imuTopic the ros topic of this IMU
-     * @param option the option for the optimization
-     */
     void AddGyroFactor(const EstimatorPtr &estimator,
+                       const SplineBundleType::So3SplineType &so3Spline,
                        const std::string &imuTopic,
                        OptOption option,
                        bool useThoseInSegments,
                        const std::optional<double> &weight) const;
 
-    /**
-     * add accelerometer factors for the IMU to the estimator
-     * @tparam type the linear scale spline type
-     * @param estimator the estimator
-     * @param imuTopic the ros topic of this IMU
-     * @param option the option for the optimization
-     */
     void AddAcceFactor(const EstimatorPtr &estimator,
+                       const SplineBundleType::So3SplineType &so3Spline,
+                       const SplineBundleType::RdSplineType &posSpline,
                        const std::string &imuTopic,
                        OptOption option,
                        bool useThoseInSegments,

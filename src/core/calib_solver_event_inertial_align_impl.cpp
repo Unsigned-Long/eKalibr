@@ -121,7 +121,7 @@ void CalibSolver::EventInertialAlignment() const {
 
             const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
 
-            auto estimator = Estimator::Create(_splines, _parMgr);
+            auto estimator = Estimator::Create(_parMgr);
             const auto optOption = OptOption::OPT_SO3_CjToBr | OptOption::OPT_TO_CjToBr;
             const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
 
@@ -134,6 +134,7 @@ void CalibSolver::EventInertialAlignment() const {
                 }
 
                 estimator->AddHandEyeRotAlignment(
+                    so3Spline,
                     topic,            // the ros topic
                     sPose.timeStamp,  // the time of start rotation stamped by the camera
                     ePose.timeStamp,  // the time of end rotation stamped by the camera
@@ -156,7 +157,7 @@ void CalibSolver::EventInertialAlignment() const {
     spdlog::info(
         "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
         "system to transform the initialized SO3 spline to the world frame...");
-    auto estimator = Estimator::Create(_splines, _parMgr);
+    auto estimator = Estimator::Create(_parMgr);
     Sophus::SO3d SO3_Br0ToW;
     for (const auto& [topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
@@ -166,8 +167,8 @@ void CalibSolver::EventInertialAlignment() const {
             if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
                 continue;
             }
-            estimator->AddSo3SplineAlignToWorldConstraint(&SO3_Br0ToW, topic, pose.timeStamp,
-                                                          pose.so3, OptOption::NONE, weight);
+            estimator->AddSo3SplineAlignToWorldConstraint(
+                so3Spline, &SO3_Br0ToW, topic, pose.timeStamp, pose.so3, OptOption::NONE, weight);
         }
     }
     auto sum = estimator->Solve(_ceresOption);
@@ -193,7 +194,7 @@ void CalibSolver::EventInertialAlignment() const {
     spdlog::info(
         "perform event-inertial alignment to recover event-inertial extrinsic translations and "
         "refine the world-frame gravity...");
-    estimator = Estimator::Create(_splines, _parMgr);
+    estimator = Estimator::Create(_parMgr);
     /**
      * we do not optimization the already initialized extrinsic rotations here
      */
@@ -229,6 +230,7 @@ void CalibSolver::EventInertialAlignment() const {
             }
 
             estimator->AddEventInertialAlignment(
+                so3Spline,
                 imuFrames,                            // the imu frames
                 topic,                                // the ros topic of the camera
                 Configor::DataStream::RefIMUTopic,    // the ros topic of the imu

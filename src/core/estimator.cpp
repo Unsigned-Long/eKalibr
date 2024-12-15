@@ -45,14 +45,12 @@ std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
 std::shared_ptr<ceres::SphereManifold<3>> Estimator::GRAVITY_MANIFOLD(
     new ceres::SphereManifold<3>());
 
-Estimator::Estimator(SplineBundleType::Ptr splines, CalibParamManager::Ptr calibParamManager)
+Estimator::Estimator(CalibParamManager::Ptr calibParamManager)
     : ceres::Problem(DefaultProblemOptions()),
-      splines(std::move(splines)),
       parMagr(std::move(calibParamManager)) {}
 
-Estimator::Ptr Estimator::Create(const SplineBundleType::Ptr &splines,
-                                 const CalibParamManager::Ptr &calibParamManager) {
-    return std::make_shared<Estimator>(splines, calibParamManager);
+Estimator::Ptr Estimator::Create(const CalibParamManager::Ptr &calibParamManager) {
+    return std::make_shared<Estimator>(calibParamManager);
 }
 
 ceres::Problem::Options Estimator::DefaultProblemOptions() {
@@ -203,11 +201,12 @@ Eigen::MatrixXd Estimator::CRSMatrix2EigenMatrix(const ceres::CRSMatrix *jacobia
 }
 
 std::optional<std::pair<Eigen::Vector3d, Eigen::Matrix3d>> Estimator::InertialVelIntegration(
+    const SplineBundleType::So3SplineType &so3Spline,
     const std::vector<IMUFrame::Ptr> &data,
     const std::string &imuTopic,
     double sTimeByBi,
     double eTimeByBi) const {
-    auto vecMatSeq = InertialIntegrationBase(data, imuTopic, sTimeByBi, eTimeByBi);
+    auto vecMatSeq = InertialIntegrationBase(so3Spline, data, imuTopic, sTimeByBi, eTimeByBi);
     if (vecMatSeq.first.size() < 2 || vecMatSeq.second.size() < 2) {
         // invalid integration data
         return {};
@@ -218,11 +217,12 @@ std::optional<std::pair<Eigen::Vector3d, Eigen::Matrix3d>> Estimator::InertialVe
 
 std::optional<std::pair<std::pair<Eigen::Vector3d, Eigen::Matrix3d>,
                         std::pair<Eigen::Vector3d, Eigen::Matrix3d>>>
-Estimator::InertialPosIntegration(const std::vector<IMUFrame::Ptr> &data,
+Estimator::InertialPosIntegration(const SplineBundleType::So3SplineType &so3Spline,
+                                  const std::vector<IMUFrame::Ptr> &data,
                                   const std::string &imuTopic,
                                   double sTimeByBi,
                                   double eTimeByBi) const {
-    auto vecMatSeq = InertialIntegrationBase(data, imuTopic, sTimeByBi, eTimeByBi);
+    auto vecMatSeq = InertialIntegrationBase(so3Spline, data, imuTopic, sTimeByBi, eTimeByBi);
     if (vecMatSeq.first.size() < 2 || vecMatSeq.second.size() < 2) {
         // invalid integration data
         return {};
@@ -235,7 +235,8 @@ Estimator::InertialPosIntegration(const std::vector<IMUFrame::Ptr> &data,
 
 std::pair<std::vector<std::pair<double, Eigen::Vector3d>>,
           std::vector<std::pair<double, Eigen::Matrix3d>>>
-Estimator::InertialIntegrationBase(const std::vector<IMUFrame::Ptr> &data,
+Estimator::InertialIntegrationBase(const SplineBundleType::So3SplineType &so3Spline,
+                                   const std::vector<IMUFrame::Ptr> &data,
                                    const std::string &imuTopic,
                                    double sTimeByBi,
                                    double eTimeByBi) const {
@@ -249,13 +250,11 @@ Estimator::InertialIntegrationBase(const std::vector<IMUFrame::Ptr> &data,
     // extract data by considering the initialized time offsets
     auto [sIter, eIter] = ExtractIMUDataPiece(data, sTimeByBi, eTimeByBi);
 
-    const auto &so3Spline = splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
-
     for (auto iter = sIter; iter != eIter; ++iter) {
         const auto &frame = *iter;
         double curTimeByBr = frame->GetTimestamp() + timeOffset;
 
-        if (!splines->TimeInRangeForSo3(curTimeByBr, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curTimeByBr, so3Spline)) {
             continue;
         }
 
@@ -282,7 +281,8 @@ Estimator::InertialIntegrationBase(const std::vector<IMUFrame::Ptr> &data,
  * param blocks:
  * [ SO3 | ... | SO3 | GYRO_BIAS | GYRO_MAP_COEFF | SO3_AtoG | SO3_BiToBr | TO_BiToBr ]
  */
-void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
+void Estimator::AddIMUGyroMeasurement(const SplineBundleType::So3SplineType &so3Spline,
+                                      const IMUFrame::Ptr &imuFrame,
                                       const std::string &topic,
                                       Opt option,
                                       double gyroWeight) {
@@ -296,21 +296,19 @@ void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
         double minTime = imuFrame->GetTimestamp() - Configor::Prior::TimeOffsetPadding;
         double maxTime = imuFrame->GetTimestamp() + Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
-        if (!splines->TimeInRangeForSo3(minTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(maxTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(minTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(maxTime, so3Spline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{minTime, maxTime}},
-                                        so3Meta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{minTime, maxTime}}, so3Meta);
     } else {
         double curTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic);
 
         // check point time stamp
-        if (!splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curTime, so3Spline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{curTime, curTime}},
-                                        so3Meta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{curTime, curTime}}, so3Meta);
     }
 
     // create a cost function
@@ -340,8 +338,7 @@ void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
     std::vector<double *> paramBlockVec;
 
     // so3 knots param block
-    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
-                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
     // GYRO gyroBias
     auto gyroBias = parMagr->INTRI.IMU.at(topic)->GYRO.BIAS.data();
@@ -394,7 +391,8 @@ void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
  * param blocks:
  * [ SO3 | ... | SO3 | SO3_CjToBr | TO_CjToBr ]
  */
-void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
+void Estimator::AddHandEyeRotAlignment(const SplineBundleType::So3SplineType &so3Spline,
+                                       const std::string &camTopic,
                                        double tLastByCj,
                                        double tCurByCj,
                                        const Sophus::SO3d &so3LastCjToW,
@@ -409,33 +407,32 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
         double lastMinTime = tLastByCj - Configor::Prior::TimeOffsetPadding;
         double lastMaxTime = tLastByCj + Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
-        if (!splines->TimeInRangeForSo3(lastMinTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(lastMaxTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(lastMinTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(lastMaxTime, so3Spline)) {
             return;
         }
 
         double curMinTime = tCurByCj - Configor::Prior::TimeOffsetPadding;
         double curMaxTime = tCurByCj + Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
-        if (!splines->TimeInRangeForSo3(curMinTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(curMaxTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curMinTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(curMaxTime, so3Spline)) {
             return;
         }
 
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
-                                        {{lastMinTime, lastMaxTime}, {curMinTime, curMaxTime}},
-                                        so3Meta);
+        SplineBundleType::CalculateSplineMeta(
+            so3Spline, {{lastMinTime, lastMaxTime}, {curMinTime, curMaxTime}}, so3Meta);
     } else {
         double lastTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
         double curTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
 
         // check point time stamp
-        if (!splines->TimeInRangeForSo3(lastTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(lastTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(curTime, so3Spline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
-                                        {{lastTime, lastTime}, {curTime, curTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{lastTime, lastTime}, {curTime, curTime}},
+                                              so3Meta);
     }
 
     // create a cost function
@@ -459,8 +456,7 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
     std::vector<double *> paramBlockVec;
 
     // so3 knots param block
-    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
-                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
     auto SO3_CjToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
     paramBlockVec.push_back(SO3_CjToBr);
@@ -490,7 +486,8 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
  * param blocks:
  * [ SO3 | ... | SO3 | SO3_CjToBr | TO_CjToBr | SO3_Br0ToW ]
  */
-void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
+void Estimator::AddSo3SplineAlignToWorldConstraint(const SplineBundleType::So3SplineType &so3Spline,
+                                                   Sophus::SO3d *SO3_Br0ToW,
                                                    const std::string &camTopic,
                                                    double timeByCj,
                                                    const Sophus::SO3d &SO3_CurCjToW,
@@ -504,22 +501,20 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
         double curMinTime = timeByCj - Configor::Prior::TimeOffsetPadding;
         double curMaxTime = timeByCj + Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
-        if (!splines->TimeInRangeForSo3(curMinTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(curMaxTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curMinTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(curMaxTime, so3Spline)) {
             return;
         }
 
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE,
-                                        {{curMinTime, curMaxTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{curMinTime, curMaxTime}}, so3Meta);
     } else {
         double curTime = timeByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
 
         // check point time stamp
-        if (!splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curTime, so3Spline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{curTime, curTime}},
-                                        so3Meta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{curTime, curTime}}, so3Meta);
     }
 
     // create a cost function
@@ -545,8 +540,7 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
     std::vector<double *> paramBlockVec;
 
     // so3 knots param block
-    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
-                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
     auto SO3_CmToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
     paramBlockVec.push_back(SO3_CmToBr);
@@ -579,7 +573,8 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
  * param blocks:
  * [ POS_CjInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
  */
-void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data,
+void Estimator::AddEventInertialAlignment(const SplineBundleType::So3SplineType &so3Spline,
+                                          const std::vector<IMUFrame::Ptr> &data,
                                           const std::string &camTopic,
                                           const std::string &imuTopic,
                                           const ns_ctraj::Posed &sPose,
@@ -588,7 +583,6 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
                                           Eigen::Vector3d *eVel,
                                           Opt option,
                                           double weight) {
-    const auto &so3Spline = splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
     double st = sPose.timeStamp, et = ePose.timeStamp;
     double TO_CjToBr = parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
 
@@ -598,7 +592,8 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
     }
 
     double TO_CjToBi = TO_CjToBr - parMagr->TEMPORAL.TO_BiToBr.at(imuTopic);
-    auto integrationData = InertialPosIntegration(data, imuTopic, st + TO_CjToBi, et + TO_CjToBi);
+    auto integrationData =
+        InertialPosIntegration(so3Spline, data, imuTopic, st + TO_CjToBi, et + TO_CjToBi);
     if (integrationData == std::nullopt) {
         return;
     }
@@ -653,7 +648,9 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
  * [ SO3 | ... | SO3 | LIN_SCALE | ... | LIN_SCALE | ACCE_BIAS | ACCE_MAP_COEFF | GRAVITY |
  *   SO3_BiToBr | POS_BiInBr | TO_BiToBr ]
  */
-void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
+void Estimator::AddIMUAcceMeasurement(const SplineBundleType::So3SplineType &so3Spline,
+                                      const SplineBundleType::RdSplineType &posSpline,
+                                      const IMUFrame::Ptr &imuFrame,
                                       const std::string &topic,
                                       Opt option,
                                       double acceWeight) {
@@ -667,28 +664,24 @@ void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
         double minTime = imuFrame->GetTimestamp() - Configor::Prior::TimeOffsetPadding;
         double maxTime = imuFrame->GetTimestamp() + Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
-        if (!splines->TimeInRangeForSo3(minTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForSo3(maxTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForRd(minTime, Configor::Preference::SCALE_SPLINE) ||
-            !splines->TimeInRangeForRd(maxTime, Configor::Preference::SCALE_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(minTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(maxTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(minTime, posSpline) ||
+            !SplineBundleType::TimeInRange(maxTime, posSpline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{minTime, maxTime}},
-                                        so3Meta);
-        splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{minTime, maxTime}},
-                                       scaleMeta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{minTime, maxTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(posSpline, {{minTime, maxTime}}, scaleMeta);
     } else {
         double curTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic);
 
         // check point time stamp
-        if (!splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE) ||
-            !splines->TimeInRangeForRd(curTime, Configor::Preference::SCALE_SPLINE)) {
+        if (!SplineBundleType::TimeInRange(curTime, so3Spline) ||
+            !SplineBundleType::TimeInRange(curTime, posSpline)) {
             return;
         }
-        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{curTime, curTime}},
-                                        so3Meta);
-        splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{curTime, curTime}},
-                                       scaleMeta);
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{curTime, curTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(posSpline, {{curTime, curTime}}, scaleMeta);
     }
     // create a cost function
     auto costFunc = IMUAcceFactor<Configor::Prior::SplineOrder, 2>::Create(so3Meta, scaleMeta,
@@ -722,12 +715,11 @@ void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
     std::vector<double *> paramBlockVec;
 
     // so3 knots param block
-    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
-                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
     // lin acce knots
-    AddRdKnotsData(paramBlockVec, splines->GetRdSpline(Configor::Preference::SCALE_SPLINE),
-                   scaleMeta, !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+    AddRdKnotsData(paramBlockVec, posSpline, scaleMeta,
+                   !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
 
     // ACCE_BIAS
     auto acceBias = parMagr->INTRI.IMU.at(topic)->ACCE.BIAS.data();
@@ -782,19 +774,18 @@ void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
     }
 }
 
-void Estimator::AddPositionConstraint(double timeByBr,
+void Estimator::AddPositionConstraint(const SplineBundleType::RdSplineType &posSpline,
+                                      double timeByBr,
                                       const Eigen::Vector3d &pos,
                                       Opt option,
                                       double weight) {
-    const auto &scaleSpline = splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
     // check point time stamp
-    if (!scaleSpline.TimeStampInRange(timeByBr)) {
+    if (!SplineBundleType::TimeInRange(timeByBr, posSpline)) {
         return;
     }
 
     SplineMetaType scaleMeta;
-    splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{timeByBr, timeByBr}},
-                                   scaleMeta);
+    SplineBundleType::CalculateSplineMeta(posSpline, {{timeByBr, timeByBr}}, scaleMeta);
 
     // create a cost function
     auto costFunc = LinearScaleDerivFactor<Configor::Prior::SplineOrder, 0>::Create(
@@ -812,8 +803,8 @@ void Estimator::AddPositionConstraint(double timeByBr,
     std::vector<double *> paramBlockVec;
 
     // lin acce knots
-    AddRdKnotsData(paramBlockVec, splines->GetRdSpline(Configor::Preference::SCALE_SPLINE),
-                   scaleMeta, !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+    AddRdKnotsData(paramBlockVec, posSpline, scaleMeta,
+                   !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
 
     // pass to problem
     this->AddResidualBlock(costFunc, nullptr, paramBlockVec);

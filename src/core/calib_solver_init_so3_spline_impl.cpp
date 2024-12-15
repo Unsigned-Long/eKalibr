@@ -58,22 +58,23 @@ void CalibSolver::InitSo3Spline() const {
      * ----------------------------------------------------------------
      */
 
-    auto estimator = Estimator::Create(_splines, _parMgr);
+    const auto& so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    auto estimator = Estimator::Create(_parMgr);
     // we initialize the rotation spline first use only the measurements from the reference imu
-    this->AddGyroFactor(estimator, Configor::DataStream::RefIMUTopic, OptOption::OPT_SO3_SPLINE,
-                        false, 1.0);
+    this->AddGyroFactor(estimator, so3Spline, Configor::DataStream::RefIMUTopic,
+                        OptOption::OPT_SO3_SPLINE, false, 1.0);
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     if (Configor::DataStream::IMUTopics.size() > 1) {
         // if multiple imus involved, we continue to recover extrinsic rotations and time offsets
-        estimator = Estimator::Create(_splines, _parMgr);
+        estimator = Estimator::Create(_parMgr);
         auto optOption = OptOption::OPT_SO3_BiToBr;
         if (Configor::Prior::OptTemporalParams) {
             optOption |= OptOption::OPT_TO_BiToBr;
         }
-        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
-            this->AddGyroFactor(estimator, topic, optOption, false, 1.0);
+        for (const auto& [topic, _] : Configor::DataStream::IMUTopics) {
+            this->AddGyroFactor(estimator, so3Spline, topic, optOption, false, 1.0);
         }
         // make this problem full rank
         estimator->SetRefIMUParamsConstant();
