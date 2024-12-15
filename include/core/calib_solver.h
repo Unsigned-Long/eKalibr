@@ -63,27 +63,37 @@ public:
 
 protected:
     CalibParamManagerPtr _parMgr;
-    SplineBundleType::Ptr _splines;
-    // options used for ceres-related optimization
-    ceres::Solver::Options _ceresOption;
     // viewer used to visualize entities in calibration
     ViewerPtr _viewer;
     // indicates whether the solving is finished
     bool _solveFinished;
 
+    /**
+     * data
+     */
     std::map<std::string, std::vector<EventArrayPtr>> _evMes;
     std::map<std::string, std::vector<IMUFramePtr>> _imuMes;
     // start time, end time
     std::pair<double, double> _dataRawTimestamp;
     std::pair<double, double> _dataAlignedTimestamp;
-    ns_viewer::Posef _viewCamPose;
 
+    /**
+     * utilized in event intrinsic calibration
+     */
     CircleGrid3DPtr _grid3d;
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
+
+    /**
+     * utilized in event-inertial calibration
+     */
     // from camera frame to world frame
     std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;
     // start time, end  time
     std::vector<std::pair<double, double>> _validTimeSegments;
+    // the full so3 spline
+    SplineBundleType::So3SplineType _fullSo3Spline;
+    // options used for ceres-related optimization
+    ceres::Solver::Options _ceresOption;
 
 public:
     CalibSolver(CalibParamManagerPtr parMgr);
@@ -104,6 +114,8 @@ protected:
                                                     double so3Dt,
                                                     double scaleDt);
 
+    static SplineBundleType::So3SplineType CreateSo3Spline(double st, double et, double so3Dt);
+
     static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
 
     static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
@@ -117,7 +129,7 @@ protected:
      */
     void InitSo3Spline() const;
 
-    void EventInertialAlignment() const;
+    void EventInertialAlignment();
 
     void InitPosSpline() const;
 

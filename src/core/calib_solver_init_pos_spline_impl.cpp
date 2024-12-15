@@ -36,40 +36,36 @@ namespace ns_ekalibr {
 void CalibSolver::InitPosSpline() const {
     spdlog::info("performing scale spline recovery...");
 
-    const auto& so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
-    const auto& scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
     /**
      * we throw the head and tail data as the rotations from the fitted SO3 Spline in that range are
      * poor
      */
-    const double st = std::max(so3Spline.MinTime(), scaleSpline.MinTime()) +  // the max as start
-                      Configor::Prior::TimeOffsetPadding;
-    const double et = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime()) -  // the min as end
-                      Configor::Prior::TimeOffsetPadding;
+    const double st = _fullSo3Spline.MinTime() + Configor::Prior::TimeOffsetPadding;
+    const double et = _fullSo3Spline.MaxTime() - Configor::Prior::TimeOffsetPadding;
 
     auto estimator = Estimator::Create(_parMgr);
     auto optOption = OptOption::OPT_SCALE_SPLINE;
 
     // add camera position constraints
-    for (const auto& [topic, poseVec] : _camPoses) {
-        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-        const auto& SE3_BrToCj = _parMgr->EXTRI.SE3_CjToBr(topic).inverse();
-
-        for (const auto& pose : poseVec) {
-            const double timeByBr = pose.timeStamp + TO_CjToBr;
-
-            if (timeByBr < st || timeByBr > et) {
-                continue;
-            }
-            const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
-            estimator->AddPositionConstraint(scaleSpline, timeByBr, SE3_BrToW.translation(),
-                                             optOption, 10.0);
-        }
-    }
-
-    this->AddAcceFactor(estimator, so3Spline, scaleSpline, Configor::DataStream::RefIMUTopic,
-                        optOption, true, 1.0);
-    auto sum = estimator->Solve(_ceresOption);
-    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+    // for (const auto& [topic, poseVec] : _camPoses) {
+    //     const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+    //     const auto& SE3_BrToCj = _parMgr->EXTRI.SE3_CjToBr(topic).inverse();
+    //
+    //     for (const auto& pose : poseVec) {
+    //         const double timeByBr = pose.timeStamp + TO_CjToBr;
+    //
+    //         if (timeByBr < st || timeByBr > et) {
+    //             continue;
+    //         }
+    //         const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
+    //         estimator->AddPositionConstraint(scaleSpline, timeByBr, SE3_BrToW.translation(),
+    //                                          optOption, 10.0);
+    //     }
+    // }
+    //
+    // this->AddAcceFactor(estimator, so3Spline, scaleSpline, Configor::DataStream::RefIMUTopic,
+    //                     optOption, true, 1.0);
+    // auto sum = estimator->Solve(_ceresOption);
+    // spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
 }  // namespace ns_ekalibr

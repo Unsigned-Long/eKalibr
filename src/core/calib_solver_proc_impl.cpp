@@ -69,7 +69,7 @@ void CalibSolver::Process() {
                                    pattern.SpacingMeters /*unit: meters*/, circlePattern);
 
     std::map<std::string, bool> patternLoadFromFile;
-
+    const ns_viewer::Posef initViewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f});
     for (const auto &[topic, eventMes] : _evMes) {
         auto path = GetDiskPathOfExtractedGridPatterns(topic);
         spdlog::info(
@@ -159,10 +159,10 @@ void CalibSolver::Process() {
 
                     auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
                     auto t = -timeLatest * ptScale.second;
-                    ns_viewer::Posef curViewCamPose = _viewCamPose;
+                    ns_viewer::Posef curViewCamPose = initViewCamPose;
                     curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
                     curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
-                    curViewCamPose.translation(2) = float(t + _viewCamPose.translation(2));
+                    curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
                     _viewer->SetCamView(curViewCamPose);
                     cv::waitKey(1);
                 }
@@ -219,13 +219,11 @@ void CalibSolver::Process() {
     _viewer->ClearViewer();
     _viewer->ResetViewerCamera();
 
-    // create so3 and linear scale splines given start and end times, knot distances
-    _splines = CreateSplineBundle(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
-                                  Configor::Prior::KnotTimeDist.So3Spline,
-                                  Configor::Prior::KnotTimeDist.ScaleSpline);
+    // create so3 spline given start and end times, knot distances
+    _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
+                                     Configor::Prior::KnotTimeDist.So3Spline);
 
     _viewer->SetParMgr(_parMgr);
-    _viewer->SetSpline(_splines);
 
     /* initialize (recover) the rotation spline using raw angular velocity measurements from the
      * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time

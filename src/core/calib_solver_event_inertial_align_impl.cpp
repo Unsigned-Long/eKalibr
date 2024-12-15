@@ -37,17 +37,13 @@
 #include <viewer/viewer.h>
 
 namespace ns_ekalibr {
-void CalibSolver::EventInertialAlignment() const {
-    auto& so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
-    const auto& scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+void CalibSolver::EventInertialAlignment() {
     /**
      * we throw the head and tail data as the rotations from the fitted SO3 Spline in that range are
      * poor
      */
-    const double st = std::max(so3Spline.MinTime(), scaleSpline.MinTime()) +  // the max as start
-                      Configor::Prior::TimeOffsetPadding;
-    const double et = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime()) -  // the min as end
-                      Configor::Prior::TimeOffsetPadding;
+    const double st = _fullSo3Spline.MinTime() + Configor::Prior::TimeOffsetPadding;
+    const double et = _fullSo3Spline.MaxTime() - Configor::Prior::TimeOffsetPadding;
 
     static constexpr double DESIRED_TIME_INTERVAL = 0.1 /* 0.1 sed */;
     const int ALIGN_STEP = std::max(
@@ -86,7 +82,7 @@ void CalibSolver::EventInertialAlignment() const {
             relRotSequence.emplace_back(sPose.timeStamp, ePose.timeStamp, Rot_EndToStart);
 
             // estimate the extrinsic rotation
-            rotEstimator->Estimate(so3Spline, relRotSequence);
+            rotEstimator->Estimate(_fullSo3Spline, relRotSequence);
 
             // check solver status
             if (rotEstimator->SolveStatus()) {
@@ -134,7 +130,7 @@ void CalibSolver::EventInertialAlignment() const {
                 }
 
                 estimator->AddHandEyeRotAlignment(
-                    so3Spline,
+                    _fullSo3Spline,
                     topic,            // the ros topic
                     sPose.timeStamp,  // the time of start rotation stamped by the camera
                     ePose.timeStamp,  // the time of end rotation stamped by the camera
@@ -167,8 +163,9 @@ void CalibSolver::EventInertialAlignment() const {
             if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
                 continue;
             }
-            estimator->AddSo3SplineAlignToWorldConstraint(
-                so3Spline, &SO3_Br0ToW, topic, pose.timeStamp, pose.so3, OptOption::NONE, weight);
+            estimator->AddSo3SplineAlignToWorldConstraint(_fullSo3Spline, &SO3_Br0ToW, topic,
+                                                          pose.timeStamp, pose.so3, OptOption::NONE,
+                                                          weight);
         }
     }
     auto sum = estimator->Solve(_ceresOption);
@@ -176,8 +173,9 @@ void CalibSolver::EventInertialAlignment() const {
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     // transform the initialized SO3 spline to the world coordinate system
-    for (int i = 0; i < static_cast<int>(so3Spline.GetKnots().size()); ++i) {
-        so3Spline.GetKnot(i) = SO3_Br0ToW * so3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
+    for (int i = 0; i < static_cast<int>(_fullSo3Spline.GetKnots().size()); ++i) {
+        _fullSo3Spline.GetKnot(i) =
+            SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
     _viewer->UpdateViewer(_grid3d->points, Configor::Preference::SplineViewerSpatialScale);
 
@@ -230,7 +228,7 @@ void CalibSolver::EventInertialAlignment() const {
             }
 
             estimator->AddEventInertialAlignment(
-                so3Spline,
+                _fullSo3Spline,
                 imuFrames,                            // the imu frames
                 topic,                                // the ros topic of the camera
                 Configor::DataStream::RefIMUTopic,    // the ros topic of the imu

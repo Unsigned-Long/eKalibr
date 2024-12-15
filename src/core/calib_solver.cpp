@@ -48,13 +48,11 @@
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
     : _parMgr(std::move(parMgr)),
-      _splines(nullptr),
       _ceresOption(Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, false)),
       _viewer(Configor::Preference::Visualization
                   ? Viewer::Create(Configor::Preference::MaxEntityCountInViewer)
                   : nullptr),
-      _solveFinished(false),
-      _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
+      _solveFinished(false) {
     // grid 3d
     const auto &pattern = Configor::Prior::CirclePattern;
     auto circlePattern = CirclePattern::FromString(pattern.Type);
@@ -248,10 +246,10 @@ void CalibSolver::OutputDataStatus() const {
     }
 }
 
-ns_ctraj::SplineBundle<4>::Ptr CalibSolver::CreateSplineBundle(double st,
-                                                               double et,
-                                                               double so3Dt,
-                                                               double scaleDt) {
+CalibSolver::SplineBundleType::Ptr CalibSolver::CreateSplineBundle(double st,
+                                                                   double et,
+                                                                   double so3Dt,
+                                                                   double scaleDt) {
     // create splines
     auto so3SplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SO3_SPLINE,
                                               ns_ctraj::SplineType::So3Spline, st, et, so3Dt);
@@ -263,6 +261,13 @@ ns_ctraj::SplineBundle<4>::Ptr CalibSolver::CreateSplineBundle(double st,
         "dt: '{:.5f}'",
         st, et, so3Dt, scaleDt);
     return SplineBundleType::Create({so3SplineInfo, scaleSplineInfo});
+}
+
+CalibSolver::SplineBundleType::So3SplineType CalibSolver::CreateSo3Spline(double st,
+                                                                          double et,
+                                                                          double so3Dt) {
+    return CreateSplineBundle(st, et, so3Dt, Configor::Prior::KnotTimeDist.ScaleSpline)
+        ->GetSo3Spline(Configor::Preference::SO3_SPLINE);
 }
 
 std::string CalibSolver::GetDiskPathOfExtractedGridPatterns(const std::string &topic) {

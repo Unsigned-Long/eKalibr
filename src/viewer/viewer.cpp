@@ -282,6 +282,9 @@ Viewer &Viewer::UpdateViewer(const std::vector<cv::Point3f> &centers,
                              const float &pScale,
                              double dt) {
     ClearViewer();
+    if (_splines == nullptr) {
+        return *this;
+    }
 
     // spline poses
     std::vector<ns_viewer::Entity::Ptr> entities;
