@@ -278,7 +278,9 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
     return AddEntityLocal(entities);
 }
 
-Viewer &Viewer::UpdateSplineViewer(const float &pScale, double dt) {
+Viewer &Viewer::UpdateViewer(const std::vector<cv::Point3f> &centers,
+                             const float &pScale,
+                             double dt) {
     ClearViewer();
 
     // spline poses
@@ -300,6 +302,7 @@ Viewer &Viewer::UpdateSplineViewer(const float &pScale, double dt) {
             ns_viewer::Posed(so3.matrix(), linScale).cast<float>(), 0.1f));
         t += dt;
     }
+    // spline knots
     const auto &knots = scaleSpline.GetKnots();
     for (const auto &k : knots) {
         entities.push_back(ns_viewer::Landmark::Create(k.cast<float>() * pScale, 0.1f,
@@ -317,6 +320,8 @@ Viewer &Viewer::UpdateSplineViewer(const float &pScale, double dt) {
 
     this->AddEntityLocal(entities);
 
+    this->AddGridPattern(centers, pScale, ns_viewer::Colour::Black());
+
     return *this;
 }
 
@@ -333,23 +338,11 @@ ns_viewer::Entity::Ptr Viewer::Gravity() const {
 
 void Viewer::ZoomInSpatialScaleCallBack() {
     Configor::Preference::EventViewerSpatialTemporalScale.first += 0.005;
-
-    Configor::Preference::SplineViewerSpatialScale += 1.0;
-    if (_splines != nullptr) {
-        UpdateSplineViewer(Configor::Preference::SplineViewerSpatialScale);
-    }
 }
 
 void Viewer::ZoomOutSpatialScaleCallBack() {
     if (Configor::Preference::EventViewerSpatialTemporalScale.first >= 0.01) {
         Configor::Preference::EventViewerSpatialTemporalScale.first -= 0.005;
-    }
-
-    if (Configor::Preference::SplineViewerSpatialScale >= 5.0) {
-        Configor::Preference::SplineViewerSpatialScale -= 1.0;
-    }
-    if (_splines != nullptr) {
-        UpdateSplineViewer(Configor::Preference::SplineViewerSpatialScale);
     }
 }
 

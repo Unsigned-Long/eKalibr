@@ -237,16 +237,15 @@ void CalibSolver::EstimateCameraIntrinsics() {
             Eigen::Matrix3d R = Rot_WtoCj.transpose();
             Eigen::Vector3d t = -Rot_WtoCj.transpose() * Pos_WinCj;
 
-            curCamPoses.push_back(ns_ctraj::Posed(R, t, timestamp));
+            curCamPoses.emplace_back(R, t, timestamp);
         }
     }
 
     // visualization
-    const float scale = Configor::Preference::SplineViewerSpatialScale;
+    const auto scale = static_cast<float>(Configor::Preference::SplineViewerSpatialScale);
     for (const auto &[topic, curCamPoses] : _camPoses) {
         // grid pattern
-        _viewer->AddGridPattern(_extractedPatterns.at(topic)->GetGrid3d()->points, scale,
-                                ns_viewer::Colour::Black());
+        _viewer->AddGridPattern(_grid3d->points, scale, ns_viewer::Colour::Black());
 
         // cameras
         auto color = ns_viewer::Entity::GetUniqueColour();

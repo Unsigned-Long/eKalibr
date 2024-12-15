@@ -66,7 +66,7 @@ void CalibSolver::InitPosSpline() const {
         }
     }
 
-    this->AddAcceFactor(estimator, Configor::DataStream::RefIMUTopic, optOption, false, 1.0);
+    this->AddAcceFactor(estimator, Configor::DataStream::RefIMUTopic, optOption, true, 1.0);
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }

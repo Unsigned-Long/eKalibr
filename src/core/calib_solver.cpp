@@ -55,10 +55,16 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
                   : nullptr),
       _solveFinished(false),
       _viewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f}) {
+    // grid 3d
+    const auto &pattern = Configor::Prior::CirclePattern;
+    auto circlePattern = CirclePattern::FromString(pattern.Type);
+    _grid3d = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
+                                   pattern.SpacingMeters /*unit: meters*/, circlePattern);
+
     // pass the 'CeresViewerCallBack' to ceres option so that update the viewer after every
     // iteration in ceres
     if (Configor::Preference::Visualization) {
-        _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer));
+        _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer, _grid3d));
         _ceresOption.update_state_every_iteration = true;
     }
     // output spatiotemporal parameters after each iteration if needed

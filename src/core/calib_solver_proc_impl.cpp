@@ -65,8 +65,8 @@ void CalibSolver::Process() {
     // nfConfig.WinSizeInPlaneFit >= 1
     const auto neighborNormFlowDist = nfConfig.WinSizeInPlaneFit * 2 - 1;
 
-    auto grid3D = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
-                                       pattern.SpacingMeters /*unit: meters*/, circlePattern);
+    _grid3d = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
+                                   pattern.SpacingMeters /*unit: meters*/, circlePattern);
 
     std::map<std::string, bool> patternLoadFromFile;
 
@@ -101,7 +101,7 @@ void CalibSolver::Process() {
         double lastUpdateTime = eventMes.front()->GetTimestamp();
         auto bar = std::make_shared<tqdm>();
 
-        auto curPattern = CircleGridPattern::Create(grid3D, _dataRawTimestamp.first);
+        auto curPattern = CircleGridPattern::Create(_grid3d, _dataRawTimestamp.first);
 
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
             bar->progress(i, static_cast<int>(eventMes.size()));
@@ -248,11 +248,10 @@ void CalibSolver::Process() {
      */
     std::list<std::pair<double, double>> segBoundary;
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         auto segments = this->ContinuousGridTrackingSegments(topic, 0.5 /*neighbor*/, 1.0 /*len*/);
         for (const auto &segment : segments) {
-            segBoundary.emplace_back(
-                std::pair{segment.front() - Configor::Prior::TimeOffsetPadding,
-                          segment.back() + Configor::Prior::TimeOffsetPadding});
+            segBoundary.emplace_back(segment.front() + TO_CjToBr, segment.back() + TO_CjToBr);
         }
     }
     _validTimeSegments = ContinuousSegments(segBoundary, 0.5 /*neighbor*/);

@@ -78,6 +78,7 @@ protected:
     std::pair<double, double> _dataAlignedTimestamp;
     ns_viewer::Posef _viewCamPose;
 
+    CircleGrid3DPtr _grid3d;
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
     // from camera frame to world frame
     std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;

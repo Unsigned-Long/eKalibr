@@ -38,6 +38,8 @@ class CalibParamManager;
 using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 class Viewer;
 using ViewerPtr = std::shared_ptr<Viewer>;
+class CircleGrid3D;
+using CircleGrid3DPtr = std::shared_ptr<CircleGrid3D>;
 
 struct CeresDebugCallBack : public ceres::IterationCallback {
 private:
@@ -57,9 +59,10 @@ public:
 struct CeresViewerCallBack : public ceres::IterationCallback {
 private:
     ViewerPtr _viewer;
+    CircleGrid3DPtr _grid3d;
 
 public:
-    explicit CeresViewerCallBack(ViewerPtr viewer);
+    explicit CeresViewerCallBack(ViewerPtr viewer, CircleGrid3DPtr grid3d);
 
     ceres::CallbackReturnType operator()(const ceres::IterationSummary &summary) override;
 };

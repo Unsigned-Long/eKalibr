@@ -31,6 +31,8 @@
 #include "core/extr_rot_estimator.h"
 #include <util/tqdm.h>
 #include "util//status.hpp"
+
+#include <core/circle_grid.h>
 #include <core/estimator.h>
 #include <viewer/viewer.h>
 
@@ -176,7 +178,7 @@ void CalibSolver::EventInertialAlignment() const {
     for (int i = 0; i < static_cast<int>(so3Spline.GetKnots().size()); ++i) {
         so3Spline.GetKnot(i) = SO3_Br0ToW * so3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
-    _viewer->UpdateSplineViewer();
+    _viewer->UpdateViewer(_grid3d->points, Configor::Preference::SplineViewerSpatialScale);
 
     /**
      * the gravity vector would be recovered in this stage, for better converage performance, we
