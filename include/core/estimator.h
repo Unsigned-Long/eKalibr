@@ -185,6 +185,11 @@ public:
                                    Eigen::Vector3d *eVel,
                                    Opt option,
                                    double weight);
+
+    void AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
+                               const std::string &topic,
+                               Opt option,
+                               double acceWeight);
 };
 }  // namespace ns_ekalibr
 

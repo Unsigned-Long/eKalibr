@@ -36,6 +36,7 @@
 #include "factor/hand_eye_rot_align_factor.hpp"
 #include "factor/so3_spline_world_align_factor.hpp"
 #include "factor/event_inertial_align_factor.hpp"
+#include "factor/imu_acce_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -643,6 +644,140 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
     }
     if (!IsOptionWith(Opt::OPT_GRAVITY, option)) {
         this->SetParameterBlockConstant(GRAVITY);
+    }
+}
+
+/**
+ * param blocks:
+ * [ SO3 | ... | SO3 | LIN_SCALE | ... | LIN_SCALE | ACCE_BIAS | ACCE_MAP_COEFF | GRAVITY |
+ *   SO3_BiToBr | POS_BiInBr | TO_BiToBr ]
+ */
+void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
+                                      const std::string &topic,
+                                      Opt option,
+                                      double acceWeight) {
+    // prepare metas for splines
+    SplineMetaType so3Meta, scaleMeta;
+
+    // different relative control points finding [single vs. range]
+    // for the inertial measurements from the reference IMU, there is no need to consider a time
+    // padding, as its time offsets would be fixed as identity
+    if (IsOptionWith(Opt::OPT_TO_BiToBr, option) && Configor::DataStream::RefIMUTopic != topic) {
+        double minTime = imuFrame->GetTimestamp() - Configor::Prior::TimeOffsetPadding;
+        double maxTime = imuFrame->GetTimestamp() + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!splines->TimeInRangeForSo3(minTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForSo3(maxTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForRd(minTime, Configor::Preference::SCALE_SPLINE) ||
+            !splines->TimeInRangeForRd(maxTime, Configor::Preference::SCALE_SPLINE)) {
+            return;
+        }
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{minTime, maxTime}},
+                                        so3Meta);
+        splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{minTime, maxTime}},
+                                       scaleMeta);
+    } else {
+        double curTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic);
+
+        // check point time stamp
+        if (!splines->TimeInRangeForSo3(curTime, Configor::Preference::SO3_SPLINE) ||
+            !splines->TimeInRangeForRd(curTime, Configor::Preference::SCALE_SPLINE)) {
+            return;
+        }
+        splines->CalculateSo3SplineMeta(Configor::Preference::SO3_SPLINE, {{curTime, curTime}},
+                                        so3Meta);
+        splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{curTime, curTime}},
+                                       scaleMeta);
+    }
+    // create a cost function
+    auto costFunc = IMUAcceFactor<Configor::Prior::SplineOrder, 2>::Create(so3Meta, scaleMeta,
+                                                                           imuFrame, acceWeight);
+
+    // so3 knots param block [each has four sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+    // pos knots param block [each has three sub params]
+    for (int i = 0; i < static_cast<int>(scaleMeta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(3);
+    }
+
+    // ACCE_BIAS
+    costFunc->AddParameterBlock(3);
+    // ACCE_MAP_COEFF
+    costFunc->AddParameterBlock(6);
+    // GRAVITY
+    costFunc->AddParameterBlock(3);
+    // SO3_BiToBr
+    costFunc->AddParameterBlock(4);
+    // POS_BiInBr
+    costFunc->AddParameterBlock(3);
+    // TO_BiToBr
+    costFunc->AddParameterBlock(1);
+
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
+                    !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+
+    // lin acce knots
+    AddRdKnotsData(paramBlockVec, splines->GetRdSpline(Configor::Preference::SCALE_SPLINE),
+                   scaleMeta, !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+
+    // ACCE_BIAS
+    auto acceBias = parMagr->INTRI.IMU.at(topic)->ACCE.BIAS.data();
+    paramBlockVec.push_back(acceBias);
+    // ACCE_MAP_COEFF
+    auto aceMapCoeff = parMagr->INTRI.IMU.at(topic)->ACCE.MAP_COEFF.data();
+    paramBlockVec.push_back(aceMapCoeff);
+    // GRAVITY
+    auto gravity = parMagr->GRAVITY.data();
+    paramBlockVec.push_back(gravity);
+    // SO3_BiToBc
+    auto SO3_BiToBc = parMagr->EXTRI.SO3_BiToBr.at(topic).data();
+    paramBlockVec.push_back(SO3_BiToBc);
+    // POS_BiInBc
+    auto POS_BiInBc = parMagr->EXTRI.POS_BiInBr.at(topic).data();
+    paramBlockVec.push_back(POS_BiInBc);
+    // TIME_OFFSET_BiToBc
+    auto TIME_OFFSET_BiToBc = &parMagr->TEMPORAL.TO_BiToBr.at(topic);
+    paramBlockVec.push_back(TIME_OFFSET_BiToBc);
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+    this->SetManifold(gravity, GRAVITY_MANIFOLD.get());
+    this->SetManifold(SO3_BiToBc, QUATER_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_ACCE_BIAS, option)) {
+        this->SetParameterBlockConstant(acceBias);
+    }
+
+    if (!IsOptionWith(Opt::OPT_ACCE_MAP_COEFF, option)) {
+        this->SetParameterBlockConstant(aceMapCoeff);
+    }
+
+    if (!IsOptionWith(Opt::OPT_GRAVITY, option)) {
+        this->SetParameterBlockConstant(gravity);
+    }
+
+    if (!IsOptionWith(Opt::OPT_SO3_BiToBr, option)) {
+        this->SetParameterBlockConstant(SO3_BiToBc);
+    }
+
+    if (!IsOptionWith(Opt::OPT_POS_BiInBr, option)) {
+        this->SetParameterBlockConstant(POS_BiInBc);
+    }
+
+    if (!IsOptionWith(Opt::OPT_TO_BiToBr, option)) {
+        this->SetParameterBlockConstant(TIME_OFFSET_BiToBc);
+    } else {
+        // set bound
+        this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0, Configor::Prior::TimeOffsetPadding);
     }
 }
 }  // namespace ns_ekalibr

@@ -30,7 +30,7 @@
 #include "core/estimator.h"
 
 namespace ns_ekalibr {
-void CalibSolver::AddGyroFactor(Estimator::Ptr &estimator,
+void CalibSolver::AddGyroFactor(const Estimator::Ptr &estimator,
                                 const std::string &imuTopic,
                                 Estimator::Opt option) const {
     double weight = Configor::DataStream::IMUTopics.at(imuTopic).GyroWeight;
@@ -39,4 +39,15 @@ void CalibSolver::AddGyroFactor(Estimator::Ptr &estimator,
         estimator->AddIMUGyroMeasurement(item, imuTopic, option, weight);
     }
 }
+
+void CalibSolver::AddAcceFactor(const EstimatorPtr &estimator,
+                                const std::string &imuTopic,
+                                OptOption option) const {
+    double weight = Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight;
+
+    for (const auto &item : _imuMes.at(imuTopic)) {
+        estimator->AddIMUAcceMeasurement(item, imuTopic, option, weight);
+    }
+}
+
 }  // namespace ns_ekalibr

@@ -123,7 +123,18 @@ protected:
      * @param imuTopic the ros topic of this IMU
      * @param option the option for the optimization
      */
-    void AddGyroFactor(EstimatorPtr &estimator,
+    void AddGyroFactor(const EstimatorPtr &estimator,
+                       const std::string &imuTopic,
+                       OptOption option) const;
+
+    /**
+     * add accelerometer factors for the IMU to the estimator
+     * @tparam type the linear scale spline type
+     * @param estimator the estimator
+     * @param imuTopic the ros topic of this IMU
+     * @param option the option for the optimization
+     */
+    void AddAcceFactor(const EstimatorPtr &estimator,
                        const std::string &imuTopic,
                        OptOption option) const;
 
