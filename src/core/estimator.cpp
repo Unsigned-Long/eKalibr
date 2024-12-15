@@ -34,7 +34,7 @@
 #include "factor/imu_gyro_factor.hpp"
 #include <sensor/imu_intrinsic.h>
 #include "factor/hand_eye_rot_align_factor.hpp"
-#include "factor/so3_spline_world_align.hpp"
+#include "factor/so3_spline_world_align_factor.hpp"
 #include "factor/event_inertial_align_factor.hpp"
 
 namespace ns_ekalibr {
@@ -388,6 +388,10 @@ void Estimator::AddIMUGyroMeasurement(const IMUFrame::Ptr &imuFrame,
     }
 }
 
+/**
+ * param blocks:
+ * [ SO3 | ... | SO3 | SO3_CjToBr | TO_CjToBr ]
+ */
 void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
                                        double tLastByCj,
                                        double tCurByCj,
@@ -441,9 +445,9 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
         costFunc->AddParameterBlock(4);
     }
 
-    // SO3_CmToBr
+    // SO3_CjToBr
     costFunc->AddParameterBlock(4);
-    // TO_CmToBr
+    // TO_CjToBr
     costFunc->AddParameterBlock(1);
 
     // set Residuals
@@ -456,27 +460,27 @@ void Estimator::AddHandEyeRotAlignment(const std::string &camTopic,
     AddSo3KnotsData(paramBlockVec, splines->GetSo3Spline(Configor::Preference::SO3_SPLINE), so3Meta,
                     !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
-    auto SO3_CmToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
-    paramBlockVec.push_back(SO3_CmToBr);
+    auto SO3_CjToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
+    paramBlockVec.push_back(SO3_CjToBr);
 
-    auto TO_CmToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
-    paramBlockVec.push_back(TO_CmToBr);
+    auto TO_CjToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+    paramBlockVec.push_back(TO_CjToBr);
 
     // pass to problem
     this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
 
-    this->SetManifold(SO3_CmToBr, QUATER_MANIFOLD.get());
+    this->SetManifold(SO3_CjToBr, QUATER_MANIFOLD.get());
 
     if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
-        this->SetParameterBlockConstant(SO3_CmToBr);
+        this->SetParameterBlockConstant(SO3_CjToBr);
     }
 
     if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
-        this->SetParameterBlockConstant(TO_CmToBr);
+        this->SetParameterBlockConstant(TO_CjToBr);
     } else {
         // set bound
-        this->SetParameterLowerBound(TO_CmToBr, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TO_CmToBr, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TO_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -571,7 +575,7 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
 
 /**
  * param blocks:
- * [ POS_CmInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
+ * [ POS_CjInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
  */
 void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data,
                                           const std::string &camTopic,
@@ -591,8 +595,8 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
         return;
     }
 
-    double TO_CmToBi = TO_CjToBr - parMagr->TEMPORAL.TO_BiToBr.at(imuTopic);
-    auto integrationData = InertialPosIntegration(data, imuTopic, st + TO_CmToBi, et + TO_CmToBi);
+    double TO_CjToBi = TO_CjToBr - parMagr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    auto integrationData = InertialPosIntegration(data, imuTopic, st + TO_CjToBi, et + TO_CjToBi);
     if (integrationData == std::nullopt) {
         return;
     }
@@ -604,7 +608,6 @@ void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data
     auto costFunc = EventInertialAlignFactor<Configor::Prior::SplineOrder>::Create(helper, weight);
 
     costFunc->AddParameterBlock(3);
-
     costFunc->AddParameterBlock(3);
 
     costFunc->AddParameterBlock(3);

@@ -75,20 +75,20 @@ public:
 public:
     /**
      * param blocks:
-     * [ SO3 | ... | SO3 | SO3_LkToBr | TO_LkToBr ]
+     * [ SO3 | ... | SO3 | SO3_CjToBr | TO_CjToBr ]
      */
     template <class T>
     bool operator()(T const *const *sKnots, T *sResiduals) const {
         // array offset
         std::size_t CUR_SO3_OFFSET, LAST_SO3_OFFSET;
-        std::size_t SO3_LkToBr_OFFSET = _so3Meta.NumParameters();
-        std::size_t TO_LkToBr_OFFSET = SO3_LkToBr_OFFSET + 1;
+        std::size_t SO3_CjToBr_OFFSET = _so3Meta.NumParameters();
+        std::size_t TO_CjToBr_OFFSET = SO3_CjToBr_OFFSET + 1;
 
-        Eigen::Map<Sophus::SO3<T> const> const SO3_LkToBr(sKnots[SO3_LkToBr_OFFSET]);
-        T TO_LkToBr = sKnots[TO_LkToBr_OFFSET][0];
+        Eigen::Map<Sophus::SO3<T> const> const SO3_CjToBr(sKnots[SO3_CjToBr_OFFSET]);
+        T TO_CjToBr = sKnots[TO_CjToBr_OFFSET][0];
 
-        auto tLastByBr = _tLastByLk + TO_LkToBr;
-        auto tCurByBr = _tCurByLk + TO_LkToBr;
+        auto tLastByBr = _tLastByLk + TO_CjToBr;
+        auto tCurByBr = _tCurByLk + TO_CjToBr;
 
         // calculate the so3 offset
         std::pair<std::size_t, T> iuLast;
@@ -107,8 +107,8 @@ public:
         ns_ctraj::CeresSplineHelperJet<T, Order>::EvaluateLie(sKnots + CUR_SO3_OFFSET, iuCur.second,
                                                               _so3DtInv, &SO3_CurBrToBr0);
 
-        Sophus::SO3<T> left = SO3_LkToBr * SO3_CurLkToLastLk;
-        Sophus::SO3<T> right = (SO3_LastBrToBr0.inverse() * SO3_CurBrToBr0) * SO3_LkToBr;
+        Sophus::SO3<T> left = SO3_CjToBr * SO3_CurLkToLastLk;
+        Sophus::SO3<T> right = (SO3_LastBrToBr0.inverse() * SO3_CurBrToBr0) * SO3_CjToBr;
 
         Eigen::Map<Eigen::Vector3<T>> residuals(sResiduals);
         residuals = T(_weight) * (right.inverse() * left).log();

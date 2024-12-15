@@ -61,7 +61,7 @@ public:
     EventInertialAlignHelper(const So3SplineType &so3Spline,
                              const ns_ctraj::Posed &sPose,
                              const ns_ctraj::Posed &ePose,
-                             double TO_CmToBr,
+                             double TO_CjToBr,
                              const std::pair<Eigen::Vector3d, Eigen::Matrix3d> &velVecMat,
                              const std::pair<Eigen::Vector3d, Eigen::Matrix3d> &posVecMat) {
         dt = ePose.timeStamp - sPose.timeStamp;
@@ -73,14 +73,14 @@ public:
         posVec = posVecMat.first;
         posMat = posVecMat.second;
 
-        sCMat = CMat(so3Spline, sPose.timeStamp + TO_CmToBr);
-        eCMat = CMat(so3Spline, ePose.timeStamp + TO_CmToBr);
+        sCMat = CMat(so3Spline, sPose.timeStamp + TO_CjToBr);
+        eCMat = CMat(so3Spline, ePose.timeStamp + TO_CjToBr);
         diffCMat = eCMat - sCMat;
 
         diffDMat = ePose.t - sPose.t;
 
-        diffEMat = so3Spline.Evaluate(ePose.timeStamp + TO_CmToBr).matrix() -
-                   so3Spline.Evaluate(sPose.timeStamp + TO_CmToBr).matrix();
+        diffEMat = so3Spline.Evaluate(ePose.timeStamp + TO_CjToBr).matrix() -
+                   so3Spline.Evaluate(sPose.timeStamp + TO_CjToBr).matrix();
     }
 
 protected:
@@ -114,11 +114,11 @@ public:
 public:
     /**
      * param blocks:
-     * [ POS_CmInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
+     * [ POS_CjInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
      */
     template <class T>
     bool operator()(T const *const *sKnots, T *sResiduals) const {
-        Eigen::Map<const Eigen::Vector3<T>> const POS_CmInBr(sKnots[0]);
+        Eigen::Map<const Eigen::Vector3<T>> const POS_CjInBr(sKnots[0]);
         Eigen::Map<const Eigen::Vector3<T>> const POS_BiInBr(sKnots[1]);
         Eigen::Map<const Eigen::Vector3<T>> const S_VEL(sKnots[2]);
         Eigen::Map<const Eigen::Vector3<T>> const E_VEL(sKnots[3]);
@@ -127,13 +127,13 @@ public:
         Eigen::Vector3<T> velLeft =
             helper.velVec.template cast<T>() - helper.velMat.template cast<T>() * POS_BiInBr;
         Eigen::Vector3<T> velRight =
-            E_VEL - S_VEL - helper.diffCMat.template cast<T>() * POS_CmInBr - GRAVITY * helper.dt;
+            E_VEL - S_VEL - helper.diffCMat.template cast<T>() * POS_CjInBr - GRAVITY * helper.dt;
 
         Eigen::Vector3<T> posLeft =
             helper.posVec.template cast<T>() - helper.posMat.template cast<T>() * POS_BiInBr;
         Eigen::Vector3<T> posRight =
-            helper.diffDMat.template cast<T>() - helper.diffEMat.template cast<T>() * POS_CmInBr -
-            (S_VEL - helper.sCMat.template cast<T>() * POS_CmInBr) * helper.dt -
+            helper.diffDMat.template cast<T>() - helper.diffEMat.template cast<T>() * POS_CjInBr -
+            (S_VEL - helper.sCMat.template cast<T>() * POS_CjInBr) * helper.dt -
             0.5 * GRAVITY * helper.dt2;
 
         Eigen::Map<Eigen::Vector6<T>> residuals(sResiduals);

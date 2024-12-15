@@ -28,7 +28,7 @@
 
 #include "factor/imu_gyro_factor.hpp"
 #include "factor/hand_eye_rot_align_factor.hpp"
-#include "factor/so3_spline_world_align.hpp"
+#include "factor/so3_spline_world_align_factor.hpp"
 #include "factor/event_inertial_align_factor.hpp"
 
 namespace ns_ekalibr {
