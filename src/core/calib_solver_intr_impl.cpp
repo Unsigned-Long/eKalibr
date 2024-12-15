@@ -109,7 +109,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
                 // Output vector of the RMS re-projection error estimated for each pattern view
                 perViewErrors[i],
                 // calibration flag
-                0,
+                cv::CALIB_USE_QR,
                 // Termination criteria for the iterative optimization algorithm
                 cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 1E-6));
             spdlog::info("the overall rmes (re-projection error) in {:02}-th attempt: {:.3f}", i,
