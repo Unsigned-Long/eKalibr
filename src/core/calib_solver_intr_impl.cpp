@@ -44,7 +44,7 @@ namespace ns_ekalibr {
 
 void CalibSolver::EstimateCameraIntrinsics() {
     constexpr int ATTEMPT_COUNT_PER_CAMERA = 50;
-    constexpr std::size_t FRAME_COUNT_PER_ATTEMPT = 30;
+    constexpr std::size_t FRAME_COUNT_PER_ATTEMPT = 20;
 
     std::map<std::string, cv::Mat> cameraMatrixMap;
     std::map<std::string, cv::Mat> distCoeffsMap;

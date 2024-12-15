@@ -81,6 +81,8 @@ protected:
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
     // from camera frame to world frame
     std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;
+    // start time, end  time
+    std::vector<std::pair<double, double>> _validTimeSegments;
 
 public:
     CalibSolver(CalibParamManagerPtr parMgr);
@@ -117,6 +119,8 @@ protected:
     void EventInertialAlignment() const;
 
     void InitPosSpline() const;
+
+    bool IsTimeInValidSegment(double timeByBr) const;
 
 protected:
     /**
@@ -160,6 +164,16 @@ private:
     void EraseSeqTailData(std::vector<IMUFramePtr> &seq,
                           std::function<bool(const IMUFramePtr &)> pred,
                           const std::string &errorMsg) const;
+
+    std::list<std::list<double>> ContinuousGridTrackingSegments(const std::string &camTopic,
+                                                                const double neighborTimeDistThd,
+                                                                const double minSegmentThd) const;
+
+    static std::vector<std::pair<double, double>> ContinuousSegments(
+        const std::list<std::pair<double, double>> &segBoundary, const double neighborTimeDistThd);
+
+    static bool IsTimeInSegment(
+        double t, const std::vector<std::pair<double, double>> &mergedSegmentsBoundary);
 };
 }  // namespace ns_ekalibr
 

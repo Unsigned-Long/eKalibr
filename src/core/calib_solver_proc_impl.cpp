@@ -241,6 +241,37 @@ void CalibSolver::Process() {
     _parMgr->ShowParamStatus();
 
     /**
+     * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
+     * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
+     * moving out of the field of view), it is necessary to identify the continuous segments for
+     * subsequent calibration.
+     */
+    std::list<std::pair<double, double>> segBoundary;
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        auto segments = this->ContinuousGridTrackingSegments(topic, 0.5 /*neighbor*/, 1.0 /*len*/);
+        for (const auto &segment : segments) {
+            segBoundary.emplace_back(
+                std::pair{segment.front() - Configor::Prior::TimeOffsetPadding,
+                          segment.back() + Configor::Prior::TimeOffsetPadding});
+        }
+    }
+    _validTimeSegments = ContinuousSegments(segBoundary, 0.5 /*neighbor*/);
+    {
+        std::stringstream ss;
+        double sumTime = 0.0;
+        for (const auto &[sTime, eTime] : _validTimeSegments) {
+            sumTime += eTime - sTime;
+            ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
+        }
+        const double percent =
+            sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
+        spdlog::info(
+            "finding valid time segment count: {}, percent in total data piece: {:.2f}%, "
+            "details:\n{}",
+            _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
+    }
+
+    /**
      * recover the linear scale spline using quantities from the one-shot sensor-inertial alignment
      */
     this->InitPosSpline();

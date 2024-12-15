@@ -43,6 +43,7 @@
 #include "rosbag/view.h"
 #include "core/estimator.h"
 #include "core/ceres_callback.h"
+#include <core/circle_grid.h>
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
@@ -282,6 +283,10 @@ std::string CalibSolver::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string 
     return dir + "/intrinsics" + e;
 }
 
+bool CalibSolver::IsTimeInValidSegment(double timeByBr) const {
+    return IsTimeInSegment(timeByBr, _validTimeSegments);
+}
+
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
                                    std::function<bool(const EventArrayPtr &)> pred,
                                    const std::string &errorMsg) const {
@@ -336,5 +341,82 @@ void CalibSolver::EraseSeqTailData(std::vector<IMUFramePtr> &seq,
         // adjust
         seq.erase(iter.base(), seq.end());
     }
+}
+
+std::list<std::list<double>> CalibSolver::ContinuousGridTrackingSegments(
+    const std::string &camTopic,
+    const double neighborTimeDistThd,
+    const double minSegmentThd) const {
+    const auto &grid2dVec = _extractedPatterns.at(camTopic)->GetGrid2d();
+
+    std::list<std::list<double>> segments;
+    std::list<double> curSegment{grid2dVec.front()->timestamp};
+
+    for (auto jIter = std::next(grid2dVec.cbegin()); jIter != grid2dVec.cend(); jIter++) {
+        const auto &jGrid = *jIter;
+        const auto &iGrid = *std::prev(jIter);
+        if (jGrid->timestamp - iGrid->timestamp < neighborTimeDistThd) {
+            curSegment.push_back(jGrid->timestamp);
+        } else {
+            // the last segment is a valid one
+            if (curSegment.size() >= 2 && curSegment.back() - curSegment.front() > minSegmentThd) {
+                segments.push_back(curSegment);
+            }
+            // create a new segment
+            curSegment = {jGrid->timestamp};
+        }
+    }
+
+    // the last one
+    if (curSegment.size() >= 2 && curSegment.back() - curSegment.front() > minSegmentThd) {
+        segments.push_back(curSegment);
+    }
+    return segments;
+}
+
+std::vector<std::pair<double, double>> CalibSolver::ContinuousSegments(
+    const std::list<std::pair<double, double>> &segBoundary, const double neighborTimeDistThd) {
+    if (segBoundary.empty()) return {};
+
+    std::vector sortedSegments(segBoundary.begin(), segBoundary.end());
+    std::sort(sortedSegments.begin(), sortedSegments.end());
+
+    std::list<std::pair<double, double>> mergedSegments;
+
+    std::pair<double, double> currentSegment = sortedSegments[0];
+
+    for (size_t i = 1; i < sortedSegments.size(); ++i) {
+        const auto &nextSegment = sortedSegments[i];
+
+        if (nextSegment.first < currentSegment.second + neighborTimeDistThd) {
+            currentSegment.second = std::max(currentSegment.second, nextSegment.second);
+        } else {
+            mergedSegments.push_back(currentSegment);
+            currentSegment = nextSegment;
+        }
+    }
+
+    mergedSegments.push_back(currentSegment);
+
+    return {mergedSegments.cbegin(), mergedSegments.cend()};
+}
+
+bool CalibSolver::IsTimeInSegment(
+    double t, const std::vector<std::pair<double, double>> &mergedSegmentsBoundary) {
+    // Perform binary search to find the segment that might contain time point t
+    auto it = std::lower_bound(mergedSegmentsBoundary.begin(), mergedSegmentsBoundary.end(), t,
+                               [](const std::pair<double, double> &seg, double time) {
+                                   return seg.second < time;  // Sort by end time
+                               });
+
+    // If no segment found, return false
+    if (it == mergedSegmentsBoundary.begin()) {
+        return false;
+    }
+
+    --it;  // Move back to the segment that may contain the time point t
+
+    // Check if time point t is within the current segment
+    return t >= it->first && t <= it->second;
 }
 }  // namespace ns_ekalibr
