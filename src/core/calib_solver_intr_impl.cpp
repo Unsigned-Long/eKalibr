@@ -43,7 +43,8 @@
 namespace ns_ekalibr {
 
 void CalibSolver::EstimateCameraIntrinsics() {
-    constexpr int ATTEMPT_COUNT_PER_CAMERA = 20;
+    constexpr int ATTEMPT_COUNT_PER_CAMERA = 50;
+    constexpr std::size_t FRAME_COUNT_PER_ATTEMPT = 30;
 
     std::map<std::string, cv::Mat> cameraMatrixMap;
     std::map<std::string, cv::Mat> distCoeffsMap;
@@ -57,9 +58,10 @@ void CalibSolver::EstimateCameraIntrinsics() {
         for (const auto &grid2d : patterns->GetGrid2d()) {
             gridPoints2DVec.push_back(grid2d->centers);
         }
-        const std::size_t GRID_COUNT_PER_ATTEMPT = std::min(50UL, patterns->GetGrid2d().size());
+        const std::size_t GRID3D_COUNT_PER_ATTEMPT =
+            std::min(FRAME_COUNT_PER_ATTEMPT, patterns->GetGrid2d().size());
 
-        std::vector gridPoints3DVec(GRID_COUNT_PER_ATTEMPT, patterns->GetGrid3d()->points);
+        std::vector gridPoints3DVec(GRID3D_COUNT_PER_ATTEMPT, patterns->GetGrid3d()->points);
 
         // image size
         const auto &config = Configor::DataStream::EventTopics.at(topic);
@@ -79,7 +81,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
         for (int i = 0; i < ATTEMPT_COUNT_PER_CAMERA; i++) {
             std::default_random_engine generator(
                 std::chrono::system_clock::now().time_since_epoch().count());
-            auto grids = SamplingWoutReplace2(generator, gridPoints2DVec, GRID_COUNT_PER_ATTEMPT);
+            auto grids = SamplingWoutReplace2(generator, gridPoints2DVec, GRID3D_COUNT_PER_ATTEMPT);
 
             rmse[i] = cv::calibrateCamera(
                 // a vector of vectors of calibration pattern points in the calibration pattern
@@ -107,7 +109,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
                 // Output vector of the RMS re-projection error estimated for each pattern view
                 perViewErrors[i],
                 // calibration flag
-                cv::CALIB_USE_LU,
+                0,
                 // Termination criteria for the iterative optimization algorithm
                 cv::TermCriteria(cv::TermCriteria::COUNT + cv::TermCriteria::EPS, 30, 1E-6));
             spdlog::info("the overall rmes (re-projection error) in {:02}-th attempt: {:.3f}", i,
