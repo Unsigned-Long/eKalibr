@@ -59,6 +59,8 @@ enum class OptOption : std::uint64_t;
 class CalibSolver {
 public:
     using Ptr = std::shared_ptr<CalibSolver>;
+    using So3SplineType = ns_ctraj::So3Spline<Configor::Prior::SplineOrder>;
+    using PosSplineType = ns_ctraj::RdSpline<3, Configor::Prior::SplineOrder>;
     using SplineBundleType = ns_ctraj::SplineBundle<Configor::Prior::SplineOrder>;
 
 protected:
@@ -91,7 +93,7 @@ protected:
     // start time, end  time
     std::vector<std::pair<double, double>> _validTimeSegments;
     // the full so3 spline
-    SplineBundleType::So3SplineType _fullSo3Spline;
+    So3SplineType _fullSo3Spline;
     // options used for ceres-related optimization
     ceres::Solver::Options _ceresOption;
 
@@ -109,12 +111,9 @@ protected:
 
     void OutputDataStatus() const;
 
-    static SplineBundleType::Ptr CreateSplineBundle(double st,
-                                                    double et,
-                                                    double so3Dt,
-                                                    double scaleDt);
+    static So3SplineType CreateSo3Spline(double st, double et, double so3Dt);
 
-    static SplineBundleType::So3SplineType CreateSo3Spline(double st, double et, double so3Dt);
+    static PosSplineType CreatePosSpline(double st, double et, double posDt);
 
     static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
 
@@ -137,15 +136,15 @@ protected:
 
 protected:
     void AddGyroFactor(const EstimatorPtr &estimator,
-                       const SplineBundleType::So3SplineType &so3Spline,
+                       const So3SplineType &so3Spline,
                        const std::string &imuTopic,
                        OptOption option,
                        bool useThoseInSegments,
                        const std::optional<double> &weight) const;
 
     void AddAcceFactor(const EstimatorPtr &estimator,
-                       const SplineBundleType::So3SplineType &so3Spline,
-                       const SplineBundleType::RdSplineType &posSpline,
+                       const So3SplineType &so3Spline,
+                       const PosSplineType &posSpline,
                        const std::string &imuTopic,
                        OptOption option,
                        bool useThoseInSegments,

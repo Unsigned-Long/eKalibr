@@ -79,6 +79,8 @@ class Estimator : public ceres::Problem {
 public:
     using Ptr = std::shared_ptr<Estimator>;
     using SplineBundleType = ns_ctraj::SplineBundle<Configor::Prior::SplineOrder>;
+    using So3SplineType = ns_ctraj::So3Spline<Configor::Prior::SplineOrder>;
+    using PosSplineType = ns_ctraj::RdSpline<3, Configor::Prior::SplineOrder>;
     using SplineMetaType = ns_ctraj::SplineMeta<Configor::Prior::SplineOrder>;
     using Opt = OptOption;
 
@@ -112,19 +114,19 @@ public:
 
 protected:
     void AddSo3KnotsData(std::vector<double *> &paramBlockVec,
-                         const SplineBundleType::So3SplineType &spline,
+                         const So3SplineType &spline,
                          const SplineMetaType &splineMeta,
                          bool setToConst);
 
     void AddRdKnotsData(std::vector<double *> &paramBlockVec,
-                        const SplineBundleType::RdSplineType &spline,
+                        const PosSplineType &spline,
                         const SplineMetaType &splineMeta,
                         bool setToConst);
 
     static Eigen::MatrixXd CRSMatrix2EigenMatrix(const ceres::CRSMatrix *jacobian_crs_matrix);
 
     std::optional<std::pair<Eigen::Vector3d, Eigen::Matrix3d>> InertialVelIntegration(
-        const SplineBundleType::So3SplineType &so3Spline,
+        const So3SplineType &so3Spline,
         const std::vector<IMUFrame::Ptr> &data,
         const std::string &imuTopic,
         double sTimeByBi,
@@ -132,7 +134,7 @@ protected:
 
     std::optional<std::pair<std::pair<Eigen::Vector3d, Eigen::Matrix3d>,
                             std::pair<Eigen::Vector3d, Eigen::Matrix3d>>>
-    InertialPosIntegration(const SplineBundleType::So3SplineType &so3Spline,
+    InertialPosIntegration(const So3SplineType &so3Spline,
                            const std::vector<IMUFrame::Ptr> &data,
                            const std::string &imuTopic,
                            double sTimeByBi,
@@ -140,7 +142,7 @@ protected:
 
     std::pair<std::vector<std::pair<double, Eigen::Vector3d>>,
               std::vector<std::pair<double, Eigen::Matrix3d>>>
-    InertialIntegrationBase(const SplineBundleType::So3SplineType &so3Spline,
+    InertialIntegrationBase(const So3SplineType &so3Spline,
                             const std::vector<IMUFrame::Ptr> &data,
                             const std::string &imuTopic,
                             double sTimeByBi,
@@ -157,13 +159,13 @@ protected:
     }
 
 public:
-    void AddIMUGyroMeasurement(const SplineBundleType::So3SplineType &so3Spline,
+    void AddIMUGyroMeasurement(const So3SplineType &so3Spline,
                                const IMUFrame::Ptr &imuFrame,
                                const std::string &topic,
                                Opt option,
                                double gyroWeight);
 
-    void AddHandEyeRotAlignment(const SplineBundleType::So3SplineType &so3Spline,
+    void AddHandEyeRotAlignment(const So3SplineType &so3Spline,
                                 const std::string &camTopic,
                                 double tLastByCj,
                                 double tCurByCj,
@@ -172,7 +174,7 @@ public:
                                 Opt option,
                                 double weight);
 
-    void AddSo3SplineAlignToWorldConstraint(const SplineBundleType::So3SplineType &so3Spline,
+    void AddSo3SplineAlignToWorldConstraint(const So3SplineType &so3Spline,
                                             Sophus::SO3d *SO3_Br0ToW,
                                             const std::string &camTopic,
                                             double timeByCj,
@@ -180,7 +182,7 @@ public:
                                             Opt option,
                                             double weight);
 
-    void AddEventInertialAlignment(const SplineBundleType::So3SplineType &so3Spline,
+    void AddEventInertialAlignment(const So3SplineType &so3Spline,
                                    const std::vector<IMUFrame::Ptr> &data,
                                    const std::string &camTopic,
                                    const std::string &imuTopic,
@@ -191,14 +193,14 @@ public:
                                    Opt option,
                                    double weight);
 
-    void AddIMUAcceMeasurement(const SplineBundleType::So3SplineType &so3Spline,
-                               const SplineBundleType::RdSplineType &posSpline,
+    void AddIMUAcceMeasurement(const So3SplineType &so3Spline,
+                               const PosSplineType &posSpline,
                                const IMUFrame::Ptr &imuFrame,
                                const std::string &topic,
                                Opt option,
                                double acceWeight);
 
-    void AddPositionConstraint(const SplineBundleType::RdSplineType &posSpline,
+    void AddPositionConstraint(const PosSplineType &posSpline,
                                double timeByBr,
                                const Eigen::Vector3d &pos,
                                Opt option,
