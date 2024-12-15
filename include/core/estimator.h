@@ -190,6 +190,11 @@ public:
                                const std::string &topic,
                                Opt option,
                                double acceWeight);
+
+    void AddPositionConstraint(double timeByBr,
+                               const Eigen::Vector3d &pos,
+                               Opt option,
+                               double weight);
 };
 }  // namespace ns_ekalibr
 

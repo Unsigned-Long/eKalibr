@@ -37,6 +37,7 @@
 #include "factor/so3_spline_world_align_factor.hpp"
 #include "factor/event_inertial_align_factor.hpp"
 #include "factor/imu_acce_factor.hpp"
+#include "factor/lin_scale_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -779,5 +780,42 @@ void Estimator::AddIMUAcceMeasurement(const IMUFrame::Ptr &imuFrame,
         this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0, -Configor::Prior::TimeOffsetPadding);
         this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0, Configor::Prior::TimeOffsetPadding);
     }
+}
+
+void Estimator::AddPositionConstraint(double timeByBr,
+                                      const Eigen::Vector3d &pos,
+                                      Opt option,
+                                      double weight) {
+    const auto &scaleSpline = splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+    // check point time stamp
+    if (!scaleSpline.TimeStampInRange(timeByBr)) {
+        return;
+    }
+
+    SplineMetaType scaleMeta;
+    splines->CalculateRdSplineMeta(Configor::Preference::SCALE_SPLINE, {{timeByBr, timeByBr}},
+                                   scaleMeta);
+
+    // create a cost function
+    auto costFunc = LinearScaleDerivFactor<Configor::Prior::SplineOrder, 0>::Create(
+        scaleMeta, timeByBr, pos, weight);
+
+    // pos knots param block [each has three sub params]
+    for (int i = 0; i < static_cast<int>(scaleMeta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(3);
+    }
+
+    // the Residual
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // lin acce knots
+    AddRdKnotsData(paramBlockVec, splines->GetRdSpline(Configor::Preference::SCALE_SPLINE),
+                   scaleMeta, !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
 }
 }  // namespace ns_ekalibr

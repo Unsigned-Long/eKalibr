@@ -31,6 +31,7 @@
 #include "factor/so3_spline_world_align_factor.hpp"
 #include "factor/event_inertial_align_factor.hpp"
 #include "factor/imu_acce_factor.hpp"
+#include "factor/lin_scale_factor.hpp"
 
 namespace ns_ekalibr {
 template struct IMUGyroFactor<Configor ::Prior::SplineOrder>;
@@ -39,4 +40,7 @@ template struct So3SplineAlignToWorldFactor<Configor::Prior::SplineOrder>;
 template struct EventInertialAlignHelper<Configor::Prior::SplineOrder>;
 template struct EventInertialAlignFactor<Configor::Prior::SplineOrder>;
 template struct IMUAcceFactor<Configor::Prior::SplineOrder, 2>;
+template struct LinearScaleDerivFactor<Configor::Prior::SplineOrder, 2>;
+template struct LinearScaleDerivFactor<Configor::Prior::SplineOrder, 1>;
+template struct LinearScaleDerivFactor<Configor::Prior::SplineOrder, 0>;
 }  // namespace ns_ekalibr
