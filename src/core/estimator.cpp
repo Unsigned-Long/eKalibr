@@ -35,6 +35,7 @@
 #include <sensor/imu_intrinsic.h>
 #include "factor/hand_eye_rot_align_factor.hpp"
 #include "factor/so3_spline_world_align.hpp"
+#include "factor/event_inertial_align_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -565,6 +566,80 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(Sophus::SO3d *SO3_Br0ToW,
         // set bound
         this->SetParameterLowerBound(TO_CmToBr, 0, -Configor::Prior::TimeOffsetPadding);
         this->SetParameterUpperBound(TO_CmToBr, 0, Configor::Prior::TimeOffsetPadding);
+    }
+}
+
+/**
+ * param blocks:
+ * [ POS_CmInBr | POS_BiInBr | S_VEL | E_VEL | GRAVITY ]
+ */
+void Estimator::AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data,
+                                          const std::string &camTopic,
+                                          const std::string &imuTopic,
+                                          const ns_ctraj::Posed &sPose,
+                                          const ns_ctraj::Posed &ePose,
+                                          Eigen::Vector3d *sVel,
+                                          Eigen::Vector3d *eVel,
+                                          Opt option,
+                                          double weight) {
+    const auto &so3Spline = splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    double st = sPose.timeStamp, et = ePose.timeStamp;
+    double TO_CjToBr = parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+
+    if (!so3Spline.TimeStampInRange(st + TO_CjToBr) ||
+        !so3Spline.TimeStampInRange(et + TO_CjToBr)) {
+        return;
+    }
+
+    double TO_CmToBi = TO_CjToBr - parMagr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    auto integrationData = InertialPosIntegration(data, imuTopic, st + TO_CmToBi, et + TO_CmToBi);
+    if (integrationData == std::nullopt) {
+        return;
+    }
+    auto [velVecMat, posVecMat] = *integrationData;
+
+    // create a cost function
+    auto helper = EventInertialAlignHelper<Configor::Prior::SplineOrder>(
+        so3Spline, sPose, ePose, TO_CjToBr, velVecMat, posVecMat);
+    auto costFunc = EventInertialAlignFactor<Configor::Prior::SplineOrder>::Create(helper, weight);
+
+    costFunc->AddParameterBlock(3);
+
+    costFunc->AddParameterBlock(3);
+
+    costFunc->AddParameterBlock(3);
+    costFunc->AddParameterBlock(3);
+
+    costFunc->AddParameterBlock(3);
+
+    costFunc->SetNumResiduals(6);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    auto POS_CjInBr = parMagr->EXTRI.POS_CjInBr.at(camTopic).data();
+    paramBlockVec.push_back(POS_CjInBr);
+
+    auto POS_BiInBr = parMagr->EXTRI.POS_BiInBr.at(imuTopic).data();
+    paramBlockVec.push_back(POS_BiInBr);
+
+    paramBlockVec.push_back(sVel->data());
+    paramBlockVec.push_back(eVel->data());
+
+    auto GRAVITY = parMagr->GRAVITY.data();
+    paramBlockVec.push_back(GRAVITY);
+
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+    this->SetManifold(GRAVITY, GRAVITY_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_POS_CjInBr, option)) {
+        this->SetParameterBlockConstant(POS_CjInBr);
+    }
+    if (!IsOptionWith(Opt::OPT_POS_BiInBr, option)) {
+        this->SetParameterBlockConstant(POS_BiInBr);
+    }
+    if (!IsOptionWith(Opt::OPT_GRAVITY, option)) {
+        this->SetParameterBlockConstant(GRAVITY);
     }
 }
 }  // namespace ns_ekalibr

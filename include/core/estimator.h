@@ -33,6 +33,7 @@
 #include "config/configor.h"
 #include "ctraj/core/spline_bundle.h"
 #include "sensor/imu.hpp"
+#include <ctraj/core/pose.hpp>
 
 namespace ns_ekalibr {
 class CalibParamManager;
@@ -174,6 +175,16 @@ public:
                                             const Sophus::SO3d &SO3_CurCjToW,
                                             Opt option,
                                             double weight);
+
+    void AddEventInertialAlignment(const std::vector<IMUFrame::Ptr> &data,
+                                   const std::string &camTopic,
+                                   const std::string &imuTopic,
+                                   const ns_ctraj::Posed &sPose,
+                                   const ns_ctraj::Posed &ePose,
+                                   Eigen::Vector3d *sVel,
+                                   Eigen::Vector3d *eVel,
+                                   Opt option,
+                                   double weight);
 };
 }  // namespace ns_ekalibr
 

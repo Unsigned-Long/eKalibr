@@ -169,6 +169,7 @@ void CalibSolver::EventInertialAlignment() const {
         }
     }
     auto sum = estimator->Solve(_ceresOption);
+    estimator = nullptr;
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     // transform the initialized SO3 spline to the world coordinate system
@@ -187,16 +188,65 @@ void CalibSolver::EventInertialAlignment() const {
     spdlog::info("rough assigned gravity in world frame: ['{:.3f}', '{:.3f}', '{:.3f}']",
                  _parMgr->GRAVITY(0), _parMgr->GRAVITY(1), _parMgr->GRAVITY(2));
 
+    spdlog::info(
+        "perform event-inertial alignment to recover event-inertial extrinsic translations and "
+        "refine the world-frame gravity...");
+    estimator = Estimator::Create(_splines, _parMgr);
+    /**
+     * we do not optimization the already initialized extrinsic rotations here
+     */
     auto optOption = OptOption::OPT_POS_CjInBr |  // camera extrinsic translations
                      OptOption::OPT_POS_BiInBr |  // imu extrinsic translations
                      OptOption::OPT_GRAVITY;      // gravity
 
     static constexpr double MIN_ALIGN_TIME = 1E-3 /* 0.001 sed */;
-    static constexpr double MAX_ALIGN_TIME = 1.0 /* 1.0 sed */;
+    static constexpr double MAX_ALIGN_TIME = 0.5 /* 1.0 sed */;
 
     std::map<std::string, std::vector<Eigen::Vector3d>> linVelSeqCm;
     for (const auto& [topic, poseVec] : _camPoses) {
+        linVelSeqCm[topic] = std::vector<Eigen::Vector3d>(poseVec.size(), Eigen::Vector3d::Zero());
+        auto& curCamLinVelSeq = linVelSeqCm.at(topic);
+        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto& imuFrames = _imuMes.at(Configor::DataStream::RefIMUTopic);
+
+        spdlog::info("add visual-inertial alignment factors for '{}' and '{}', align step: {}",
+                     topic, Configor::DataStream::RefIMUTopic, ALIGN_STEP);
+
+        for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; ++i) {
+            const auto& sPose = poseVec.at(i);
+            const auto& ePose = poseVec.at(i + ALIGN_STEP);
+
+            if (sPose.timeStamp + TO_CjToBr < st || ePose.timeStamp + TO_CjToBr > et) {
+                continue;
+            }
+
+            if (ePose.timeStamp - sPose.timeStamp < MIN_ALIGN_TIME ||
+                ePose.timeStamp - sPose.timeStamp > MAX_ALIGN_TIME) {
+                continue;
+            }
+
+            estimator->AddEventInertialAlignment(
+                imuFrames,                            // the imu frames
+                topic,                                // the ros topic of the camera
+                Configor::DataStream::RefIMUTopic,    // the ros topic of the imu
+                sPose,                                // the start pose
+                ePose,                                // the end pose
+                &curCamLinVelSeq.at(i),               // the start velocity (to be estimated)
+                &curCamLinVelSeq.at(i + ALIGN_STEP),  // the end velocity (to be estimated)
+                optOption,                            // the optimize option
+                weight);                              // the weigh
+        }
     }
+
+    // fix spatiotemporal parameters of reference sensor
+    // make this problem full rank
+    estimator->SetRefIMUParamsConstant();
+
+    sum = estimator->Solve(_ceresOption);
+    estimator = nullptr;
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+    _viewer->UpdateSplineViewer();
 }
 
 }  // namespace ns_ekalibr
