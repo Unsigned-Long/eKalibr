@@ -34,35 +34,37 @@
 namespace ns_ekalibr {
 
 void CalibSolver::InitPosSpline() const {
-    spdlog::info("performing scale spline recovery...");
+    spdlog::info("performing position spline recovery...");
 
     /**
      * we throw the head and tail data as the rotations from the fitted SO3 Spline in that range are
      * poor
      */
-    // auto estimator = Estimator::Create(_parMgr);
-    // auto optOption = OptOption::OPT_SCALE_SPLINE;
+    auto estimator = Estimator::Create(_parMgr);
+    auto optOption = OptOption::OPT_SCALE_SPLINE;
 
     // add camera position constraints
-    // for (const auto& [topic, poseVec] : _camPoses) {
-    //     const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-    //     const auto& SE3_BrToCj = _parMgr->EXTRI.SE3_CjToBr(topic).inverse();
-    //
-    //     for (const auto& pose : poseVec) {
-    //         const double timeByBr = pose.timeStamp + TO_CjToBr;
-    //
-    //         if (timeByBr < st || timeByBr > et) {
-    //             continue;
-    //         }
-    //         const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
-    //         estimator->AddPositionConstraint(scaleSpline, timeByBr, SE3_BrToW.translation(),
-    //                                          optOption, 10.0);
-    //     }
-    // }
-    //
-    // this->AddAcceFactor(estimator, so3Spline, scaleSpline, Configor::DataStream::RefIMUTopic,
-    //                     optOption, true, 1.0);
-    // auto sum = estimator->Solve(_ceresOption);
-    // spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+    for (const auto& [topic, poseVec] : _camPoses) {
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto& SE3_BrToCj = _parMgr->EXTRI.SE3_CjToBr(topic).inverse();
+
+        for (const auto& pose : poseVec) {
+            const double timeByBr = pose.timeStamp + TO_CjToBr;
+
+            auto idx = IsTimeInValidSegment(timeByBr);
+            if (idx < 0 || idx >= static_cast<int>(_validTimeSegments.size())) {
+                continue;
+            }
+
+            const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, timeByBr,
+                                             SE3_BrToW.translation(), optOption, 10.0);
+        }
+    }
+
+    AddAcceFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic, optOption, 0.1);
+
+    auto sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
 }  // namespace ns_ekalibr
