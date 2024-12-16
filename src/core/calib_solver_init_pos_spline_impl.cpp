@@ -62,7 +62,9 @@ void CalibSolver::InitPosSpline() const {
         }
     }
 
-    AddAcceFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic, optOption, 0.1);
+    AddAcceFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic, optOption,
+                                  0.1, /*weight*/
+                                  100 /*down sampling rate*/);
 
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());

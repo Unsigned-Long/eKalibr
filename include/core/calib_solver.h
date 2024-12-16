@@ -55,6 +55,8 @@ using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 class Estimator;
 using EstimatorPtr = std::shared_ptr<Estimator>;
 enum class OptOption : std::uint64_t;
+struct VisualProjectionPair;
+using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
 
 class CalibSolver {
 public:
@@ -97,6 +99,8 @@ protected:
     So3SplineType _fullSo3Spline;
     // options used for ceres-related optimization
     ceres::Solver::Options _ceresOption;
+    // visual reprojection pairs
+    std::map<std::string, std::vector<VisualProjectionPairPtr>> _evProjPairs;
 
 public:
     CalibSolver(CalibParamManagerPtr parMgr);
@@ -137,21 +141,30 @@ protected:
 
     int IsTimeInValidSegment(double timeByBr) const;
 
+    void BatchOptimizations();
+
 protected:
     void AddGyroFactorToFullSo3Spline(const EstimatorPtr &estimator,
                                       const std::string &imuTopic,
                                       OptOption option,
                                       const std::optional<double> &weight) const;
 
-    void AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
-                                       const std::string &imuTopic,
-                                       OptOption option,
-                                       const std::optional<double> &weight) const;
+    std::size_t AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
+                                              const std::string &imuTopic,
+                                              OptOption option,
+                                              const std::optional<double> &weight,
+                                              std::optional<double> dsRate = {}) const;
 
-    void AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
-                                       const std::string &imuTopic,
-                                       OptOption option,
-                                       const std::optional<double> &weight) const;
+    std::size_t AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
+                                              const std::string &imuTopic,
+                                              OptOption option,
+                                              const std::optional<double> &weight,
+                                              std::optional<double> dsRate = {}) const;
+
+    std::size_t AddVisualProjPairsToSplineSegments(const EstimatorPtr &estimator,
+                                                   const std::string &camTopic,
+                                                   OptOption option,
+                                                   const std::optional<double> &weight) const;
 
 private:
     // remove the head data according to the pred

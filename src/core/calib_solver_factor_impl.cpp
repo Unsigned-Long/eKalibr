@@ -29,6 +29,7 @@
 #include "core/calib_solver.h"
 #include "core/estimator.h"
 #include "core/calib_param_mgr.h"
+#include <factor/visual_projection_factor.hpp>
 
 namespace ns_ekalibr {
 void CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &estimator,
@@ -42,29 +43,55 @@ void CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &estimator,
     }
 }
 
-void CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
-                                                const std::string &imuTopic,
-                                                OptOption option,
-                                                const std::optional<double> &w) const {
+std::size_t CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
+                                                       const std::string &imuTopic,
+                                                       OptOption option,
+                                                       const std::optional<double> &w,
+                                                       std::optional<double> dsRate) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    std::size_t index = 0, count = 0;
+    std::size_t pick = 1UL;
+    if (dsRate == std::nullopt) {
+        const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
+        const double freq = _imuMes.at(imuTopic).size() / dt;
+        pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
+    }
     for (const auto &frame : _imuMes.at(imuTopic)) {
+        if (++index % pick != 0) {
+            continue;
+        }
+
         auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
         if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
         }
         estimator->AddIMUGyroMeasurement(_splineSegments.at(idx).first, frame, imuTopic, option,
                                          weight);
+        ++count;
     }
+    return count;
 }
 
-void CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
-                                                const std::string &imuTopic,
-                                                OptOption option,
-                                                const std::optional<double> &w) const {
+std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
+                                                       const std::string &imuTopic,
+                                                       OptOption option,
+                                                       const std::optional<double> &w,
+                                                       std::optional<double> dsRate) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    std::size_t index = 0, count = 0;
+    std::size_t pick = 1UL;
+    if (dsRate == std::nullopt) {
+        const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
+        const double freq = _imuMes.at(imuTopic).size() / dt;
+        pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
+    }
     for (const auto &frame : _imuMes.at(imuTopic)) {
+        if (++index % pick != 0) {
+            continue;
+        }
+
         auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
         if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
@@ -72,6 +99,29 @@ void CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
         estimator->AddIMUAcceMeasurement(_splineSegments.at(idx).first,
                                          _splineSegments.at(idx).second, frame, imuTopic, option,
                                          weight);
+        ++count;
     }
+    return count;
+}
+
+std::size_t CalibSolver::AddVisualProjPairsToSplineSegments(const EstimatorPtr &estimator,
+                                                            const std::string &camTopic,
+                                                            OptOption option,
+                                                            const std::optional<double> &w) const {
+    auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
+    const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
+    std::size_t count = 0;
+
+    for (const auto &pair : _evProjPairs.at(camTopic)) {
+        auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            continue;
+        }
+        estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
+                                             _splineSegments.at(idx).second, camTopic, pair, option,
+                                             weight * 1E-3);
+        ++count;
+    }
+    return count;
 }
 }  // namespace ns_ekalibr

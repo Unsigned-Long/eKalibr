@@ -254,6 +254,12 @@ void CalibSolver::Process() {
     this->InitPosSpline();
     _parMgr->ShowParamStatus();
 
+    /**
+     * perform several batch optimizaitons to refine all initialized states to global optimal ones
+     */
+    this->BatchOptimizations();
+    _parMgr->ShowParamStatus();
+
     _solveFinished = true;
 }
 }  // namespace ns_ekalibr

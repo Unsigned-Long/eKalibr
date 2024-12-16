@@ -42,9 +42,22 @@ namespace ns_ekalibr {
 struct VisualProjectionPair {
     using Ptr = std::shared_ptr<VisualProjectionPair>;
 
+    double timestamp;
     Eigen::Vector3d point3d;
     Eigen::Vector2d pixel2d;
-    double timestamp;
+
+    VisualProjectionPair(double timestamp,
+                         const Eigen::Vector3d &point3d,
+                         const Eigen::Vector2d &pixel2d)
+        : timestamp(timestamp),
+          point3d(point3d),
+          pixel2d(pixel2d) {}
+
+    static Ptr Create(double timestamp,
+                      const Eigen::Vector3d &point3d,
+                      const Eigen::Vector2d &pixel2d) {
+        return std::make_shared<VisualProjectionPair>(timestamp, point3d, pixel2d);
+    }
 };
 
 template <int Order>
