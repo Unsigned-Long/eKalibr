@@ -38,6 +38,8 @@
 namespace ns_ekalibr {
 class CalibParamManager;
 using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
+struct VisualProjectionPair;
+using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
 
 using namespace magic_enum::bitwise_operators;
 
@@ -68,11 +70,12 @@ enum class OptOption : std::uint64_t {
 
     OPT_CAM_FOCAL_LEN = static_cast<std::uint64_t>(1) << 15,
     OPT_CAM_PRINCIPAL_POINT = static_cast<std::uint64_t>(1) << 16,
+    OPT_CAM_DIST_COEFFS = static_cast<std::uint64_t>(1) << 17,
 
     ALL = OPT_SO3_SPLINE | OPT_SCALE_SPLINE | OPT_SO3_BiToBr | OPT_SO3_CjToBr | OPT_POS_BiInBr |
           OPT_POS_CjInBr | OPT_TO_BiToBr | OPT_TO_CjToBr | OPT_GYRO_BIAS | OPT_GYRO_MAP_COEFF |
           OPT_ACCE_BIAS | OPT_ACCE_MAP_COEFF | OPT_SO3_AtoG | OPT_GRAVITY | OPT_CAM_FOCAL_LEN |
-          OPT_CAM_PRINCIPAL_POINT
+          OPT_CAM_PRINCIPAL_POINT | OPT_CAM_DIST_COEFFS
 };
 
 class Estimator : public ceres::Problem {
@@ -211,6 +214,13 @@ public:
                           const Sophus::SO3d &so3,
                           Opt option,
                           double weight);
+
+    void AddVisualProjectionFactor(const So3SplineType &so3Spline,
+                                   const PosSplineType &posSpline,
+                                   const std::string &camTopic,
+                                   const VisualProjectionPairPtr &pair,
+                                   Opt option,
+                                   double weight);
 };
 }  // namespace ns_ekalibr
 

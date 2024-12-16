@@ -39,6 +39,8 @@
 #include "factor/imu_acce_factor.hpp"
 #include "factor/lin_scale_factor.hpp"
 #include "factor/so3_factor.hpp"
+#include "factor/visual_projection_factor.hpp"
+#include <veta/camera/pinhole.h>
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -835,5 +837,133 @@ void Estimator::AddSo3Constraint(const So3SplineType &so3Spline,
 
     // pass to problem
     this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+}
+
+/**
+ * param blocks:
+ * [ SO3 | ... | SO3 | LIN_SCALE | ... | LIN_SCALE | SO3_CjToBr | POS_CjInBr | TO_CjToBr |
+ *   FX | FY | CX | CY | DIST_COEFFS ]
+ */
+void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
+                                          const PosSplineType &posSpline,
+                                          const std::string &camTopic,
+                                          const VisualProjectionPairPtr &pair,
+                                          Opt option,
+                                          double weight) {
+    // prepare metas for splines
+    SplineMetaType so3Meta, scaleMeta;
+
+    if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        double minTime = pair->timestamp - Configor::Prior::TimeOffsetPadding;
+        double maxTime = pair->timestamp + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!so3Spline.TimeStampInRange(minTime) || !so3Spline.TimeStampInRange(maxTime) ||
+            !posSpline.TimeStampInRange(minTime) || !posSpline.TimeStampInRange(maxTime)) {
+            return;
+        }
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{minTime, maxTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(posSpline, {{minTime, maxTime}}, scaleMeta);
+    } else {
+        double curTime = pair->timestamp + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+
+        // check point time stamp
+        if (!so3Spline.TimeStampInRange(curTime) || !posSpline.TimeStampInRange(curTime)) {
+            return;
+        }
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{curTime, curTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(posSpline, {{curTime, curTime}}, scaleMeta);
+    }
+    // create a cost function
+    auto costFunc = VisualProjectionFactor<Configor::Prior::SplineOrder>::Create(so3Meta, scaleMeta,
+                                                                                 pair, weight);
+
+    // so3 knots param block [each has four sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+    // pos knots param block [each has three sub params]
+    for (int i = 0; i < static_cast<int>(scaleMeta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(3);
+    }
+
+    // SO3_CjToBr
+    costFunc->AddParameterBlock(4);
+    // POS_CjInBr
+    costFunc->AddParameterBlock(3);
+    // TO_CjToBr
+    costFunc->AddParameterBlock(1);
+    // Fx
+    costFunc->AddParameterBlock(1);
+    // Fy
+    costFunc->AddParameterBlock(1);
+    // Cx
+    costFunc->AddParameterBlock(1);
+    // Cy
+    costFunc->AddParameterBlock(1);
+    // k1, k2, k3, p1, p2
+    costFunc->AddParameterBlock(5);
+
+    costFunc->SetNumResiduals(2);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+
+    // lin acce knots
+    AddRdKnotsData(paramBlockVec, posSpline, scaleMeta,
+                   !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+
+    // SO3_CjToBr
+    auto SO3_CjToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
+    paramBlockVec.push_back(SO3_CjToBr);
+    // POS_CjInBr
+    auto POS_CjInBr = parMagr->EXTRI.POS_CjInBr.at(camTopic).data();
+    paramBlockVec.push_back(POS_CjInBr);
+    // TIME_OFFSET_CjToBr
+    auto TIME_OFFSET_CjToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+    paramBlockVec.push_back(TIME_OFFSET_CjToBr);
+
+    auto &intri = parMagr->INTRI.Camera.at(camTopic);
+    paramBlockVec.push_back(intri->FXAddress());
+    paramBlockVec.push_back(intri->FYAddress());
+    paramBlockVec.push_back(intri->CXAddress());
+    paramBlockVec.push_back(intri->CYAddress());
+    paramBlockVec.push_back(intri->DistCoeffAddress());
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, new ceres::HuberLoss(1.0 /*pixel*/ * weight), paramBlockVec);
+    this->SetManifold(SO3_CjToBr, QUATER_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
+        this->SetParameterBlockConstant(SO3_CjToBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_POS_CjInBr, option)) {
+        this->SetParameterBlockConstant(POS_CjInBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        this->SetParameterBlockConstant(TIME_OFFSET_CjToBr);
+    } else {
+        // set bound
+        this->SetParameterLowerBound(TIME_OFFSET_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TIME_OFFSET_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
+    }
+
+    if (!IsOptionWith(Opt::OPT_CAM_FOCAL_LEN, option)) {
+        this->SetParameterBlockConstant(intri->FXAddress());
+        this->SetParameterBlockConstant(intri->FYAddress());
+    }
+
+    if (!IsOptionWith(Opt::OPT_CAM_PRINCIPAL_POINT, option)) {
+        this->SetParameterBlockConstant(intri->CXAddress());
+        this->SetParameterBlockConstant(intri->CYAddress());
+    }
+
+    if (!IsOptionWith(Opt::OPT_CAM_DIST_COEFFS, option)) {
+        this->SetParameterBlockConstant(intri->DistCoeffAddress());
+    }
 }
 }  // namespace ns_ekalibr
