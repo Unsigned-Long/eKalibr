@@ -188,6 +188,8 @@ void CalibSolver::EventInertialAlignment() {
     spdlog::info("rough assigned gravity in world frame: ['{:.3f}', '{:.3f}', '{:.3f}']",
                  _parMgr->GRAVITY(0), _parMgr->GRAVITY(1), _parMgr->GRAVITY(2));
 
+    // todo: need to refine!!!
+    return;
     spdlog::info(
         "perform event-inertial alignment to recover event-inertial extrinsic translations and "
         "refine the world-frame gravity...");

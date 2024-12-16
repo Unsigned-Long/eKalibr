@@ -235,9 +235,10 @@ void CalibSolver::Process() {
     /**
      * perform sensor-inertial alignment to recover the gravity vector and extrinsic translations.
      */
-    // todo: need to refine!!!
-    // this->EventInertialAlignment();
-    // _parMgr->ShowParamStatus();
+    this->EventInertialAlignment();
+    _parMgr->ShowParamStatus();
+
+    _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
 
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due

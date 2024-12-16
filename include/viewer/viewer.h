@@ -49,13 +49,14 @@ class Viewer : public ns_viewer::Viewer {
 public:
     using Ptr = std::shared_ptr<Viewer>;
     using Parent = ns_viewer::Viewer;
-    using SplineBundleType = ns_ctraj::SplineBundle<Configor::Prior::SplineOrder>;
+    using So3SplineType = ns_ctraj::So3Spline<Configor::Prior::SplineOrder>;
+    using PosSplineType = ns_ctraj::RdSpline<3, Configor::Prior::SplineOrder>;
 
 private:
     std::list<std::size_t> _entities;
     int keptEntityCount;
 
-    SplineBundleType::Ptr _splines;
+    const std::vector<std::pair<So3SplineType, PosSplineType>> *_splineSegments;
     CalibParamManagerPtr _parMagr;
     CircleGrid3DPtr _grid3d;
 
@@ -110,13 +111,17 @@ public:
                          const float &pScale = Configor::Preference::SplineViewerSpatialScale,
                          double dt = 0.005);
 
-    void SetSpline(const SplineBundleType::Ptr &splines);
+    Viewer &AddSplineSegment(const std::pair<So3SplineType, PosSplineType> &spline,
+                             const float &pScale = Configor::Preference::SplineViewerSpatialScale,
+                             double dt = 0.005);
+
+    void SetSpline(const std::vector<std::pair<So3SplineType, PosSplineType>> *splines);
 
     void SetParMgr(const CalibParamManagerPtr &parMgr);
 
     void SetGrid3D(const CircleGrid3DPtr &grid3d);
 
-    void SetStates(const SplineBundleType::Ptr &splines,
+    void SetStates(const std::vector<std::pair<So3SplineType, PosSplineType>> *splines,
                    const CalibParamManagerPtr &parMgr,
                    const CircleGrid3DPtr &grid3d);
 
