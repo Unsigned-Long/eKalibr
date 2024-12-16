@@ -119,6 +119,8 @@ public:
 
     const std::list<CircleGrid2D::Ptr>& GetGrid2d() const;
 
+    void RemoveGrid2DOutOfTimeRange(double st, double et);
+
     const CircleGrid3D::Ptr& GetGrid3d() const;
 
     // load configure information from file

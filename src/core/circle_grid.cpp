@@ -109,6 +109,17 @@ void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.pus
 
 const std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() const { return _grid2d; }
 
+void CircleGridPattern::RemoveGrid2DOutOfTimeRange(double st, double et) {
+    for (auto it = _grid2d.cbegin(); it != _grid2d.cend();) {
+        auto t = (*it)->timestamp + _timeBias;
+        if (t < st || t > et) {
+            it = _grid2d.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
 const CircleGrid3D::Ptr& CircleGridPattern::GetGrid3d() const { return _grid3d; }
 
 CircleGridPattern::Ptr CircleGridPattern::Load(const std::string& filename,

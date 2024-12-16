@@ -79,6 +79,11 @@ void CalibSolver::Process() {
             auto curPattern = CircleGridPattern::Load(path, _dataRawTimestamp.first,
                                                       Configor::Preference::OutputDataFormat);
             if (curPattern != nullptr) {
+                // select in time-range pattern
+                curPattern->RemoveGrid2DOutOfTimeRange(_dataRawTimestamp.first,
+                                                       _dataRawTimestamp.second);
+
+                // assign
                 _extractedPatterns[topic] = curPattern;
                 patternLoadFromFile[topic] = true;
                 spdlog::info(
