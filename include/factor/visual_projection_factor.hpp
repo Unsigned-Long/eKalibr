@@ -104,8 +104,8 @@ public:
     template <typename T>
     static Eigen::Vector2<T> DistortionFunction(
         const Eigen::Map<const Eigen::Vector5<T>> &distoParams, const Eigen::Vector2<T> &p) {
-        const T k1 = distoParams(0), k2 = distoParams(1), k3 = distoParams(2),
-                t1 = distoParams(3), t2 = distoParams(4);
+        const T k1 = distoParams(0), k2 = distoParams(1), k3 = distoParams(2);
+        const T t1 = distoParams(3), t2 = distoParams(4);
         const T r2 = p(0) * p(0) + p(1) * p(1);
         const T r4 = r2 * r2;
         const T r6 = r4 * r2;
@@ -180,7 +180,7 @@ public:
         Eigen::Vector3<T> pInCam = SE3_CjToW.inverse() * _pair->point3d.cast<T>();
         // from camera frame to camera normalized plane
         Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
-        // remove distortion
+        // add distortion
         pInCamPlane = AddDistortion<T>(DIST_COEFFS, pInCamPlane);
 
         Eigen::Vector2<T> pixelPred;

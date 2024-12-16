@@ -64,7 +64,7 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
 
     // pass the 'CeresViewerCallBack' to ceres option so that update the viewer after every
     // iteration in ceres
-    _ceresOption = Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, false);
+    _ceresOption = Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, true);
     if (Configor::Preference::Visualization) {
         _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer));
         _ceresOption.update_state_every_iteration = true;
@@ -338,21 +338,25 @@ void CalibSolver::BreakFullSo3SplineToSegments() {
 
     // fitting so3 segments
     spdlog::info("fitting so3 part of spline segments...");
-    const double st = _fullSo3Spline.MinTime(), et = _fullSo3Spline.MaxTime();
-    constexpr double dt = 0.005;
     auto estimator = Estimator::Create(_parMgr);
+    for (const auto &[topic, poseVec] : _camPoses) {
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto &SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
 
-    for (double t = st; t < et; t += dt) {
-        if (!_fullSo3Spline.TimeStampInRange(t)) {
-            continue;
+        for (const auto &pose : poseVec) {
+            auto idx = this->IsTimeInValidSegment(pose.timeStamp + TO_CjToBr);
+            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                continue;
+            }
+            Sophus::SO3d SO3_BrToW = pose.so3 /*from camera to world*/ * SO3_CjToBr.inverse();
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp + TO_CjToBr,
+                                        SO3_BrToW, OptOption::OPT_SO3_SPLINE, 10.0);
         }
-        auto idx = IsTimeInValidSegment(t);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-            continue;
-        }
-        estimator->AddSo3Constraint(_splineSegments[idx].first, t, _fullSo3Spline.Evaluate(t),
-                                    OptOption::OPT_SO3_SPLINE, 1.0);
     }
+    AddGyroFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic,
+                                  OptOption::OPT_SO3_SPLINE, 0.1, /*weight*/
+                                  100 /*down sampling rate*/);
+
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }

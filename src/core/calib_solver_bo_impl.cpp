@@ -100,7 +100,8 @@ void CalibSolver::BatchOptimizations() {
             auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
             spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
         }
-
+        // make this problem full rank
+        estimator->SetRefIMUParamsConstant();
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
