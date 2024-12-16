@@ -102,10 +102,10 @@ public:
     }
 
     template <typename T>
-    static Eigen::Vector2<T> DistortionFunction(const Eigen::Vector5<T> *distoParams,
-                                                const Eigen::Vector2<T> &p) {
-        const T k1 = (*distoParams)(0), k2 = (*distoParams)(1), k3 = (*distoParams)(2),
-                t1 = (*distoParams)(3), t2 = (*distoParams)(4);
+    static Eigen::Vector2<T> DistortionFunction(
+        const Eigen::Map<const Eigen::Vector5<T>> &distoParams, const Eigen::Vector2<T> &p) {
+        const T k1 = distoParams(0), k2 = distoParams(1), k3 = distoParams(2),
+                t1 = distoParams(3), t2 = distoParams(4);
         const T r2 = p(0) * p(0) + p(1) * p(1);
         const T r4 = r2 * r2;
         const T r6 = r4 * r2;
@@ -116,7 +116,7 @@ public:
     }
 
     template <typename T>
-    static Eigen::Vector2<T> AddDistortion(const Eigen::Vector5<T> *distoParams,
+    static Eigen::Vector2<T> AddDistortion(const Eigen::Map<const Eigen::Vector5<T>> &distoParams,
                                            const Eigen::Vector2<T> &p) {
         return p + DistortionFunction(distoParams, p);
     }
@@ -153,7 +153,7 @@ public:
         T CY = sKnots[CY_OFFSET][0];
 
         // this is for pinhole brow t2 [k1, k2, k3, p1, p2]
-        Eigen::Vector5<T> DIST_COEFFS(sKnots[DIST_COEFFS_OFFSET]);
+        Eigen::Map<const Eigen::Vector5<T>> DIST_COEFFS(sKnots[DIST_COEFFS_OFFSET]);
 
         T timeByBr = static_cast<T>(_pair->timestamp) + TO_CjToBr;
 
@@ -181,7 +181,7 @@ public:
         // from camera frame to camera normalized plane
         Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
         // remove distortion
-        pInCamPlane = AddDistortion<T>(&DIST_COEFFS, pInCamPlane);
+        pInCamPlane = AddDistortion<T>(DIST_COEFFS, pInCamPlane);
 
         Eigen::Vector2<T> pixelPred;
         TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixelPred);

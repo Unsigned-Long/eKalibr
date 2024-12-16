@@ -119,7 +119,7 @@ std::size_t CalibSolver::AddVisualProjPairsToSplineSegments(const EstimatorPtr &
         }
         estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
                                              _splineSegments.at(idx).second, camTopic, pair, option,
-                                             weight * 1E-3);
+                                             weight);
         ++count;
     }
     return count;

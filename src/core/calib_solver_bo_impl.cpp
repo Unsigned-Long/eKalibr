@@ -67,10 +67,10 @@ void CalibSolver::BatchOptimizations() {
         for (const auto& grid2d : grid2dVec) {
             for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
                 const auto& center = grid2d->centers.at(i);
-                Eigen::Vector2d pixel(center.x, center.y);
+                const Eigen::Vector2d pixel(center.x, center.y);
 
                 const auto& point3d = grid3d->points.at(i);
-                Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
+                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
 
                 pairs.push_back(VisualProjectionPair::Create(grid2d->timestamp, point, pixel));
             }
@@ -97,8 +97,8 @@ void CalibSolver::BatchOptimizations() {
         }
 
         for (const auto& [topic, _] : Configor::DataStream::EventTopics) {
-            // auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
-            // spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+            auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
+            spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
         }
 
         auto sum = estimator->Solve(_ceresOption);

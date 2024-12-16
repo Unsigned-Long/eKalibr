@@ -892,14 +892,13 @@ void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
     costFunc->AddParameterBlock(3);
     // TO_CjToBr
     costFunc->AddParameterBlock(1);
-    // Fx
+
+    // fx, fy, cx, cy
     costFunc->AddParameterBlock(1);
-    // Fy
     costFunc->AddParameterBlock(1);
-    // Cx
     costFunc->AddParameterBlock(1);
-    // Cy
     costFunc->AddParameterBlock(1);
+
     // k1, k2, k3, p1, p2
     costFunc->AddParameterBlock(5);
 
