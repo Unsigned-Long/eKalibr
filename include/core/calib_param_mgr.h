@@ -50,6 +50,9 @@ using EntityPtr = std::shared_ptr<Entity>;
 
 namespace ns_ekalibr {
 
+class Viewer;
+using ViewerPtr = std::shared_ptr<Viewer>;
+
 struct IMUIntrinsics;
 using IMUIntrinsicsPtr = std::shared_ptr<IMUIntrinsics>;
 
@@ -237,7 +240,9 @@ public:
     // print the parameters in the console
     void ShowParamStatus();
 
-    std::vector<std::size_t> VisualizationSensors(ns_viewer::Viewer &viewer) const;
+    Viewer &VisualizationSensors(Viewer &viewer,
+                                 const Sophus::SE3f &SE3_RefToWorld = {},
+                                 const float &pScale = 1.0f) const;
 
     // set the params to the init values, the intrinsic coeff of camera will load from the config
     // file make sure load and check config before initialize the parameters
@@ -257,7 +262,8 @@ public:
     }
 
 private:
-    [[nodiscard]] std::vector<ns_viewer::EntityPtr> EntitiesForVisualization() const;
+    [[nodiscard]] std::vector<ns_viewer::EntityPtr> EntitiesForVisualization(
+        const Sophus::SE3f &SE3_RefToWorld = {}, const float &pScale = 1.0f) const;
 
 public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW

@@ -37,6 +37,7 @@
 #include "tiny-viewer/entity/line.h"
 #include "tiny-viewer/core/pose.hpp"
 #include "util/utils_tpl.hpp"
+#include <viewer/viewer.h>
 
 namespace ns_ekalibr {
 // ------------------------
@@ -245,8 +246,10 @@ void CalibParamManager::ShowParamStatus() {
 #undef PARAM
 }
 
-std::vector<std::size_t> CalibParamManager::VisualizationSensors(ns_viewer::Viewer &viewer) const {
-    return viewer.AddEntity(EntitiesForVisualization());
+Viewer &CalibParamManager::VisualizationSensors(Viewer &viewer,
+                                                const Sophus::SE3f &SE3_RefToWorld,
+                                                const float &pScale) const {
+    return viewer.AddEntityLocal(EntitiesForVisualization(SE3_RefToWorld, pScale));
 }
 
 void CalibParamManager::Save(const std::string &filename,
@@ -266,41 +269,43 @@ CalibParamManager::Ptr CalibParamManager::Load(const std::string &filename,
     return calibParamManager;
 }
 
-std::vector<ns_viewer::Entity::Ptr> CalibParamManager::EntitiesForVisualization() const {
+std::vector<ns_viewer::Entity::Ptr> CalibParamManager::EntitiesForVisualization(
+    const Sophus::SE3f &SE3_RefToWorld, const float &pScale) const {
 #define IMU_SIZE 0.02
 #define CAMERA_SIZE 0.04
 
     std::vector<ns_viewer::Entity::Ptr> entities;
 
     // reference imu
-    auto SE3_BrToBr = Sophus::SE3f();
-    auto refIMU = ns_viewer::IMU::Create(
-        ns_viewer::Posef(SE3_BrToBr.so3().matrix(), SE3_BrToBr.translation()), IMU_SIZE,
-        ns_viewer::Colour(0.3f, 0.3f, 0.3f, 1.0f));
+    auto SE3_BrToW = SE3_RefToWorld;
+    SE3_BrToW.translation() *= pScale;
+    auto refIMU =
+        ns_viewer::IMU::Create(ns_viewer::Posef(SE3_BrToW.so3().matrix(), SE3_BrToW.translation()),
+                               IMU_SIZE, ns_viewer::Colour(0.3f, 0.3f, 0.3f, 1.0f));
     entities.push_back(refIMU);
 
     // imus
     for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
-        auto SE3_BiToBr = EXTRI.SE3_BiToBr(topic).cast<float>();
+        auto SE3_BiToW = SE3_RefToWorld * EXTRI.SE3_BiToBr(topic).cast<float>();
+        SE3_BiToW.translation() *= pScale;
         auto imu = ns_viewer::IMU::Create(
-            ns_viewer::Posef(SE3_BiToBr.so3().matrix(), SE3_BiToBr.translation()), IMU_SIZE,
+            ns_viewer::Posef(SE3_BiToW.so3().matrix(), SE3_BiToW.translation()), IMU_SIZE,
             ns_viewer::Colour::Red());
-        auto line =
-            ns_viewer::Line::Create(Eigen::Vector3f::Zero(), SE3_BiToBr.translation().cast<float>(),
-                                    ns_viewer::Colour::Black());
+        auto line = ns_viewer::Line::Create(SE3_BrToW.translation(), SE3_BiToW.translation(),
+                                            ns_viewer::Colour::Black());
         entities.push_back(imu);
         entities.push_back(line);
     }
 
     // cameras
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        auto SE3_CjToBr = EXTRI.SE3_CjToBr(topic).cast<float>();
+        auto SE3_CjToW = SE3_RefToWorld * EXTRI.SE3_CjToBr(topic).cast<float>();
+        SE3_CjToW.translation() *= pScale;
         auto camera = ns_viewer::CubeCamera::Create(
-            ns_viewer::Posef(SE3_CjToBr.so3().matrix(), SE3_CjToBr.translation()), CAMERA_SIZE,
+            ns_viewer::Posef(SE3_CjToW.so3().matrix(), SE3_CjToW.translation()), CAMERA_SIZE,
             ns_viewer::Colour::Blue());
-        auto line =
-            ns_viewer::Line::Create(Eigen::Vector3f::Zero(), SE3_CjToBr.translation().cast<float>(),
-                                    ns_viewer::Colour::Black());
+        auto line = ns_viewer::Line::Create(SE3_BrToW.translation(), SE3_CjToW.translation(),
+                                            ns_viewer::Colour::Black());
         entities.push_back(camera);
         entities.push_back(line);
     }

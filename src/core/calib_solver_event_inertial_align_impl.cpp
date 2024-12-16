@@ -177,7 +177,6 @@ void CalibSolver::EventInertialAlignment() {
         _fullSo3Spline.GetKnot(i) =
             SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
-    _viewer->UpdateViewer(_grid3d->points, Configor::Preference::SplineViewerSpatialScale);
 
     /**
      * the gravity vector would be recovered in this stage, for better converage performance, we

@@ -37,6 +37,7 @@
 #include "tiny-viewer/core/pose.hpp"
 #include "tiny-viewer/entity/arrow.h"
 #include "core/calib_param_mgr.h"
+#include <core/circle_grid.h>
 #include <spdlog/spdlog.h>
 
 namespace ns_ekalibr {
@@ -46,8 +47,9 @@ using ColorPointCloud = pcl::PointCloud<ColorPoint>;
 Viewer::Viewer(int keptEntityCount)
     : Parent(GenViewerConfigor()),
       keptEntityCount(keptEntityCount),
+      _splines(nullptr),
       _parMagr(nullptr),
-      _splines(nullptr) {
+      _grid3d(nullptr) {
     // run
     this->RunInMultiThread();
     std::cout << "\033[92m\033[3m[Viewer] "
@@ -65,8 +67,8 @@ ns_viewer::ViewerConfigor Viewer::GenViewerConfigor() {
     viewConfig.grid.showGrid = false;
     viewConfig.WithScreenShotSaveDir(Configor::DataStream::OutputPath);
 
-    viewConfig.callBacks.insert({'a', [this] { ZoomOutSpatialScaleCallBack(); }});
-    viewConfig.callBacks.insert({'d', [this] { ZoomInSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'a', [] { ZoomOutSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'d', [] { ZoomInSpatialScaleCallBack(); }});
     viewConfig.callBacks.insert({'s', [] { ZoomOutTemporalScaleCallBack(); }});
     viewConfig.callBacks.insert({'w', [] { ZoomInTemporalScaleCallBack(); }});
 
@@ -104,7 +106,7 @@ Viewer &Viewer::PopBackEntity() {
 Viewer &Viewer::AddEntityLocal(const std::vector<ns_viewer::Entity::Ptr> &entities) {
     auto ids = this->AddEntity(entities);
     _entities.insert(_entities.end(), ids.cbegin(), ids.cend());
-    if (keptEntityCount > 0 && _entities.size() > 1.2 * keptEntityCount) {
+    if (keptEntityCount > 0 && static_cast<double>(_entities.size()) > 1.2 * keptEntityCount) {
         auto iter = _entities.cbegin();
         std::advance(iter, _entities.size() - keptEntityCount);
 
@@ -278,52 +280,55 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
     return AddEntityLocal(entities);
 }
 
-Viewer &Viewer::UpdateViewer(const std::vector<cv::Point3f> &centers,
-                             const float &pScale,
-                             double dt) {
+Viewer &Viewer::UpdateViewer(const Sophus::SE3f &SE3_RefToWorld, const float &pScale, double dt) {
     ClearViewer();
-    if (_splines == nullptr) {
-        return *this;
-    }
 
-    // spline poses
-    std::vector<ns_viewer::Entity::Ptr> entities;
-    const auto &so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
-    const auto &scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
-    double minTime = std::max(so3Spline.MinTime(), scaleSpline.MinTime());
-    double maxTime = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime());
-    for (double t = minTime; t < maxTime;) {
-        if (!_splines->TimeInRange(t, so3Spline) || !_splines->TimeInRange(t, scaleSpline)) {
+    if (_splines != nullptr) {
+        // spline poses
+        std::vector<ns_viewer::Entity::Ptr> entities;
+        const auto &so3Spline = _splines->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+        const auto &scaleSpline = _splines->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+        const double minTime = std::max(so3Spline.MinTime(), scaleSpline.MinTime());
+        const double maxTime = std::min(so3Spline.MaxTime(), scaleSpline.MaxTime());
+        for (double t = minTime; t < maxTime;) {
+            if (!so3Spline.TimeStampInRange(t) || !scaleSpline.TimeStampInRange(t)) {
+                t += dt;
+                continue;
+            }
+
+            Sophus::SO3d so3 = so3Spline.Evaluate(t);
+            Eigen::Vector3d linScale = scaleSpline.Evaluate(t) * pScale;
+            // coordinate
+            entities.push_back(ns_viewer::Coordinate::Create(
+                ns_viewer::Posed(so3.matrix(), linScale).cast<float>(), 0.1f));
             t += dt;
-            continue;
         }
-
-        Sophus::SO3d so3 = so3Spline.Evaluate(t);
-        Eigen::Vector3d linScale = scaleSpline.Evaluate(t) * pScale;
-        // coordinate
-        entities.push_back(ns_viewer::Coordinate::Create(
-            ns_viewer::Posed(so3.matrix(), linScale).cast<float>(), 0.1f));
-        t += dt;
-    }
-    // spline knots
-    const auto &knots = scaleSpline.GetKnots();
-    for (const auto &k : knots) {
-        entities.push_back(ns_viewer::Landmark::Create(k.cast<float>() * pScale, 0.1f,
+        // spline knots
+        const auto &knots = scaleSpline.GetKnots();
+        for (const auto &k : knots) {
+            entities.push_back(ns_viewer::Landmark::Create(k.cast<float>() * pScale, 0.1f,
+                                                           ns_viewer::Colour::Black()));
+        }
+        for (int i = 0; i < static_cast<int>(knots.size()) - 1; ++i) {
+            const int j = i + 1;
+            const Eigen::Vector3d ki = knots.at(i) * pScale;
+            const Eigen::Vector3d kj = knots.at(j) * pScale;
+            entities.push_back(ns_viewer::Line::Create(ki.cast<float>(), kj.cast<float>(), 0.1f,
                                                        ns_viewer::Colour::Black()));
-    }
-    for (int i = 0; i < static_cast<int>(knots.size()) - 1; ++i) {
-        const int j = i + 1;
-        const Eigen::Vector3d ki = knots.at(i) * pScale;
-        const Eigen::Vector3d kj = knots.at(j) * pScale;
-        entities.push_back(ns_viewer::Line::Create(ki.cast<float>(), kj.cast<float>(), 0.1f,
-                                                   ns_viewer::Colour::Black()));
-    }
-    // gravity
-    entities.push_back(Gravity());
+        }
+        // gravity
+        entities.push_back(Gravity());
 
-    this->AddEntityLocal(entities);
+        this->AddEntityLocal(entities);
+    }
 
-    this->AddGridPattern(centers, pScale, ns_viewer::Colour::Black());
+    if (_grid3d != nullptr) {
+        this->AddGridPattern(_grid3d->points, pScale, ns_viewer::Colour::Black());
+    }
+
+    if (_parMagr != nullptr) {
+        _parMagr->VisualizationSensors(*this, SE3_RefToWorld, pScale);
+    }
 
     return *this;
 }
@@ -331,6 +336,16 @@ Viewer &Viewer::UpdateViewer(const std::vector<cv::Point3f> &centers,
 void Viewer::SetSpline(const SplineBundleType::Ptr &splines) { _splines = splines; }
 
 void Viewer::SetParMgr(const CalibParamManagerPtr &parMgr) { _parMagr = parMgr; }
+
+void Viewer::SetGrid3D(const CircleGrid3DPtr &grid3d) { _grid3d = grid3d; }
+
+void Viewer::SetStates(const SplineBundleType::Ptr &splines,
+                       const CalibParamManagerPtr &parMgr,
+                       const CircleGrid3DPtr &grid3d) {
+    _splines = splines;
+    _parMagr = parMgr;
+    _grid3d = grid3d;
+}
 
 void Viewer::SetKeptEntityCount(int val) { keptEntityCount = val; }
 

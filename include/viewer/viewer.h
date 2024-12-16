@@ -42,6 +42,8 @@ struct Event;
 using EventPtr = std::shared_ptr<Event>;
 struct CalibParamManager;
 using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
+struct CircleGrid3D;
+using CircleGrid3DPtr = std::shared_ptr<CircleGrid3D>;
 
 class Viewer : public ns_viewer::Viewer {
 public:
@@ -53,8 +55,9 @@ private:
     std::list<std::size_t> _entities;
     int keptEntityCount;
 
-    CalibParamManagerPtr _parMagr;
     SplineBundleType::Ptr _splines;
+    CalibParamManagerPtr _parMagr;
+    CircleGrid3DPtr _grid3d;
 
 public:
     explicit Viewer(int keptEntityCount = -1);
@@ -103,7 +106,7 @@ public:
         const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
         float ptSize = 0.05f);
 
-    Viewer &UpdateViewer(const std::vector<cv::Point3f> &centers,
+    Viewer &UpdateViewer(const Sophus::SE3f &SE3_RefToWorld = {},
                          const float &pScale = Configor::Preference::SplineViewerSpatialScale,
                          double dt = 0.005);
 
@@ -111,12 +114,18 @@ public:
 
     void SetParMgr(const CalibParamManagerPtr &parMgr);
 
+    void SetGrid3D(const CircleGrid3DPtr &grid3d);
+
+    void SetStates(const SplineBundleType::Ptr &splines,
+                   const CalibParamManagerPtr &parMgr,
+                   const CircleGrid3DPtr &grid3d);
+
     void SetKeptEntityCount(int val = -1);
 
     ns_viewer::Entity::Ptr Gravity() const;
 
 protected:
-    ns_viewer::ViewerConfigor GenViewerConfigor();
+    static ns_viewer::ViewerConfigor GenViewerConfigor();
 
     pangolin::OpenGlRenderState GetInitRenderState() const;
 

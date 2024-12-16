@@ -65,7 +65,7 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
     // iteration in ceres
     _ceresOption = Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, false);
     if (Configor::Preference::Visualization) {
-        _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer, _grid3d));
+        _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer));
         _ceresOption.update_state_every_iteration = true;
     }
     // output spatiotemporal parameters after each iteration if needed

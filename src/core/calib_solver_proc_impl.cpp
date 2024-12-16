@@ -223,7 +223,7 @@ void CalibSolver::Process() {
     _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
                                      Configor::Prior::KnotTimeDist.So3Spline);
 
-    _viewer->SetParMgr(_parMgr);
+    _viewer->SetStates(nullptr, _parMgr, nullptr);
 
     /* initialize (recover) the rotation spline using raw angular velocity measurements from the
      * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time
@@ -269,8 +269,8 @@ void CalibSolver::Process() {
     }
     _splineSegments.reserve(_validTimeSegments.size());
     for (const auto &[st, et] : _validTimeSegments) {
-        auto so3Spline = this->CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);
-        auto posSpline = this->CreatePosSpline(st, et, Configor::Prior::KnotTimeDist.ScaleSpline);
+        auto so3Spline = CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);
+        auto posSpline = CreatePosSpline(st, et, Configor::Prior::KnotTimeDist.ScaleSpline);
         _splineSegments.emplace_back(so3Spline, posSpline);
     }
 

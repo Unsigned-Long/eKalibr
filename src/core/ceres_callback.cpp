@@ -34,6 +34,8 @@
 #include "spdlog/spdlog.h"
 #include <core/circle_grid.h>
 
+#include <utility>
+
 namespace ns_ekalibr {
 
 /**
@@ -76,13 +78,12 @@ CeresDebugCallBack::~CeresDebugCallBack() { _iterInfoFile.close(); }
 /**
  * CeresViewerCallBack
  */
-CeresViewerCallBack::CeresViewerCallBack(Viewer::Ptr viewer, CircleGrid3DPtr grid3d)
-    : _viewer(std::move(viewer)),
-      _grid3d(std::move(grid3d)) {}
+CeresViewerCallBack::CeresViewerCallBack(Viewer::Ptr viewer)
+    : _viewer(std::move(viewer)) {}
 
 ceres::CallbackReturnType CeresViewerCallBack::operator()(const ceres::IterationSummary &summary) {
-    const float scale = Configor::Preference::SplineViewerSpatialScale;
-    _viewer->UpdateViewer(_grid3d->points, scale);
+    const auto scale = static_cast<float>(Configor::Preference::SplineViewerSpatialScale);
+    _viewer->UpdateViewer({}, scale);
     return ceres::CallbackReturnType::SOLVER_CONTINUE;
 }
 }  // namespace ns_ekalibr

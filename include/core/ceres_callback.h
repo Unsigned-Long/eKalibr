@@ -59,10 +59,9 @@ public:
 struct CeresViewerCallBack : public ceres::IterationCallback {
 private:
     ViewerPtr _viewer;
-    CircleGrid3DPtr _grid3d;
 
 public:
-    explicit CeresViewerCallBack(ViewerPtr viewer, CircleGrid3DPtr grid3d);
+    explicit CeresViewerCallBack(ViewerPtr viewer);
 
     ceres::CallbackReturnType operator()(const ceres::IterationSummary &summary) override;
 };
