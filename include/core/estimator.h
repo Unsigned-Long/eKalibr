@@ -205,6 +205,12 @@ public:
                                const Eigen::Vector3d &pos,
                                Opt option,
                                double weight);
+
+    void AddSo3Constraint(const So3SplineType &so3Spline,
+                          double timeByBr,
+                          const Sophus::SO3d &so3,
+                          Opt option,
+                          double weight);
 };
 }  // namespace ns_ekalibr
 

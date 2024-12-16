@@ -38,6 +38,7 @@
 #include "factor/event_inertial_align_factor.hpp"
 #include "factor/imu_acce_factor.hpp"
 #include "factor/lin_scale_factor.hpp"
+#include "factor/so3_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -797,6 +798,40 @@ void Estimator::AddPositionConstraint(const PosSplineType &posSpline,
     // lin acce knots
     AddRdKnotsData(paramBlockVec, posSpline, scaleMeta,
                    !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+}
+
+void Estimator::AddSo3Constraint(const So3SplineType &so3Spline,
+                                 double timeByBr,
+                                 const Sophus::SO3d &so3,
+                                 Opt option,
+                                 double weight) {
+    // check point time stamp
+    if (!so3Spline.TimeStampInRange(timeByBr)) {
+        return;
+    }
+
+    SplineMetaType so3Meta;
+    SplineBundleType::CalculateSplineMeta(so3Spline, {{timeByBr, timeByBr}}, so3Meta);
+
+    // create a cost function
+    auto costFunc = So3Factor<Configor::Prior::SplineOrder>::Create(so3Meta, timeByBr, so3, weight);
+
+    // pos knots param block [each has three sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+
+    // the Residual
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
 
     // pass to problem
     this->AddResidualBlock(costFunc, nullptr, paramBlockVec);

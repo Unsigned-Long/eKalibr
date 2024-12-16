@@ -131,6 +131,8 @@ protected:
 
     void EventInertialAlignment();
 
+    void BreakFullSo3SplineToSegments();
+
     void InitPosSpline() const;
 
     int IsTimeInValidSegment(double timeByBr) const;

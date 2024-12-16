@@ -43,6 +43,7 @@
 #include "rosbag/view.h"
 #include "core/estimator.h"
 #include "core/ceres_callback.h"
+#include <core/calib_param_mgr.h>
 #include <core/circle_grid.h>
 
 namespace ns_ekalibr {
@@ -295,6 +296,67 @@ int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
 }
 
+void CalibSolver::BreakFullSo3SplineToSegments() {
+    /**
+     * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
+     * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
+     * moving out of the field of view), it is necessary to identify the continuous segments for
+     * subsequent calibration.
+     */
+    std::list<std::pair<double, double>> segBoundary;
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        auto segments = this->ContinuousGridTrackingSegments(topic, 0.5 /*neighbor*/, 1.0 /*len*/);
+        for (const auto &segment : segments) {
+            segBoundary.emplace_back(segment.front() + TO_CjToBr, segment.back() + TO_CjToBr);
+        }
+    }
+    _validTimeSegments = ContinuousSegments(segBoundary, 0.5 /*neighbor*/);
+    {
+        std::stringstream ss;
+        double sumTime = 0.0;
+        for (const auto &[sTime, eTime] : _validTimeSegments) {
+            sumTime += eTime - sTime;
+            ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
+        }
+        const double percent =
+            sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
+        spdlog::info(
+            "finding valid time segment count: {}, percent in total data piece: {:.2f}%, "
+            "details:\n{}",
+            _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
+    }
+    _splineSegments.reserve(_validTimeSegments.size());
+    for (auto &[st, et] : _validTimeSegments) {
+        auto so3Spline = CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);
+        auto posSpline = CreatePosSpline(st, et, Configor::Prior::KnotTimeDist.ScaleSpline);
+        _splineSegments.emplace_back(so3Spline, posSpline);
+
+        st = std::min(so3Spline.MinTime(), posSpline.MinTime());
+        et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
+    }
+
+    // fitting so3 segments
+    spdlog::info("fitting so3 part of spline segments...");
+    const double st = _fullSo3Spline.MinTime(), et = _fullSo3Spline.MaxTime();
+    constexpr double dt = 0.005;
+    auto estimator = Estimator::Create(_parMgr);
+
+    for (double t = st; t < et; t += dt) {
+        if (!_fullSo3Spline.TimeStampInRange(t)) {
+            continue;
+        }
+        auto idx = IsTimeInValidSegment(t);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            continue;
+        }
+        estimator->AddSo3Constraint(_splineSegments[idx].first, t, _fullSo3Spline.Evaluate(t),
+                                    OptOption::OPT_SO3_SPLINE, 1.0);
+    }
+    auto sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+}
+
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
                                    std::function<bool(const EventArrayPtr &)> pred,
                                    const std::string &errorMsg) const {
@@ -425,7 +487,7 @@ int CalibSolver::IsTimeInSegment(
 
     // Check if time point t is within the current segment
     if (t >= it->first && t <= it->second) {
-        return std::distance(mergedSegmentsBoundary.begin(), it);
+        return static_cast<int>(std::distance(mergedSegmentsBoundary.begin(), it));
     } else {
         return -1;
     }
