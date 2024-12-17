@@ -126,7 +126,8 @@ void CalibSolver::EstimateCameraIntrinsics() {
             "intrinsics",
             idx, rmse[idx]);
 
-        // save results to disk
+#if 0
+        // save results to disk (these intrinsics are rough ones!!!)
         auto path = GetDiskPathOfOpenCVIntrinsicCalibRes(topic);
         if (std::filesystem::path(path).extension() ==
             Configor::Preference::FileExtension.at(CerealArchiveType::Enum::BINARY)) {
@@ -144,7 +145,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
         fs << "stdDeviationsExtrinsics" << stdDeviationsExtrinsics[idx];
 
         fs.release();
-
+#endif
         // record
         cameraMatrixMap[topic] = cameraMatrix[idx];
         distCoeffsMap[topic] = distCoeffs[idx];
