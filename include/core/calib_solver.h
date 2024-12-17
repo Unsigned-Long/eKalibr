@@ -144,22 +144,23 @@ protected:
     void BatchOptimizations();
 
 protected:
-    void AddGyroFactorToFullSo3Spline(const EstimatorPtr &estimator,
-                                      const std::string &imuTopic,
-                                      OptOption option,
-                                      const std::optional<double> &weight) const;
+    std::size_t AddGyroFactorToFullSo3Spline(const EstimatorPtr &estimator,
+                                             const std::string &imuTopic,
+                                             OptOption option,
+                                             const std::optional<double> &weight,
+                                             const std::optional<double> &dsRate = {}) const;
 
     std::size_t AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
                                               const std::string &imuTopic,
                                               OptOption option,
                                               const std::optional<double> &weight,
-                                              std::optional<double> dsRate = {}) const;
+                                              const std::optional<double> &dsRate = {}) const;
 
     std::size_t AddAcceFactorToSplineSegments(const EstimatorPtr &estimator,
                                               const std::string &imuTopic,
                                               OptOption option,
                                               const std::optional<double> &weight,
-                                              std::optional<double> dsRate = {}) const;
+                                              const std::optional<double> &dsRate = {}) const;
 
     std::size_t AddVisualProjPairsToSplineSegments(const EstimatorPtr &estimator,
                                                    const std::string &camTopic,

@@ -32,29 +32,41 @@
 #include <factor/visual_projection_factor.hpp>
 
 namespace ns_ekalibr {
-void CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &estimator,
-                                               const std::string &imuTopic,
-                                               Estimator::Opt option,
-                                               const std::optional<double> &w) const {
+std::size_t CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &estimator,
+                                                      const std::string &imuTopic,
+                                                      Estimator::Opt option,
+                                                      const std::optional<double> &w,
+                                                      const std::optional<double> &dsRate) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
-
-    for (const auto &frame : _imuMes.at(imuTopic)) {
-        estimator->AddIMUGyroMeasurement(_fullSo3Spline, frame, imuTopic, option, weight);
+    std::size_t index = 0, count = 0;
+    std::size_t pick = 1UL;
+    if (dsRate == std::nullopt) {
+        const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
+        const double freq = static_cast<double>(_imuMes.at(imuTopic).size()) / dt;
+        pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
     }
+    for (const auto &frame : _imuMes.at(imuTopic)) {
+        if (++index % pick != 0) {
+            continue;
+        }
+        estimator->AddIMUGyroMeasurement(_fullSo3Spline, frame, imuTopic, option, weight);
+        ++count;
+    }
+    return count;
 }
 
 std::size_t CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estimator,
                                                        const std::string &imuTopic,
                                                        OptOption option,
                                                        const std::optional<double> &w,
-                                                       std::optional<double> dsRate) const {
+                                                       const std::optional<double> &dsRate) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
     if (dsRate == std::nullopt) {
         const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
-        const double freq = _imuMes.at(imuTopic).size() / dt;
+        const double freq = static_cast<double>(_imuMes.at(imuTopic).size()) / dt;
         pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
     }
     for (const auto &frame : _imuMes.at(imuTopic)) {
@@ -77,14 +89,14 @@ std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estim
                                                        const std::string &imuTopic,
                                                        OptOption option,
                                                        const std::optional<double> &w,
-                                                       std::optional<double> dsRate) const {
+                                                       const std::optional<double> &dsRate) const {
     auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
     if (dsRate == std::nullopt) {
         const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
-        const double freq = _imuMes.at(imuTopic).size() / dt;
+        const double freq = static_cast<double>(_imuMes.at(imuTopic).size()) / dt;
         pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
     }
     for (const auto &frame : _imuMes.at(imuTopic)) {

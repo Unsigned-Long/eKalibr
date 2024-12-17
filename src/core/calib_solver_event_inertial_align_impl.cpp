@@ -34,6 +34,7 @@
 
 #include <core/circle_grid.h>
 #include <core/estimator.h>
+#include <tiny-viewer/entity/coordinate.h>
 #include <viewer/viewer.h>
 
 namespace ns_ekalibr {
@@ -153,6 +154,7 @@ void CalibSolver::EventInertialAlignment() {
     spdlog::info(
         "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
         "system to transform the initialized SO3 spline to the world frame...");
+#if 0
     auto estimator = Estimator::Create(_parMgr);
     Sophus::SO3d SO3_Br0ToW;
     for (const auto& [topic, poseVec] : _camPoses) {
@@ -177,6 +179,45 @@ void CalibSolver::EventInertialAlignment() {
         _fullSo3Spline.GetKnot(i) =
             SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
+    {
+        _viewer->ClearViewer();
+        std::vector<ns_viewer::Entity::Ptr> entities;
+        for (double t = st; t < et;) {
+            if (!_fullSo3Spline.TimeStampInRange(t)) {
+                t += 0.005;
+                continue;
+            }
+
+            Sophus::SO3d so3 = _fullSo3Spline.Evaluate(t);
+            // coordinate
+            entities.push_back(ns_viewer::Coordinate::Create(
+                ns_viewer::Posed(so3.matrix(), Eigen::Vector3d::Zero()).cast<float>(), 0.5f));
+            t += 0.005;
+        }
+        _viewer->AddEntityLocal(entities);
+        std::cin.get();
+    }
+#else
+    auto estimator = Estimator::Create(_parMgr);
+    for (const auto& [topic, poseVec] : _camPoses) {
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto& SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
+
+        for (const auto& pose : poseVec) {
+            if (!_fullSo3Spline.TimeStampInRange(pose.timeStamp + TO_CjToBr)) {
+                continue;
+            }
+            Sophus::SO3d SO3_BrToW = pose.so3 /*from camera to world*/ * SO3_CjToBr.inverse();
+            estimator->AddSo3Constraint(_fullSo3Spline, pose.timeStamp + TO_CjToBr, SO3_BrToW,
+                                        OptOption::OPT_SO3_SPLINE, 10.0);
+        }
+    }
+    AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
+                                 OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/, 100 /*down sampling*/);
+
+    auto sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+#endif
 
     /**
      * the gravity vector would be recovered in this stage, for better converage performance, we
@@ -188,8 +229,6 @@ void CalibSolver::EventInertialAlignment() {
     spdlog::info("rough assigned gravity in world frame: ['{:.3f}', '{:.3f}', '{:.3f}']",
                  _parMgr->GRAVITY(0), _parMgr->GRAVITY(1), _parMgr->GRAVITY(2));
 
-    // todo: need to refine!!!
-    return;
     spdlog::info(
         "perform event-inertial alignment to recover event-inertial extrinsic translations and "
         "refine the world-frame gravity...");
