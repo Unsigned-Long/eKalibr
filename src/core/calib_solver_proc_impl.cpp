@@ -27,17 +27,11 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/calib_solver.h"
-#include "core/sae.h"
 #include "spdlog/spdlog.h"
 #include "util/tqdm.h"
 #include "config/configor.h"
-#include "sensor/event.h"
 #include "viewer/viewer.h"
-#include "opencv4/opencv2/highgui.hpp"
 #include "core/norm_flow.h"
-#include "core/circle_extractor.h"
-#include "core/circle_grid.h"
-#include "filesystem"
 #include "core/calib_param_mgr.h"
 
 namespace ns_ekalibr {
@@ -56,159 +50,7 @@ void CalibSolver::Process() {
      * (3) identity cirlce clusters
      * (4) fit time-varying ciecles using least-squares estimation
      */
-    const double decay = Configor::Prior::DecayTimeOfActiveEvents;
-    const auto &pattern = Configor::Prior::CirclePattern;
-    auto circlePattern = CirclePattern::FromString(pattern.Type);
-    auto patternSize = cv::Size(pattern.Cols, pattern.Rows);
-
-    const auto &nfConfig = Configor::Prior::NormFlowEstimator;
-    // nfConfig.WinSizeInPlaneFit >= 1
-    const auto neighborNormFlowDist = nfConfig.WinSizeInPlaneFit * 2 - 1;
-
-    _grid3d = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
-                                   pattern.SpacingMeters /*unit: meters*/, circlePattern);
-
-    std::map<std::string, bool> patternLoadFromFile;
-    const ns_viewer::Posef initViewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f});
-    for (const auto &[topic, eventMes] : _evMes) {
-        auto path = GetDiskPathOfExtractedGridPatterns(topic);
-        spdlog::info(
-            "try to load existing extracted circles grid patterns for camera '{}' from '{}'...",
-            topic, path);
-        if (std::filesystem::exists(path)) {
-            auto curPattern = CircleGridPattern::Load(path, _dataRawTimestamp.first,
-                                                      Configor::Preference::OutputDataFormat);
-            if (curPattern != nullptr) {
-                // select in time-range pattern
-                curPattern->RemoveGrid2DOutOfTimeRange(_dataRawTimestamp.first,
-                                                       _dataRawTimestamp.second);
-
-                // assign
-                _extractedPatterns[topic] = curPattern;
-                patternLoadFromFile[topic] = true;
-                spdlog::info(
-                    "load extracted circles grid patterns for camera '{}' success! "
-                    "details:\n{}\nif you want to use a different configuration for circle grid "
-                    "extraction, please delete existing grid pattern file first at '{}'",
-                    topic, curPattern->InfoString(), path);
-                continue;
-            }
-        }
-
-        spdlog::info(
-            "try to load extracted circles grid patterns failed! perform norm-flow-based circle "
-            "grid identification for camera '{}'",
-            topic);
-
-        const auto &config = Configor::DataStream::EventTopics.at(topic);
-        auto sae = ActiveEventSurface::Create(config.Width, config.Height, 0.01);
-
-        double lastUpdateTime = eventMes.front()->GetTimestamp();
-        auto bar = std::make_shared<tqdm>();
-
-        auto curPattern = CircleGridPattern::Create(_grid3d, _dataRawTimestamp.first);
-
-        for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
-            bar->progress(i, static_cast<int>(eventMes.size()));
-
-            for (const auto &event : eventMes.at(i)->GetEvents()) {
-                /**
-                 * create sae (surface of active events)
-                 */
-                sae->GrabEvent(event);
-                const auto timeLatest = sae->GetTimeLatest();
-
-                if (timeLatest - eventMes.front()->GetTimestamp() < 0.05 ||
-                    timeLatest - lastUpdateTime < decay) {
-                    continue;
-                } else {
-                    lastUpdateTime = timeLatest;
-                }
-
-                // auto dts = sae->DecayTimeSurface(true, 0, decay);
-                // cv::imshow("Decay Surface Of Active Events", dts);
-
-                /**
-                 * estimate norm flows using created sae
-                 */
-                auto nfPack = EventNormFlow(sae).ExtractNormFlows(
-                    decay,                          // decay seconds for time surface
-                    nfConfig.WinSizeInPlaneFit,     // window size to fit local planes
-                    neighborNormFlowDist,           // distance between neighbor norm flows
-                    nfConfig.RansacInlierRatioThd,  // the ratio, for ransac and in-range candidates
-                    nfConfig.EventToPlaneTimeDistThd,  // the point to plane threshold in temporal
-                                                       // domain, unit (s)
-                    nfConfig.RansacMaxIterations);     // ransac iteration count
-
-                // cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
-
-                /**
-                 * extract circle grid pattern
-                 */
-
-                auto circleExtractor = EventCircleExtractor::Create(
-                    Configor::Preference::Visualization,
-                    Configor::Prior::CircleExtractor.ValidClusterAreaThd,
-                    Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
-                    Configor::Prior::CircleExtractor.PointToCircleDistThd);
-
-                auto gridPoints = circleExtractor->ExtractCirclesGrid(nfPack, patternSize,
-                                                                      circlePattern, _viewer);
-
-                if (gridPoints != std::nullopt) {
-                    curPattern->AddGrid2d(CircleGrid2D::Create(nfPack->timestamp, *gridPoints));
-                }
-
-                if (Configor::Preference::Visualization) {
-                    circleExtractor->Visualization();
-
-                    auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
-                    auto t = -timeLatest * ptScale.second;
-                    ns_viewer::Posef curViewCamPose = initViewCamPose;
-                    curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
-                    curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
-                    curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
-                    _viewer->SetCamView(curViewCamPose);
-                    cv::waitKey(1);
-                }
-            }
-        }
-
-        bar->finish();
-        if (Configor::Preference::Visualization) {
-            _viewer->ClearViewer();
-            _viewer->ResetViewerCamera();
-            cv::destroyAllWindows();
-        }
-
-        spdlog::info("extracted circle grid pattern count for camera '{}' finished! details:\n{}",
-                     topic, curPattern->InfoString());
-
-        _extractedPatterns[topic] = curPattern;
-        patternLoadFromFile[topic] = false;
-    }
-
-    /**
-     * we want to keep al added entities in the viewer, and do not just keep a const count of them
-     */
-    _viewer->SetKeptEntityCount(-1);
-
-    /**
-     * save circle grid patterns to disk
-     */
-    for (const auto &[topic, patterns] : _extractedPatterns) {
-        if (patternLoadFromFile.at(topic)) {
-            continue;
-        }
-        auto gridPatternPath = GetDiskPathOfExtractedGridPatterns(topic);
-        spdlog::info("saving extracted circle grid patterns of '{}' to path: '{}'...", topic,
-                     gridPatternPath);
-        if (!patterns->Save(gridPatternPath, Configor::Preference::OutputDataFormat)) {
-            spdlog::warn("failed to save patterns of '{}'!!!", topic);
-        } else {
-            spdlog::info("saved extracted patterns of '{}' to path finished!", topic);
-        }
-    }
+    this->GridPatternTracking(true, false);
 
     /**
      * perform intrinsic calibration using opencv
@@ -221,8 +63,16 @@ void CalibSolver::Process() {
         return;
     }
 
-    _viewer->ClearViewer();
-    _viewer->ResetViewerCamera();
+    // this->GridPatternTracking(false, true);
+
+    /**
+     * we want to keep al added entities in the viewer, and do not just keep a const count of them
+     */
+    if (Configor::Preference::Visualization) {
+        _viewer->ClearViewer();
+        _viewer->ResetViewerCamera();
+        _viewer->SetKeptEntityCount(-1);
+    }
 
     // create so3 spline given start and end times, knot distances
     _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
