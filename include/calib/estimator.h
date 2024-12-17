@@ -228,6 +228,26 @@ public:
                                            const VisualProjectionPairPtr &pair,
                                            Opt option,
                                            double weight);
+
+    void AddPosLinearTailConstraint(PosSplineType &posSpline,
+                                    Opt option,
+                                    double weight,
+                                    int count = Configor::Prior::SplineOrder);
+
+    void AddSo3LinearTailConstraint(So3SplineType &so3Spline,
+                                    Opt option,
+                                    double weight,
+                                    int count = Configor::Prior::SplineOrder);
+
+    void AddPosLinearHeadConstraint(PosSplineType &posSpline,
+                                    Opt option,
+                                    double weight,
+                                    int count = Configor::Prior::SplineOrder);
+
+    void AddSo3LinearHeadConstraint(So3SplineType &so3Spline,
+                                    Opt option,
+                                    double weight,
+                                    int count = Configor::Prior::SplineOrder);
 };
 }  // namespace ns_ekalibr
 

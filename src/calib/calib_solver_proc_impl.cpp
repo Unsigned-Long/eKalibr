@@ -53,6 +53,15 @@ void CalibSolver::Process() {
     this->GridPatternTracking(true, false);
 
     /**
+     * we want to keep al added entities in the viewer, and do not just keep a const count of them
+     */
+    if (Configor::Preference::Visualization) {
+        _viewer->ClearViewer();
+        _viewer->ResetViewerCamera();
+        _viewer->SetKeptEntityCount(-1);
+    }
+
+    /**
      * perform intrinsic calibration using opencv
      */
     this->EstimateCameraIntrinsics();
@@ -61,6 +70,7 @@ void CalibSolver::Process() {
     /**
      * refine intrinsics using raw events
      */
+    _viewer->SetStates(&_splineSegments, nullptr, _grid3d);
     this->RefineCameraIntrinsicsUsingRawEvents();
     _parMgr->ShowParamStatus();
 
@@ -77,7 +87,6 @@ void CalibSolver::Process() {
     if (Configor::Preference::Visualization) {
         _viewer->ClearViewer();
         _viewer->ResetViewerCamera();
-        _viewer->SetKeptEntityCount(-1);
     }
 
     // create so3 spline given start and end times, knot distances
@@ -107,7 +116,9 @@ void CalibSolver::Process() {
      * moving out of the field of view), it is necessary to identify the continuous segments for
      * subsequent calibration.
      */
-    this->BreakTimelineToSegments();
+    this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
+                               Configor::Prior::KnotTimeDist.ScaleSpline);
     this->InitSo3SplineSegments();
 
     /**

@@ -296,7 +296,7 @@ int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
 }
 
-void CalibSolver::BreakTimelineToSegments() {
+void CalibSolver::BreakTimelineToSegments(double maxNeighborThd, double maxLengthThd) {
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
      * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
@@ -306,12 +306,13 @@ void CalibSolver::BreakTimelineToSegments() {
     std::list<std::pair<double, double>> segBoundary;
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
         const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-        auto segments = this->ContinuousGridTrackingSegments(topic, 0.5 /*neighbor*/, 1.0 /*len*/);
+        auto segments = this->ContinuousGridTrackingSegments(topic, maxNeighborThd /*neighbor*/,
+                                                             maxLengthThd /*len*/);
         for (const auto &segment : segments) {
             segBoundary.emplace_back(segment.front() + TO_CjToBr, segment.back() + TO_CjToBr);
         }
     }
-    _validTimeSegments = ContinuousSegments(segBoundary, 0.5 /*neighbor*/);
+    _validTimeSegments = ContinuousSegments(segBoundary, maxNeighborThd /*neighbor*/);
     {
         std::stringstream ss;
         double sumTime = 0.0;
@@ -328,18 +329,20 @@ void CalibSolver::BreakTimelineToSegments() {
     }
 }
 
-void CalibSolver::InitSo3SplineSegments() {
+void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {
     _splineSegments.clear();
     _splineSegments.reserve(_validTimeSegments.size());
     for (auto &[st, et] : _validTimeSegments) {
-        auto so3Spline = CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);
-        auto posSpline = CreatePosSpline(st, et, Configor::Prior::KnotTimeDist.ScaleSpline);
+        auto so3Spline = CreateSo3Spline(st, et, dtSo3);
+        auto posSpline = CreatePosSpline(st, et, dtPos);
         _splineSegments.emplace_back(so3Spline, posSpline);
 
         st = std::min(so3Spline.MinTime(), posSpline.MinTime());
         et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
     }
+}
 
+void CalibSolver::InitSo3SplineSegments() {
     // fitting so3 segments
     spdlog::info("fitting so3 part of spline segments...");
     auto estimator = Estimator::Create(_parMgr);

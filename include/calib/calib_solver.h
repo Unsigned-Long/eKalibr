@@ -139,7 +139,9 @@ protected:
 
     void EventInertialAlignment();
 
-    void BreakTimelineToSegments();
+    void BreakTimelineToSegments(double maxNeighborThd, double maxLengthThd);
+
+    void CreateSplineSegments(double dtSo3, double dtPos);
 
     void InitSo3SplineSegments();
 

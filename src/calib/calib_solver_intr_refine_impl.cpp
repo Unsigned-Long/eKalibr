@@ -28,6 +28,8 @@
 
 #include "calib/calib_solver.h"
 #include "calib/calib_param_mgr.h"
+#include "spdlog/spdlog.h"
+#include "calib/estimator.h"
 
 namespace ns_ekalibr {
 void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
@@ -37,7 +39,64 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
      * moving out of the field of view), it is necessary to identify the continuous segments for
      * subsequent calibration.
      */
+    this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+    double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
+    this->CreateSplineSegments(dtSpline, dtSpline);
 
+    // fitting rough segments
+    spdlog::info("fitting spline segments using camera poses...");
+    auto estimator = Estimator::Create(_parMgr);
+    for (const auto &[topic, poseVec] : _camPoses) {
+        for (const auto &pose : poseVec) {
+            auto idx = this->IsTimeInValidSegment(pose.timeStamp);
+            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                continue;
+            }
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
+                                        OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
+                                             OptOption::OPT_SCALE_SPLINE, 1.0);
+        }
+    }
+    for (auto &[so3Spline, posSpline] : _splineSegments) {
+        estimator->AddSo3LinearHeadConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+        estimator->AddPosLinearHeadConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+        estimator->AddSo3LinearTailConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+        estimator->AddPosLinearTailConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+    }
+    auto sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+
+    // fitting small-knot-distance segments
+    auto roughSplineSegments = _splineSegments;
+    this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+    dtSpline = Configor::Prior::DecayTimeOfActiveEvents;
+    this->CreateSplineSegments(dtSpline, dtSpline);
+
+    estimator = Estimator::Create(_parMgr);
+    auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
+    for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
+        auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
+        auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
+        for (double t = st; t < et; t += 0.005) {
+            if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
+                continue;
+            }
+            auto idx = this->IsTimeInValidSegment(t);
+            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                continue;
+            }
+            const auto so3 = so3Spline.Evaluate(t);
+            const Eigen::Vector3d pos = posSpline.Evaluate(t);
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
+        }
+    }
+    sum = estimator->Solve(_ceresOption);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+
+    // todo: using raw event to refine intrinsics and splines
+    std::cin.get();
 }
 
 }  // namespace ns_ekalibr

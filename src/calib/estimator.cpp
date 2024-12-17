@@ -41,6 +41,7 @@
 #include "factor/so3_factor.hpp"
 #include "factor/visual_projection_factor.hpp"
 #include <veta/camera/pinhole.h>
+#include "factor/linear_knots_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -1023,6 +1024,142 @@ void Estimator::AddVisualDiscreteProjectionFactor(Sophus::SO3d *SO3_CjToW,
 
     if (!IsOptionWith(Opt::OPT_CAM_DIST_COEFFS, option)) {
         this->SetParameterBlockConstant(intri->DistCoeffAddress());
+    }
+}
+
+/**
+ * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddPosLinearTailConstraint(PosSplineType &posSpline,
+                                           Opt option,
+                                           double weight,
+                                           int count) {
+    for (int j = 0; j < count - 2; ++j) {
+        auto costFunc = RdLinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            auto knotIdx = j + i + static_cast<int>(posSpline.GetKnots().size()) -
+                           Configor::Prior::SplineOrder;
+            paramBlockVec.at(i) = posSpline.GetKnot(knotIdx).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        if (!IsOptionWith(Opt::OPT_SCALE_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
+    }
+}
+
+/**
+ * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddSo3LinearTailConstraint(So3SplineType &so3Spline,
+                                           Opt option,
+                                           double weight,
+                                           int count) {
+    for (int j = 0; j < count - 2; ++j) {
+        auto costFunc = So3LinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            auto knotIdx = j + i + static_cast<int>(so3Spline.GetKnots().size()) -
+                           Configor::Prior::SplineOrder;
+            paramBlockVec.at(i) = so3Spline.GetKnot(knotIdx).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        for (const auto &item : paramBlockVec) {
+            this->SetManifold(item, QUATER_MANIFOLD.get());
+        }
+
+        if (!IsOptionWith(Opt::OPT_SO3_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
+    }
+}
+
+/**
+ * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddPosLinearHeadConstraint(PosSplineType &posSpline,
+                                           Opt option,
+                                           double weight,
+                                           int count) {
+    for (int j = 0; j < count - 2; ++j) {
+        auto costFunc = RdLinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            paramBlockVec.at(i) = posSpline.GetKnot(j + i).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        if (!IsOptionWith(Opt::OPT_SCALE_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
+    }
+}
+
+/**
+ * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddSo3LinearHeadConstraint(So3SplineType &so3Spline,
+                                           Opt option,
+                                           double weight,
+                                           int count) {
+    for (int j = 0; j < count - 2; ++j) {
+        auto costFunc = So3LinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            paramBlockVec.at(i) = so3Spline.GetKnot(j + i).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        for (const auto &item : paramBlockVec) {
+            this->SetManifold(item, QUATER_MANIFOLD.get());
+        }
+
+        if (!IsOptionWith(Opt::OPT_SO3_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
     }
 }
 }  // namespace ns_ekalibr
