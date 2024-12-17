@@ -26,15 +26,13 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/ceres_callback.h"
-#include "core/calib_param_mgr.h"
+#include "calib/ceres_callback.h"
+#include "calib/calib_param_mgr.h"
 #include "viewer/viewer.h"
 #include "config/configor.h"
 #include "filesystem"
 #include "spdlog/spdlog.h"
 #include <core/circle_grid.h>
-
-#include <utility>
 
 namespace ns_ekalibr {
 

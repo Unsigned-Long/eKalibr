@@ -36,7 +36,7 @@
 #include "tiny-viewer/entity/coordinate.h"
 #include "tiny-viewer/core/pose.hpp"
 #include "tiny-viewer/entity/arrow.h"
-#include "core/calib_param_mgr.h"
+#include "calib/calib_param_mgr.h"
 #include <core/circle_grid.h>
 #include <spdlog/spdlog.h>
 

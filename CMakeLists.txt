@@ -162,6 +162,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/sensor SENSOR_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/core CORE_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/viewer VIEWER_SRC_FILES)
 aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/factor FACTOR_SRC_FILES)
+aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/calib CALIB_SRC_FILES)
 
 ###################
 # libekalibr_util #
@@ -263,7 +264,6 @@ target_link_libraries(
         veta
         ctraj
 )
-
 #####################
 # libikalibr_viewer #
 #####################
@@ -288,7 +288,6 @@ target_link_libraries(
         tiny-viewer
         veta
 )
-
 #####################
 # libekalibr_factor #
 #####################
@@ -312,6 +311,41 @@ target_link_libraries(
         ctraj
         veta
         opengv
+)
+###################
+# libekalibr_calib #
+###################
+add_library(
+        ${PROJECT_NAME}_calib SHARED
+        # source files
+        ${CALIB_SRC_FILES}
+)
+
+target_include_directories(
+        ${PROJECT_NAME}_calib PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        # thirdparty
+        ${CERES_INCLUDE_DIRS}
+)
+
+target_link_libraries(
+        ${PROJECT_NAME}_calib PUBLIC
+        ${catkin_LIBRARIES}
+
+        ${PROJECT_NAME}_config
+        ${PROJECT_NAME}_util
+        ${PROJECT_NAME}_sensor
+        ${PROJECT_NAME}_viewer
+        ${PROJECT_NAME}_factor
+        ${PROJECT_NAME}_core
+        # thirdparty
+        tiny-viewer
+        opengv
+        ${CERES_LIBRARIES}
+        veta
+        ctraj
 )
 ###########
 ## Build ##
@@ -363,12 +397,7 @@ target_include_directories(
 target_link_libraries(
         ${PROJECT_NAME}_prog
         ${catkin_LIBRARIES}
-        ${PROJECT_NAME}_config
-        ${PROJECT_NAME}_util
-        ${PROJECT_NAME}_sensor
-        ${PROJECT_NAME}_core
-        ${PROJECT_NAME}_viewer
-        ${PROJECT_NAME}_factor
+        ${PROJECT_NAME}_calib
 )
 
 #############

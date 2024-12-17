@@ -26,7 +26,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_param_mgr.h"
+#include "calib/calib_param_mgr.h"
 #include "sensor/imu_intrinsic.h"
 #include "config/configor.h"
 #include "veta/camera/pinhole_brown.h"

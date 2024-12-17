@@ -26,9 +26,9 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
-#include "core/estimator.h"
-#include "core/calib_param_mgr.h"
+#include "calib/calib_solver.h"
+#include "calib/estimator.h"
+#include "calib/calib_param_mgr.h"
 #include <factor/visual_projection_factor.hpp>
 
 namespace ns_ekalibr {

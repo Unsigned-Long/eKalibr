@@ -26,14 +26,13 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
-#include <core/calib_param_mgr.h>
+#include "calib/calib_solver.h"
+#include <calib/calib_param_mgr.h>
 #include "core/extr_rot_estimator.h"
 #include <util/tqdm.h>
 #include "util//status.hpp"
-
 #include <core/circle_grid.h>
-#include <core/estimator.h>
+#include <calib/estimator.h>
 #include <tiny-viewer/entity/coordinate.h>
 #include <viewer/viewer.h>
 

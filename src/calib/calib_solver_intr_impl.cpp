@@ -26,7 +26,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
+#include "calib/calib_solver.h"
 #include "opencv4/opencv2/calib3d.hpp"
 #include "spdlog/spdlog.h"
 #include "config/configor.h"
@@ -35,11 +35,11 @@
 #include "util/utils_tpl.hpp"
 #include "filesystem"
 #include "util/tqdm.h"
-#include "core/calib_param_mgr.h"
+#include "calib/calib_param_mgr.h"
 #include <tiny-viewer/object/camera.h>
 #include <veta/camera/pinhole_brown.h>
 #include <viewer/viewer.h>
-#include "core/estimator.h"
+#include "calib/estimator.h"
 #include "factor/visual_projection_factor.hpp"
 
 namespace ns_ekalibr {

@@ -26,8 +26,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/estimator.h"
-#include "core/calib_param_mgr.h"
+#include "calib/estimator.h"
+#include "calib/calib_param_mgr.h"
 #include "ctraj/core/trajectory_estimator.h"
 #include "spdlog/spdlog.h"
 #include "util/utils_tpl.hpp"

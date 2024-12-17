@@ -34,8 +34,8 @@
 #include "util/utils.h"
 #include "util/utils_tpl.hpp"
 #include "filesystem"
-#include "core/calib_solver.h"
-#include "core/calib_param_mgr.h"
+#include "calib/calib_solver.h"
+#include "calib/calib_param_mgr.h"
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ekalibr_prog");

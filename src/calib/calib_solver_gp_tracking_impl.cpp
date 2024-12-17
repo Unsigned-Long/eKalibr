@@ -26,7 +26,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
+#include "calib/calib_solver.h"
 #include "sensor/event.h"
 #include "opencv4/opencv2/highgui.hpp"
 #include "core/circle_extractor.h"
@@ -37,7 +37,7 @@
 #include "spdlog/spdlog.h"
 #include "util/tqdm.h"
 #include "core/visual_distortion.h"
-#include "core/calib_param_mgr.h"
+#include "calib/calib_param_mgr.h"
 #include <veta/camera/pinhole.h>
 
 namespace ns_ekalibr {

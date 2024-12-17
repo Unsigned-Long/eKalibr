@@ -26,7 +26,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
+#include "calib/calib_solver.h"
 #include "util/utils.h"
 #include "util/utils_tpl.hpp"
 #include <utility>
@@ -41,9 +41,9 @@
 #include "rosbag/bag.h"
 #include "filesystem"
 #include "rosbag/view.h"
-#include "core/estimator.h"
-#include "core/ceres_callback.h"
-#include <core/calib_param_mgr.h>
+#include "calib/estimator.h"
+#include "calib/ceres_callback.h"
+#include <calib/calib_param_mgr.h>
 #include <core/circle_grid.h>
 
 namespace ns_ekalibr {

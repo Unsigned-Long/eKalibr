@@ -26,10 +26,10 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 
-#include "core/calib_solver.h"
+#include "calib/calib_solver.h"
 #include <magic_enum_flags.hpp>
 #include <core/circle_grid.h>
-#include <core/estimator.h>
+#include <calib/estimator.h>
 #include <factor/visual_projection_factor.hpp>
 #include <spdlog/spdlog.h>
 
