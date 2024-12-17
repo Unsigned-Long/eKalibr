@@ -87,7 +87,7 @@ public:
 
     [[nodiscard]] double GetTimestamp() const;
 
-    [[nodiscard]] std::vector<Event::Ptr> GetEvents() const;
+    [[nodiscard]] const std::vector<Event::Ptr>& GetEvents() const;
 
     void SetTimestamp(double timestamp);
 

@@ -136,7 +136,7 @@ public:
                       double DIR_DIFF_DEG_THD = 30.0,
                       double POINT_TO_CIRCLE_AVG_THD = 1.0);
 
-    std::pair<double, std::vector<TimeVaryingCircle::Circle>> ExtractCircles(
+    std::vector<std::pair<TimeVaryingCircle::Ptr, EventArrayPtr>> ExtractCircles(
         const EventNormFlow::NormFlowPack::Ptr& nfPack, const ViewerPtr& viewer = nullptr);
 
     std::optional<std::vector<cv::Point2f>> ExtractCirclesGrid(

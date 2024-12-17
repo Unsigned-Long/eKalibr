@@ -134,7 +134,7 @@ EventCircleExtractor::Ptr EventCircleExtractor::Create(bool visualization,
                                                   POINT_TO_CIRCLE_AVG_THD);
 }
 
-std::pair<double, std::vector<EventCircleExtractor::TimeVaryingCircle::Circle>>
+std::vector<std::pair<EventCircleExtractor::TimeVaryingCircle::Ptr, EventArray::Ptr>>
 EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                      const Viewer::Ptr& viewer) {
     if (visualization) {
@@ -176,6 +176,7 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
         }
     }
     RemoveElemBasedOnIndices(tvCircles, indices);
+    RemoveElemBasedOnIndices(evsInEachCircleClusterPair, indices);
     indices.clear();
 
     /**
@@ -217,6 +218,7 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
 
     RemoveElemBasedOnIndices(circles, indices);
     RemoveElemBasedOnIndices(tvCircles, indices);
+    RemoveElemBasedOnIndices(evsInEachCircleClusterPair, indices);
     indices.clear();
 
     if (viewer != nullptr) {
@@ -235,7 +237,24 @@ EventCircleExtractor::ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfP
         }
     }
 
-    return {nfPack->timestamp, circles};
+    std::vector<std::pair<TimeVaryingCircle::Ptr, EventArray::Ptr>> circleWithEvs;
+    circleWithEvs.reserve(tvCircles.size());
+    for (std::size_t i = 0; i < tvCircles.size(); i++) {
+        std::vector<Event::Ptr> evs;
+        {
+            const auto& [ary1, ary2] = evsInEachCircleClusterPair.at(i);
+            size_t totalSize = ary1->GetEvents().size() + ary2->GetEvents().size();
+            evs.reserve(totalSize);
+            evs.insert(evs.end(), ary1->GetEvents().begin(), ary1->GetEvents().end());
+            evs.insert(evs.end(), ary2->GetEvents().begin(), ary2->GetEvents().end());
+        }
+        if (evs.empty()) {
+            continue;
+        }
+        auto evAry = EventArray::Create(evs.back()->GetTimestamp(), evs);
+        circleWithEvs.push_back({tvCircles.at(i), evAry});
+    }
+    return circleWithEvs;
 }
 
 std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid(
@@ -243,12 +262,13 @@ std::optional<std::vector<cv::Point2f>> EventCircleExtractor::ExtractCirclesGrid
     const cv::Size& gridSize,
     CirclePatternType circlePatternType,
     const ViewerPtr& viewer) {
-    auto [timestamp, circles] = ExtractCircles(nfPack, viewer);
+    auto circles = ExtractCircles(nfPack, viewer);
 
     // convert to opencv mat (2d point array)
     cv::Mat matPoints(circles.size(), 1, CV_32FC2);
     for (size_t i = 0; i < circles.size(); ++i) {
-        matPoints.at<cv::Vec2f>(i, 0) = cv::Vec2f(circles.at(i).first(0), circles.at(i).first(1));
+        auto c = circles.at(i).first->CircleAt(nfPack->timestamp);
+        matPoints.at<cv::Vec2f>(i, 0) = cv::Vec2f(c.first(0), c.first(1));
     }
 
     std::vector<cv::Point2f> centers;

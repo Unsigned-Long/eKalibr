@@ -56,7 +56,7 @@ EventArray::Ptr EventArray::Create(double timestamp, const std::vector<Event::Pt
 
 double EventArray::GetTimestamp() const { return _timestamp; }
 
-std::vector<Event::Ptr> EventArray::GetEvents() const { return _events; }
+const std::vector<Event::Ptr>& EventArray::GetEvents() const { return _events; }
 
 void EventArray::SetTimestamp(double timestamp) { _timestamp = timestamp; }
 }  // namespace ns_ekalibr
