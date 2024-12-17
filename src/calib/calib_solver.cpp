@@ -296,7 +296,7 @@ int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
 }
 
-void CalibSolver::BreakFullSo3SplineToSegments() {
+void CalibSolver::BreakTimelineToSegments() {
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
      * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
@@ -326,6 +326,10 @@ void CalibSolver::BreakFullSo3SplineToSegments() {
             "details:\n{}",
             _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
     }
+}
+
+void CalibSolver::InitSo3SplineSegments() {
+    _splineSegments.clear();
     _splineSegments.reserve(_validTimeSegments.size());
     for (auto &[st, et] : _validTimeSegments) {
         auto so3Spline = CreateSo3Spline(st, et, Configor::Prior::KnotTimeDist.So3Spline);

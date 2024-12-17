@@ -58,6 +58,12 @@ void CalibSolver::Process() {
     this->EstimateCameraIntrinsics();
     _parMgr->ShowParamStatus();
 
+    /**
+     * refine intrinsics using raw events
+     */
+    this->RefineCameraIntrinsicsUsingRawEvents();
+    _parMgr->ShowParamStatus();
+
     if (Configor::DataStream::IMUTopics.empty()) {
         _solveFinished = true;
         return;
@@ -101,7 +107,8 @@ void CalibSolver::Process() {
      * moving out of the field of view), it is necessary to identify the continuous segments for
      * subsequent calibration.
      */
-    this->BreakFullSo3SplineToSegments();
+    this->BreakTimelineToSegments();
+    this->InitSo3SplineSegments();
 
     /**
      * recover the linear scale spline using quantities from the one-shot sensor-inertial alignment

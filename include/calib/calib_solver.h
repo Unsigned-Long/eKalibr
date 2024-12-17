@@ -126,6 +126,8 @@ protected:
 
     void EstimateCameraIntrinsics();
 
+    void RefineCameraIntrinsicsUsingRawEvents();
+
     void GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion);
 
     /**
@@ -137,7 +139,9 @@ protected:
 
     void EventInertialAlignment();
 
-    void BreakFullSo3SplineToSegments();
+    void BreakTimelineToSegments();
+
+    void InitSo3SplineSegments();
 
     void InitPosSpline() const;
 

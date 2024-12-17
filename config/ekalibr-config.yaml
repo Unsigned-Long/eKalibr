@@ -23,13 +23,13 @@ Configor:
     # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)
     # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)
     IMUTopics:
-      - key: /dvs/imu
-        value:
-          Type: SENSOR_IMU
-          # the weights should be set based on the noise level of your own IMUs
-          # large noise level points to small weight
-          AcceWeight: 17.68
-          GyroWeight: 57.66
+    #      - key: /dvs/imu
+    #        value:
+    #          Type: SENSOR_IMU
+    #          # the weights should be set based on the noise level of your own IMUs
+    #          # large noise level points to small weight
+    #          AcceWeight: 17.68
+    #          GyroWeight: 57.66
     RefIMUTopic: /dvs/imu
     BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
