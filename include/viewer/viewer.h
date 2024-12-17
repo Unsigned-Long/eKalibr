@@ -130,13 +130,13 @@ public:
     ns_viewer::Entity::Ptr Gravity() const;
 
 protected:
-    static ns_viewer::ViewerConfigor GenViewerConfigor();
+    ns_viewer::ViewerConfigor GenViewerConfigor();
 
     pangolin::OpenGlRenderState GetInitRenderState() const;
 
-    static void ZoomInSpatialScaleCallBack();
+    void ZoomInSpatialScaleCallBack();
 
-    static void ZoomOutSpatialScaleCallBack();
+    void ZoomOutSpatialScaleCallBack();
 
     static void ZoomInTemporalScaleCallBack();
 

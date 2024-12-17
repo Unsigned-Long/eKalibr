@@ -67,8 +67,8 @@ ns_viewer::ViewerConfigor Viewer::GenViewerConfigor() {
     viewConfig.grid.showGrid = false;
     viewConfig.WithScreenShotSaveDir(Configor::DataStream::OutputPath);
 
-    viewConfig.callBacks.insert({'a', [] { ZoomOutSpatialScaleCallBack(); }});
-    viewConfig.callBacks.insert({'d', [] { ZoomInSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'a', [this] { ZoomOutSpatialScaleCallBack(); }});
+    viewConfig.callBacks.insert({'d', [this] { ZoomInSpatialScaleCallBack(); }});
     viewConfig.callBacks.insert({'s', [] { ZoomOutTemporalScaleCallBack(); }});
     viewConfig.callBacks.insert({'w', [] { ZoomInTemporalScaleCallBack(); }});
 
@@ -367,11 +367,22 @@ ns_viewer::Entity::Ptr Viewer::Gravity() const {
 
 void Viewer::ZoomInSpatialScaleCallBack() {
     Configor::Preference::EventViewerSpatialTemporalScale.first += 0.005;
+
+    Configor::Preference::SplineViewerSpatialScale += 1.0;
+    if (_splineSegments != nullptr && _grid3d != nullptr && _parMagr != nullptr) {
+        UpdateViewer();
+    }
 }
 
 void Viewer::ZoomOutSpatialScaleCallBack() {
     if (Configor::Preference::EventViewerSpatialTemporalScale.first >= 0.01) {
         Configor::Preference::EventViewerSpatialTemporalScale.first -= 0.005;
+    }
+    if (Configor::Preference::SplineViewerSpatialScale >= 2.0) {
+        Configor::Preference::SplineViewerSpatialScale -= 1.0;
+    }
+    if (_splineSegments != nullptr && _grid3d != nullptr && _parMagr != nullptr) {
+        UpdateViewer();
     }
 }
 
