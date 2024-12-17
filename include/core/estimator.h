@@ -221,6 +221,13 @@ public:
                                    const VisualProjectionPairPtr &pair,
                                    Opt option,
                                    double weight);
+
+    void AddVisualDiscreteProjectionFactor(Sophus::SO3d *SO3_CjToW,
+                                           Eigen::Vector3d *POS_CjInW,
+                                           const std::string &camTopic,
+                                           const VisualProjectionPairPtr &pair,
+                                           Opt option,
+                                           double weight);
 };
 }  // namespace ns_ekalibr
 

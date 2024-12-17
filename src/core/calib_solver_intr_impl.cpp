@@ -39,6 +39,8 @@
 #include <tiny-viewer/object/camera.h>
 #include <veta/camera/pinhole_brown.h>
 #include <viewer/viewer.h>
+#include "core/estimator.h"
+#include "factor/visual_projection_factor.hpp"
 
 namespace ns_ekalibr {
 
@@ -149,7 +151,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
     }
 
     // topic, timestamp, rVec, tVec
-    std::map<std::string, std::list<std::tuple<double, cv::Mat, cv::Mat>>> poseVecMap;
+    std::map<std::string, std::list<std::tuple<CircleGrid2D::Ptr, cv::Mat, cv::Mat>>> poseVecMap;
 
     for (const auto &[topic, patterns] : _extractedPatterns) {
         spdlog::info("perform PnP solving to obtain poses of all timestamps for camera '{}'...",
@@ -188,7 +190,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
                 spdlog::warn("PnP solving temporally stamped at '{:.3f}' failed!!!",
                              grid2d->timestamp);
             } else {
-                curPoseVec.emplace_back(grid2d->timestamp, rVecs, tVecs);
+                curPoseVec.emplace_back(grid2d, rVecs, tVecs);
             }
         }
         bar->finish();
@@ -215,7 +217,16 @@ void CalibSolver::EstimateCameraIntrinsics() {
         const auto &curPoseVec = poseVecMap.at(topic);
         auto &curCamPoses = _camPoses[topic];
         curCamPoses.reserve(curPoseVec.size());
-        for (const auto &[timestamp, rVec, tVec] : curPoseVec) {
+        const auto &patterns = _extractedPatterns.at(topic);
+
+        spdlog::info(
+            "refine intrinsics using non-linear least-squares optimization for camera '{}'...",
+            topic);
+        auto estimator = Estimator::Create(_parMgr);
+        auto option = OptOption::OPT_CAM_PRINCIPAL_POINT | OptOption::OPT_CAM_FOCAL_LEN |
+                      OptOption::OPT_CAM_DIST_COEFFS;
+
+        for (const auto &[grid2d, rVec, tVec] : curPoseVec) {
             // rotation
             cv::Mat rotMatrix;
             cv::Rodrigues(rVec, rotMatrix);
@@ -237,8 +248,28 @@ void CalibSolver::EstimateCameraIntrinsics() {
             Eigen::Matrix3d R = Rot_WtoCj.transpose();
             Eigen::Vector3d t = -Rot_WtoCj.transpose() * Pos_WinCj;
 
-            curCamPoses.emplace_back(R, t, timestamp);
+            // storage
+            curCamPoses.emplace_back(R, t, grid2d->timestamp);
+
+            // add constraints
+            auto &pose = curCamPoses.back();
+
+            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                const auto &center = grid2d->centers.at(i);
+                const Eigen::Vector2d pixel(center.x, center.y);
+
+                const auto &point3d = patterns->GetGrid3d()->points.at(i);
+                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
+
+                auto pair = VisualProjectionPair::Create(grid2d->timestamp, point, pixel);
+
+                estimator->AddVisualDiscreteProjectionFactor(&pose.so3, &pose.t, topic, pair,
+                                                             option, 1.0);
+            }
         }
+
+        auto sum = estimator->Solve(_ceresOption);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
     // visualization

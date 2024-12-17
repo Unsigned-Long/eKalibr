@@ -965,4 +965,64 @@ void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(intri->DistCoeffAddress());
     }
 }
+
+/**
+ * param blocks:
+ * [ SO3_CjToW | POS_CjInW | FX | FY | CX | CY | DIST_COEFFS ]
+ */
+void Estimator::AddVisualDiscreteProjectionFactor(Sophus::SO3d *SO3_CjToW,
+                                                  Eigen::Vector3d *POS_CjInW,
+                                                  const std::string &camTopic,
+                                                  const VisualProjectionPairPtr &pair,
+                                                  Opt option,
+                                                  double weight) {
+    // create a cost function
+    auto costFunc = VisualDiscreteProjectionFactor::Create(pair, weight);
+
+    // SO3_CjToW
+    costFunc->AddParameterBlock(4);
+    // POS_CjInW
+    costFunc->AddParameterBlock(3);
+
+    // fx, fy, cx, cy
+    costFunc->AddParameterBlock(1);
+    costFunc->AddParameterBlock(1);
+    costFunc->AddParameterBlock(1);
+    costFunc->AddParameterBlock(1);
+
+    // k1, k2, k3, p1, p2
+    costFunc->AddParameterBlock(5);
+
+    costFunc->SetNumResiduals(2);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+    paramBlockVec.push_back(SO3_CjToW->data());
+    paramBlockVec.push_back(POS_CjInW->data());
+
+    auto &intri = parMagr->INTRI.Camera.at(camTopic);
+    paramBlockVec.push_back(intri->FXAddress());
+    paramBlockVec.push_back(intri->FYAddress());
+    paramBlockVec.push_back(intri->CXAddress());
+    paramBlockVec.push_back(intri->CYAddress());
+    paramBlockVec.push_back(intri->DistCoeffAddress());
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, new ceres::HuberLoss(1.0 /*pixel*/ * weight), paramBlockVec);
+    this->SetManifold(SO3_CjToW->data(), QUATER_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_CAM_FOCAL_LEN, option)) {
+        this->SetParameterBlockConstant(intri->FXAddress());
+        this->SetParameterBlockConstant(intri->FYAddress());
+    }
+
+    if (!IsOptionWith(Opt::OPT_CAM_PRINCIPAL_POINT, option)) {
+        this->SetParameterBlockConstant(intri->CXAddress());
+        this->SetParameterBlockConstant(intri->CYAddress());
+    }
+
+    if (!IsOptionWith(Opt::OPT_CAM_DIST_COEFFS, option)) {
+        this->SetParameterBlockConstant(intri->DistCoeffAddress());
+    }
+}
 }  // namespace ns_ekalibr
