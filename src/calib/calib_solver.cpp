@@ -359,7 +359,9 @@ int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
 }
 
-void CalibSolver::BreakTimelineToSegments(double maxNeighborThd, double maxLengthThd) {
+double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
+                                            double maxLengthThd,
+                                            const std::optional<std::string> &evTopic) {
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
      * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
@@ -368,6 +370,9 @@ void CalibSolver::BreakTimelineToSegments(double maxNeighborThd, double maxLengt
      */
     std::list<std::pair<double, double>> segBoundary;
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        if (evTopic != std::nullopt && topic != *evTopic) {
+            continue;
+        }
         const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         auto segments = this->ContinuousGridTrackingSegments(topic, maxNeighborThd /*neighbor*/,
                                                              maxLengthThd /*len*/);
@@ -376,20 +381,18 @@ void CalibSolver::BreakTimelineToSegments(double maxNeighborThd, double maxLengt
         }
     }
     _validTimeSegments = ContinuousSegments(segBoundary, maxNeighborThd /*neighbor*/);
-    {
-        std::stringstream ss;
-        double sumTime = 0.0;
-        for (const auto &[sTime, eTime] : _validTimeSegments) {
-            sumTime += eTime - sTime;
-            ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
-        }
-        const double percent =
-            sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
-        spdlog::info(
-            "finding valid time segment count: {}, percent in total data piece: {:.2f}%, "
-            "details:\n{}",
-            _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
+    std::stringstream ss;
+    double sumTime = 0.0;
+    for (const auto &[sTime, eTime] : _validTimeSegments) {
+        sumTime += eTime - sTime;
+        ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
     }
+    const double percent = sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
+    spdlog::info(
+        "finding valid time segment count: {}, percent in total data piece: {:.2f}%, "
+        "details:\n{}",
+        _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
+    return sumTime;
 }
 
 void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {

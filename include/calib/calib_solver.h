@@ -97,6 +97,7 @@ protected:
      * the raw events of the {j}-th circle of the {i}-th tracked grid pattern of camera {topic}
      */
     std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;
+    std::string _refEvTopic;
 
     /**
      * utilized in event-inertial calibration
@@ -159,7 +160,9 @@ protected:
 
     void EventInertialAlignment();
 
-    void BreakTimelineToSegments(double maxNeighborThd, double maxLengthThd);
+    double BreakTimelineToSegments(double maxNeighborThd,
+                                   double maxLengthThd,
+                                   const std::optional<std::string> &evTopic = {});
 
     void CreateSplineSegments(double dtSo3, double dtPos);
 

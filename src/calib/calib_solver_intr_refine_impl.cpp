@@ -39,24 +39,43 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
      * moving out of the field of view), it is necessary to identify the continuous segments for
      * subsequent calibration.
      */
-    this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+    _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
+    double timeSum = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+    /**
+     * Here, we choose the event camera with the longest total duration as the reference camera
+     */
+    if (Configor::DataStream::EventTopics.size() > 1) {
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            if (topic == _refEvTopic) {
+                continue;
+            }
+            double ts = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, topic);
+            if (ts > timeSum) {
+                _refEvTopic = topic;
+                timeSum = ts;
+            }
+        }
+        // update the '_validTimeSegments' as those of the '_refEvTopic'
+        this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+    }
+    spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
+                 timeSum);
+
     double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
     this->CreateSplineSegments(dtSpline, dtSpline);
 
     // fitting rough segments
-    spdlog::info("fitting spline segments using camera poses...");
+    spdlog::info("fitting rough spline segments using visual poses of the reference camera...");
     auto estimator = Estimator::Create(_parMgr);
-    for (const auto &[topic, poseVec] : _camPoses) {
-        for (const auto &pose : poseVec) {
-            auto idx = this->IsTimeInValidSegment(pose.timeStamp);
-            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-                continue;
-            }
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
-                                        OptOption::OPT_SO3_SPLINE, 1.0);
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
-                                             OptOption::OPT_SCALE_SPLINE, 1.0);
+    for (const auto &pose : _camPoses.at(_refEvTopic)) {
+        auto idx = this->IsTimeInValidSegment(pose.timeStamp);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            continue;
         }
+        estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
+                                    OptOption::OPT_SO3_SPLINE, 1.0);
+        estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
+                                         OptOption::OPT_SCALE_SPLINE, 1.0);
     }
     for (auto &[so3Spline, posSpline] : _splineSegments) {
         estimator->AddSo3LinearHeadConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
@@ -73,6 +92,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     dtSpline = Configor::Prior::DecayTimeOfActiveEvents;
     this->CreateSplineSegments(dtSpline, dtSpline);
 
+    spdlog::info("fitting small-knot-distance spline segments using rough spline segments...");
     estimator = Estimator::Create(_parMgr);
     auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
     for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
