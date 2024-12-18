@@ -38,10 +38,17 @@
 #include "util/tqdm.h"
 #include "core/visual_distortion.h"
 #include "calib/calib_param_mgr.h"
+#include <util/status.hpp>
 #include <veta/camera/pinhole.h>
 
 namespace ns_ekalibr {
 void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion) {
+#define ENABLE_UNDISTORTION 0
+#if not ENABLE_UNDISTORTION
+    if (undistortion) {
+        throw Status(Status::CRITICAL, "Undistortion is not available currently in eKalibr!!!");
+    }
+#endif
     const double decay = Configor::Prior::DecayTimeOfActiveEvents;
     const auto &pattern = Configor::Prior::CirclePattern;
     auto circlePattern = CirclePattern::FromString(pattern.Type);
@@ -63,27 +70,44 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
     for (const auto &[topic, eventMes] : _evMes) {
         if (tryLoadAndSaveRes) {
             // try load
-            auto path = GetDiskPathOfExtractedGridPatterns(topic);
-            spdlog::info(
-                "try to load existing extracted circles grid patterns for camera '{}' from '{}'...",
-                topic, path);
-            if (std::filesystem::exists(path)) {
-                auto curPattern = CircleGridPattern::Load(path, _dataRawTimestamp.first,
+            auto [gridPatternPath, rawEvsPath] = GetDiskPathOfExtractedGridPatterns(topic);
+            if (std::filesystem::exists(gridPatternPath) && std::filesystem::exists(rawEvsPath)) {
+                // try load '_rawEventsOfExtractedPatterns'
+                spdlog::info(
+                    "try to load existing raw events of extracted circles of grid patterns for "
+                    "camera '{}' from '{}'...",
+                    topic, rawEvsPath);
+                auto rawEvsOfPattern = LoadRawEventsOfExtractedPatterns(
+                    rawEvsPath, _dataRawTimestamp.first, CerealArchiveType::Enum::BINARY);
+
+                // try load '_extractedPatterns'
+                spdlog::info(
+                    "try to load existing extracted circles grid patterns for camera '{}' from "
+                    "'{}'...",
+                    topic, gridPatternPath);
+                auto curPattern = CircleGridPattern::Load(gridPatternPath, _dataRawTimestamp.first,
                                                           Configor::Preference::OutputDataFormat);
-                if (curPattern != nullptr) {
+
+                if (!rawEvsOfPattern.empty() && curPattern != nullptr) {
                     // select in time-range pattern
-                    curPattern->RemoveGrid2DOutOfTimeRange(_dataRawTimestamp.first,
-                                                           _dataRawTimestamp.second);
+                    auto idsOfRemoved = curPattern->RemoveGrid2DOutOfTimeRange(
+                        _dataRawTimestamp.first, _dataRawTimestamp.second);
+
+                    // filter '_rawEventsOfExtractedPatterns'
+                    for (int grid2dId : idsOfRemoved) {
+                        rawEvsOfPattern.erase(grid2dId);
+                    }
 
                     // assign
                     _extractedPatterns[topic] = curPattern;
+                    _rawEventsOfExtractedPatterns[topic] = rawEvsOfPattern;
                     patternLoadFromFile[topic] = true;
                     spdlog::info(
-                        "load extracted circles grid patterns for camera '{}' success! "
-                        "details:\n{}\nif you want to use a different configuration for circle "
-                        "grid "
-                        "extraction, please delete existing grid pattern file first at '{}'",
-                        topic, curPattern->InfoString(), path);
+                        "load extracted circles grid patterns and raw events for camera '{}' "
+                        "success! details:\n{}\nif you want to use a different configuration for "
+                        "circle grid extraction, please delete existing grid pattern file first at "
+                        "'{}'",
+                        topic, curPattern->InfoString(), gridPatternPath);
                     continue;
                 }
             }
@@ -106,12 +130,16 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         auto bar = std::make_shared<tqdm>();
 
         auto curPattern = CircleGridPattern::Create(_grid3d, _dataRawTimestamp.first);
+        std::map<int, ExtractedCirclesVec> rawEvsOfPattern;
+        int grid2dIdx = 0;
 
+#if ENABLE_UNDISTORTION
         const auto &intri = _parMgr->INTRI.Camera.at(topic);
         VisualUndistortionMap::Ptr undistortionMap = nullptr;
         if (undistortion) {
             undistortionMap = VisualUndistortionMap::Create(intri);
         }
+#endif
 
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
             bar->progress(i, static_cast<int>(eventMes.size()));
@@ -120,7 +148,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 /**
                  * create sae (surface of active events)
                  */
-                Event::Ptr ev = nullptr;
+                Event::Ptr ev = event;
+#if ENABLE_UNDISTORTION
                 if (undistortion) {
                     const auto et = event->GetTimestamp();
                     const auto ex = event->GetPos()(0), ey = event->GetPos()(1);
@@ -133,10 +162,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     }
                     // allocate
                     ev = Event::Create(et, Event::PosType(xi, yi), event->GetPolarity());
-                } else {
-                    // shallow copy
-                    ev = event;
                 }
+#endif
 
                 sae->GrabEvent(ev);
                 const auto timeLatest = sae->GetTimeLatest();
@@ -175,12 +202,13 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
 
-                auto gridPoints = circleExtractor->ExtractCirclesGrid(nfPack, patternSize,
-                                                                      circlePattern, _viewer);
+                auto res = circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern,
+                                                               _viewer);
 
-                if (gridPoints != std::nullopt) {
+                if (res != std::nullopt) {
+#if ENABLE_UNDISTORTION
                     if (undistortion) {
-                        for (auto &center : *gridPoints) {
+                        for (auto &center : res->first) {
                             Eigen::Vector2d uc(center.x, center.y);
                             // add distortion to get the origin position
                             Eigen::Vector2d rc = intri->GetDistoPixel(uc);
@@ -188,7 +216,15 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                             center.y = static_cast<float>(rc(1));
                         }
                     }
-                    curPattern->AddGrid2d(CircleGrid2D::Create(nfPack->timestamp, *gridPoints));
+#endif
+                    auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, res->first);
+                    curPattern->AddGrid2d(grid2d);
+                    /**
+                     * distortion in 'res->second' is not considered, i.e., they are raw ones from
+                     * input events
+                     */
+                    rawEvsOfPattern.insert({grid2dIdx, res->second});
+                    ++grid2dIdx;
                 }
 
                 if (Configor::Preference::Visualization) {
@@ -217,6 +253,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                      topic, curPattern->InfoString());
 
         _extractedPatterns[topic] = curPattern;
+        _rawEventsOfExtractedPatterns[topic] = rawEvsOfPattern;
         patternLoadFromFile[topic] = false;
     }
 
@@ -230,7 +267,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         if (patternLoadFromFile.at(topic)) {
             continue;
         }
-        auto gridPatternPath = GetDiskPathOfExtractedGridPatterns(topic);
+        auto [gridPatternPath, rawEvsPath] = GetDiskPathOfExtractedGridPatterns(topic);
+
         spdlog::info("saving extracted circle grid patterns of '{}' to path: '{}'...", topic,
                      gridPatternPath);
         if (!patterns->Save(gridPatternPath, Configor::Preference::OutputDataFormat)) {
@@ -238,7 +276,19 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         } else {
             spdlog::info("saved extracted patterns of '{}' to path finished!", topic);
         }
+
+        spdlog::info("saving raw events of extracted circle grid patterns of '{}' to path: '{}'...",
+                     topic, rawEvsPath);
+        if (!SaveRawEventsOfExtractedPatterns(_rawEventsOfExtractedPatterns.at(topic), rawEvsPath,
+                                              _dataRawTimestamp.first,
+                                              CerealArchiveType::Enum::BINARY)) {
+            spdlog::warn("failed to save raw events of patterns of '{}'!!!", topic);
+        } else {
+            spdlog::info("saved raw events of extracted patterns of '{}' to path finished!", topic);
+        }
     }
+#undef ENABLE_UNDISTORTION
+    std::cin.get();
 }
 
 }  // namespace ns_ekalibr

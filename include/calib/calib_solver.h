@@ -38,6 +38,7 @@
 #include "sensor/imu.hpp"
 #include "ctraj/core/spline_bundle.h"
 #include "config/configor.h"
+#include "core/circle_extractor.h"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -85,7 +86,17 @@ protected:
      * utilized in event intrinsic calibration
      */
     CircleGrid3DPtr _grid3d;
+    // topic, [3d grid, tracked 2d grids]
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
+    // for a tracked 2d grid pattern
+    using ExtractedCirclesVec =
+        std::vector<std::pair<EventCircleExtractor::TimeVaryingCircle::Ptr, EventArrayPtr>>;
+    /**
+     * topic, [raw events vector of circles of each tracked 2d grid (id)], example:
+     * _extractedPatterns[topic].Grid2D[i]][j] -> _rawEventsOfExtractedPatterns[topic].Grid2D[i][j]
+     * the raw events of the {j}-th circle of the {i}-th tracked grid pattern of camera {topic}
+     */
+    std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;
 
     /**
      * utilized in event-inertial calibration
@@ -120,7 +131,16 @@ protected:
 
     static PosSplineType CreatePosSpline(double st, double et, double posDt);
 
-    static std::string GetDiskPathOfExtractedGridPatterns(const std::string &topic);
+    static std::pair<std::string, std::string> GetDiskPathOfExtractedGridPatterns(
+        const std::string &topic);
+
+    static bool SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
+                                                 const std::string &filename,
+                                                 double timeBias,
+                                                 CerealArchiveType::Enum archiveType);
+
+    static std::map<int, ExtractedCirclesVec> LoadRawEventsOfExtractedPatterns(
+        const std::string &filename, double newTimeBias, CerealArchiveType::Enum archiveType);
 
     static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
 
