@@ -38,6 +38,8 @@
 #include "util/tqdm.h"
 #include "core/visual_distortion.h"
 #include "calib/calib_param_mgr.h"
+
+#include <tiny-viewer/object/landmark.h>
 #include <util/status.hpp>
 #include <veta/camera/pinhole.h>
 
@@ -288,7 +290,53 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         }
     }
 #undef ENABLE_UNDISTORTION
-    std::cin.get();
+
+    for (const auto &[topic, rawEvsOfCircle] : _rawEventsOfExtractedPatterns) {
+        if (!tryLoadAndSaveRes || !Configor::Preference::Visualization) {
+            continue;
+        }
+        // for each topic
+        const auto &config = Configor::DataStream::EventTopics.at(topic);
+        std::map<int, CircleGrid2D::Ptr> grid2dMap;
+        for (const auto &grid2d : _extractedPatterns.at(topic)->GetGrid2d()) {
+            grid2dMap.insert({grid2d->id, grid2d});
+        }
+
+        auto bar = std::make_shared<tqdm>();
+        int idx = 0;
+        for (const auto &[grid2dIdx, circles] : rawEvsOfCircle) {
+            bar->progress(idx++, static_cast<int>(rawEvsOfCircle.size()));
+            // for each grid 2d pattern
+            // spdlog::info("grid2d id: {}", grid2dIdx);
+            const auto &grid2d = grid2dMap.at(grid2dIdx);
+            const auto &ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+
+            // camera view
+            auto t = -grid2d->timestamp * ptScale.second;
+            ns_viewer::Posef curViewCamPose = initViewCamPose;
+            curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
+            curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
+            curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
+            _viewer->SetCamView(curViewCamPose);
+
+            for (std::size_t i = 0; i < circles.size(); ++i) {
+                // for each circle
+                const auto &[tvCircle, rawEvs] = circles.at(i);
+                _viewer->AddEventData(rawEvs, ptScale, {}, 4.0f);
+                _viewer->AddSpatioTemporalTrace(tvCircle->PosVecAt(1E-3), 2.0f,
+                                                ns_viewer::Colour::Green(), ptScale);
+            }
+            _viewer->AddGridPattern(grid2d->centers, grid2d->timestamp, ptScale,
+                                    ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
+
+            const auto ms = static_cast<int>(Configor::Prior::DecayTimeOfActiveEvents * 1000.0);
+            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        }
+        bar->finish();
+        _viewer->ClearViewer();
+        _viewer->ResetViewerCamera();
+        cv::destroyAllWindows();
+    }
 }
 
 }  // namespace ns_ekalibr

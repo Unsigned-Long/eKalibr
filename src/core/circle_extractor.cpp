@@ -298,12 +298,8 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
     }
 
     if (viewer != nullptr && res == true) {
-        std::vector<Eigen::Vector2f> pattern(centers.size());
-        for (size_t i = 0; i < centers.size(); ++i) {
-            pattern.at(i) = Eigen::Vector2f(centers.at(i).x, centers.at(i).y);
-        }
         const auto& ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
-        viewer->AddGridPattern(pattern, nfPack->timestamp, ptScale,
+        viewer->AddGridPattern(centers, nfPack->timestamp, ptScale,
                                ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
     }
 

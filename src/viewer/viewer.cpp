@@ -210,7 +210,7 @@ Viewer &Viewer::AddEventData(const std::list<EventPtr> &ary,
     return AddEventData(eAry, ptScales, color, ptSize);
 }
 
-Viewer &Viewer::AddGridPattern(const std::vector<Eigen::Vector2f> &centers,
+Viewer &Viewer::AddGridPattern(const std::vector<cv::Point2f> &centers,
                                double timestamp,
                                const std::pair<float, float> &ptScales,
                                const ns_viewer::Colour &color,
@@ -220,8 +220,8 @@ Viewer &Viewer::AddGridPattern(const std::vector<Eigen::Vector2f> &centers,
     cloud->resize(centers.size());
     for (const auto &center : centers) {
         pcl::PointXYZRGB p;
-        p.x = center(0) * ptScales.first;
-        p.y = center(1) * ptScales.first;
+        p.x = center.x * ptScales.first;
+        p.y = center.y * ptScales.first;
         p.z = z;
         p.r = color.r * 255;
         p.g = color.g * 255;
@@ -235,10 +235,10 @@ Viewer &Viewer::AddGridPattern(const std::vector<Eigen::Vector2f> &centers,
 
     for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
         int j = i + 1;
-        Eigen::Vector3f ci = centers.at(i).homogeneous();
+        Eigen::Vector3f ci(centers.at(i).x, centers.at(i).y, 1.0);
         ci *= ptScales.first;
         ci(2) = z;
-        Eigen::Vector3f cj = centers.at(j).homogeneous();
+        Eigen::Vector3f cj(centers.at(j).x, centers.at(j).y, 1.0);
         cj *= ptScales.first;
         cj(2) = z;
         entities.push_back(ns_viewer::Line::Create(ci, cj, 40.0f * ptSize, color));

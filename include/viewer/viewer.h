@@ -95,7 +95,7 @@ public:
                          float ptSize = 1.0f);
 
     Viewer &AddGridPattern(
-        const std::vector<Eigen::Vector2f> &centers,
+        const std::vector<cv::Point2f> &centers,
         double timestamp,
         const std::pair<float, float> &ptScales = {0.01f, 2.0f},
         const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
