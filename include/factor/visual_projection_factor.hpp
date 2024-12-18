@@ -216,37 +216,6 @@ public:
 
     static std::size_t TypeHashCode() { return typeid(VisualDiscreteProjectionFactor).hash_code(); }
 
-    template <class T>
-    static void TransformCamToImg(const T *FX,
-                                  const T *FY,
-                                  const T *CX,
-                                  const T *CY,
-                                  const Eigen::Vector2<T> &P,
-                                  Eigen::Vector2<T> *feat) {
-        feat->operator()(0) = *FX * P(0) + *CX;
-        feat->operator()(1) = *FY * P(1) + *CY;
-    }
-
-    template <typename T>
-    static Eigen::Vector2<T> DistortionFunction(
-        const Eigen::Map<const Eigen::Vector5<T>> &distoParams, const Eigen::Vector2<T> &p) {
-        const T k1 = distoParams(0), k2 = distoParams(1), k3 = distoParams(2);
-        const T t1 = distoParams(3), t2 = distoParams(4);
-        const T r2 = p(0) * p(0) + p(1) * p(1);
-        const T r4 = r2 * r2;
-        const T r6 = r4 * r2;
-        const T k_diff = k1 * r2 + k2 * r4 + k3 * r6;
-        const T t_x = t2 * (r2 + T(2) * p(0) * p(0)) + T(2) * t1 * p(0) * p(1);
-        const T t_y = t1 * (r2 + T(2) * p(1) * p(1)) + T(2) * t2 * p(0) * p(1);
-        return {p(0) * k_diff + t_x, p(1) * k_diff + t_y};
-    }
-
-    template <typename T>
-    static Eigen::Vector2<T> AddDistortion(const Eigen::Map<const Eigen::Vector5<T>> &distoParams,
-                                           const Eigen::Vector2<T> &p) {
-        return p + DistortionFunction(distoParams, p);
-    }
-
 public:
     /**
      * param blocks:
@@ -278,11 +247,12 @@ public:
         Eigen::Vector3<T> pInCam = SE3_CjToW.inverse() * _pair->point3d.cast<T>();
         // from camera frame to camera normalized plane
         Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
+        using Helper = VisualProjectionFactor<Configor::Prior::SplineOrder>;
         // add distortion
-        pInCamPlane = AddDistortion<T>(DIST_COEFFS, pInCamPlane);
+        pInCamPlane = Helper::AddDistortion<T>(DIST_COEFFS, pInCamPlane);
 
         Eigen::Vector2<T> pixelPred;
-        TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixelPred);
+        Helper::TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixelPred);
 
         Eigen::Map<Eigen::Vector2<T>> residuals(sResiduals);
         residuals = pixelPred - _pair->pixel2d.cast<T>();

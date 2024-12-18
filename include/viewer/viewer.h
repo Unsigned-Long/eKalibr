@@ -103,6 +103,7 @@ public:
 
     Viewer &AddGridPattern(
         const std::vector<cv::Point3f> &centers,
+        float radius,
         const float &pScale = 0.01f,
         const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
         float ptSize = 0.05f);

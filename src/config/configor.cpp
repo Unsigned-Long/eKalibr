@@ -109,7 +109,7 @@ void Configor::PrintMainFields() {
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                     DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                        DESC_FORMAT DESC_FORMAT,
+                        DESC_FORMAT DESC_FORMAT DESC_FORMAT,
         DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::RefIMUTopic),
         DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
         DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
@@ -121,6 +121,7 @@ void Configor::PrintMainFields() {
         "CirclePattern::Rows", Prior::CirclePattern.Rows,  // number of circles (rows)
         "CirclePattern::SpacingMeters",
         Prior::CirclePattern.SpacingMeters,  // distance between circles
+        "CirclePattern::RadiusRate", Prior::CirclePattern.RadiusRate,
         // fields for CircleExtractor
         "CircleExtractor::ValidClusterAreaThd", Prior::CircleExtractor.ValidClusterAreaThd,
         "CircleExtractor::CircleClusterPairDirThd", Prior::CircleExtractor.CircleClusterPairDirThd,
@@ -249,6 +250,12 @@ void Configor::CheckConfigure() {
         throw Status(Status::ERROR,
                      "the distance between circles in the circle pattern (i.e., "
                      "CirclePattern::SpacingMeters) should be positive!");
+    }
+
+    if (Prior::CirclePattern.RadiusRate < 1E-6 /*m*/) {
+        throw Status(Status::ERROR,
+                     "the radius rate in the circle pattern (i.e., "
+                     "CirclePattern::RadiusRate) should be positive!");
     }
 
     if (Prior::CircleExtractor.ValidClusterAreaThd < 1 /*pixels*/) {

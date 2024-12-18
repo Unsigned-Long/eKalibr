@@ -30,9 +30,19 @@
 #include "calib/calib_param_mgr.h"
 #include "spdlog/spdlog.h"
 #include "calib/estimator.h"
+#include <core/circle_grid.h>
+#include "factor/visual_projection_circle_based_factor.hpp"
 
 namespace ns_ekalibr {
 void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
+    if (CirclePatternType::SYMMETRIC_GRID ==
+        CirclePattern::FromString(Configor::Prior::CirclePattern.Type)) {
+        spdlog::warn(
+            "symmetric circle grid pattern cannot be used to perform motion-based visual intrinsic "
+            "refinement due to 180-degree ambiguity!");
+        return;
+    }
+
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
      * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
@@ -116,6 +126,12 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     // todo: using raw event to refine intrinsics and splines
+    std::vector<VisualProjectionCircleBasedPair::Ptr> circle3dVec(_grid3d->points.size());
+    for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
+        const auto &p = _grid3d->points.at(i);
+        circle3dVec.at(i) = VisualProjectionCircleBasedPair::CreateFromGridPattern(
+            Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
+    }
     std::cin.get();
 }
 

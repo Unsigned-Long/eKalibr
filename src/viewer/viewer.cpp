@@ -39,6 +39,7 @@
 #include "calib/calib_param_mgr.h"
 #include <core/circle_grid.h>
 #include <spdlog/spdlog.h>
+#include "tiny-viewer/entity/circle.h"
 
 namespace ns_ekalibr {
 using ColorPoint = pcl::PointXYZRGBA;
@@ -248,25 +249,20 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point2f> &centers,
 }
 
 Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
+                               float radius,
                                const float &pScale,
                                const ns_viewer::Colour &color,
                                float ptSize) {
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
-    cloud->resize(centers.size());
-    for (const auto &center : centers) {
-        pcl::PointXYZRGB p;
-        p.x = center.x * pScale;
-        p.y = center.y * pScale;
-        p.z = center.z;
-        p.r = color.r * 255;
-        p.g = color.g * 255;
-        p.b = color.b * 255;
-
-        cloud->push_back(p);
-    }
     std::vector<ns_viewer::Entity::Ptr> entities;
     entities.reserve(centers.size() * 2 - 1);
-    entities.push_back(std::make_shared<ns_viewer::Cloud<ns_viewer::Landmark>>(cloud, ptSize));
+
+    for (const auto &center : centers) {
+        Eigen::Vector3f c(center.x, center.y, center.z);
+        c *= pScale;
+        auto circle = ns_viewer::Circle::Create(ns_viewer::Posef(Eigen::Matrix3f::Identity(), c),
+                                                radius * pScale, true, true, color);
+        entities.push_back(circle);
+    }
 
     for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
         int j = i + 1;
@@ -290,7 +286,8 @@ Viewer &Viewer::UpdateViewer(const Sophus::SE3f &SE3_RefToWorld, const float &pS
     }
 
     if (_grid3d != nullptr) {
-        this->AddGridPattern(_grid3d->points, pScale, ns_viewer::Colour::Black());
+        this->AddGridPattern(_grid3d->points, Configor::Prior::CirclePattern.Radius(), pScale,
+                             ns_viewer::Colour::Black());
     }
 
     if (_parMagr != nullptr) {

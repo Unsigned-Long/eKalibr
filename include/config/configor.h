@@ -120,13 +120,17 @@ public:
             std::uint16_t Cols;
             std::uint16_t Rows;
             double SpacingMeters;
+            double RadiusRate;  // radius = SpacingMeters / RadiusRate
 
             CirclePatternConfig() = default;
+
+            double Radius() const { return SpacingMeters / RadiusRate; }
 
         public:
             template <class Archive>
             void serialize(Archive &ar) {
-                ar(CEREAL_NVP(Type), CEREAL_NVP(Cols), CEREAL_NVP(Rows), CEREAL_NVP(SpacingMeters));
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Cols), CEREAL_NVP(Rows), CEREAL_NVP(SpacingMeters),
+                   CEREAL_NVP(RadiusRate));
             }
         };
 
