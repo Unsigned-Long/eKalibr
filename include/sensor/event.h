@@ -47,7 +47,9 @@ private:
     bool _polarity;
 
 public:
-    explicit Event(double timestamp, PosType pos = PosType::Zero(), bool polarity = {});
+    explicit Event(double timestamp = INVALID_TIME_STAMP,
+                   PosType pos = PosType::Zero(),
+                   bool polarity = {});
 
     static Ptr Create(double timestamp, const PosType& pos = PosType::Zero(), bool polarity = {});
 

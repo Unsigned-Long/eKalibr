@@ -33,12 +33,15 @@
 #include "cereal/types/vector.hpp"
 
 namespace ns_ekalibr {
-CircleGrid2D::CircleGrid2D(double timestamp, const std::vector<cv::Point2f>& centers)
-    : timestamp(timestamp),
+CircleGrid2D::CircleGrid2D(int id, double timestamp, const std::vector<cv::Point2f>& centers)
+    : id(id),
+      timestamp(timestamp),
       centers(centers) {}
 
-CircleGrid2D::Ptr CircleGrid2D::Create(double timestamp, const std::vector<cv::Point2f>& centers) {
-    return std::make_shared<CircleGrid2D>(timestamp, centers);
+CircleGrid2D::Ptr CircleGrid2D::Create(int id,
+                                       double timestamp,
+                                       const std::vector<cv::Point2f>& centers) {
+    return std::make_shared<CircleGrid2D>(id, timestamp, centers);
 }
 
 CircleGrid3D::CircleGrid3D(std::size_t rows,
@@ -109,15 +112,18 @@ void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.pus
 
 const std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() const { return _grid2d; }
 
-void CircleGridPattern::RemoveGrid2DOutOfTimeRange(double st, double et) {
+std::list<int> CircleGridPattern::RemoveGrid2DOutOfTimeRange(double st, double et) {
+    std::list<int> idsOfRemoved;
     for (auto it = _grid2d.cbegin(); it != _grid2d.cend();) {
         auto t = (*it)->timestamp + _timeBias;
         if (t < st || t > et) {
+            idsOfRemoved.push_back((*it)->id);
             it = _grid2d.erase(it);
         } else {
             ++it;
         }
     }
+    return idsOfRemoved;
 }
 
 const CircleGrid3D::Ptr& CircleGridPattern::GetGrid3d() const { return _grid3d; }
@@ -133,7 +139,7 @@ CircleGridPattern::Ptr CircleGridPattern::Load(const std::string& filename,
     try {
         auto archive = GetInputArchiveVariant(file, archiveType);
         SerializeByInputArchiveVariant(archive, archiveType,
-                                       cereal::make_nvp("CircleGridPattern", *pattern));
+                                       cereal::make_nvp("grid3d_with_grid2ds", *pattern));
     } catch (const cereal::Exception& exception) {
         throw Status(Status::CRITICAL,
                      "Can not load 'CircleGridPattern' file '{}' into eKalibr using cereal!!! "
@@ -154,7 +160,7 @@ bool CircleGridPattern::Save(const std::string& filename, CerealArchiveType::Enu
     }
     auto archive = GetOutputArchiveVariant(file, archiveType);
     SerializeByOutputArchiveVariant(archive, archiveType,
-                                    cereal::make_nvp("CircleGridPattern", *this));
+                                    cereal::make_nvp("grid3d_with_grid2ds", *this));
     return true;
 }
 

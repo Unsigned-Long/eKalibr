@@ -84,11 +84,11 @@ public:
         Eigen::Vector2d cy;
         Eigen::Vector2d m;
 
-        TimeVaryingCircle(double st,
-                          double et,
-                          const Eigen::Vector2d& cx,
-                          const Eigen::Vector2d& cy,
-                          const Eigen::Vector2d& m);
+        TimeVaryingCircle(double st = -1.0,
+                          double et = -1.0,
+                          const Eigen::Vector2d& cx = Eigen::Vector2d::Zero(),
+                          const Eigen::Vector2d& cy = Eigen::Vector2d::Zero(),
+                          const Eigen::Vector2d& m = Eigen::Vector2d::Zero());
 
         static Ptr Create(double st,
                           double et,
@@ -110,7 +110,15 @@ public:
             return os << "st: " << obj.st << " et: " << obj.et << " cx: " << obj.cx.transpose()
                       << " cy: " << obj.cy.transpose() << " m: " << obj.m.transpose();
         }
+
+    public:
+        template <class Archive>
+        void serialize(Archive& ar) {
+            ar(CEREAL_NVP(st), CEREAL_NVP(et), CEREAL_NVP(cx), CEREAL_NVP(cy), CEREAL_NVP(m));
+        }
     };
+
+    using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingCircle::Ptr, EventArrayPtr>>;
 
 protected:
     const double CLUSTER_AREA_THD;
@@ -136,10 +144,10 @@ public:
                       double DIR_DIFF_DEG_THD = 30.0,
                       double POINT_TO_CIRCLE_AVG_THD = 1.0);
 
-    std::vector<std::pair<TimeVaryingCircle::Ptr, EventArrayPtr>> ExtractCircles(
-        const EventNormFlow::NormFlowPack::Ptr& nfPack, const ViewerPtr& viewer = nullptr);
+    ExtractedCirclesVec ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
+                                       const ViewerPtr& viewer = nullptr);
 
-    std::optional<std::vector<cv::Point2f>> ExtractCirclesGrid(
+    std::optional<std::pair<std::vector<cv::Point2f>, ExtractedCirclesVec>> ExtractCirclesGrid(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
         const cv::Size& gridSize,
         CirclePatternType circlePatternType,

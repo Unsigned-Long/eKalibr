@@ -52,17 +52,18 @@ namespace ns_ekalibr {
 struct CircleGrid2D {
     using Ptr = std::shared_ptr<CircleGrid2D>;
 
+    int id;
     double timestamp;
     std::vector<cv::Point2f> centers;
 
-    CircleGrid2D(double timestamp = 0.0, const std::vector<cv::Point2f>& centers = {});
+    CircleGrid2D(int id = -1, double timestamp = 0.0, const std::vector<cv::Point2f>& centers = {});
 
-    static Ptr Create(double timestamp, const std::vector<cv::Point2f>& centers);
+    static Ptr Create(int id, double timestamp, const std::vector<cv::Point2f>& centers);
 
 public:
     template <class Archive>
     void serialize(Archive& ar) {
-        ar(CEREAL_NVP(timestamp), CEREAL_NVP(centers));
+        ar(CEREAL_NVP(id), CEREAL_NVP(timestamp), CEREAL_NVP(centers));
     }
 };
 
@@ -119,7 +120,7 @@ public:
 
     const std::list<CircleGrid2D::Ptr>& GetGrid2d() const;
 
-    void RemoveGrid2DOutOfTimeRange(double st, double et);
+    std::list<int> RemoveGrid2DOutOfTimeRange(double st, double et);
 
     const CircleGrid3D::Ptr& GetGrid3d() const;
 
