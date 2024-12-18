@@ -322,10 +322,19 @@ std::map<int, CalibSolver::ExtractedCirclesVec> CalibSolver::LoadRawEventsOfExtr
             filename, exception.what());
     }
     for (auto &[id, circles] : rawEvsOfPattern) {
-        for (auto &[tcCircles, rawEvs] : circles) {
-            // todo: time-varying function should be modified???
-            tcCircles->st = tcCircles->st + time_bias - newTimeBias;
-            tcCircles->et = tcCircles->et + time_bias - newTimeBias;
+        for (auto &[tvCircles, rawEvs] : circles) {
+            tvCircles->st = tvCircles->st + time_bias - newTimeBias;
+            tvCircles->et = tvCircles->et + time_bias - newTimeBias;
+            /**
+             * time-varying function should be modified!!!
+             * v(t) = a * t + b
+             * v(t - dt) = a * t + (-a * dt + b)
+             * attention: not v(t + dt) = a * t + (a * dt + b)
+             */
+            tvCircles->cx(1) = -tvCircles->cx(0) * (time_bias - newTimeBias) + tvCircles->cx(1);
+            tvCircles->cy(1) = -tvCircles->cy(0) * (time_bias - newTimeBias) + tvCircles->cy(1);
+            tvCircles->m(1) = -tvCircles->m(0) * (time_bias - newTimeBias) + tvCircles->m(1);
+
             for (const auto &ev : rawEvs->GetEvents()) {
                 ev->SetTimestamp(ev->GetTimestamp() + time_bias - newTimeBias);
             }
