@@ -282,11 +282,11 @@ void CalibSolver::EstimateCameraIntrinsics() {
                                 ns_viewer::Colour::Black());
 
         // cameras
-        auto color = ns_viewer::Entity::GetUniqueColour();
         std::vector<ns_viewer::Entity::Ptr> entities;
         entities.reserve(curCamPoses.size());
         for (const auto &pose : curCamPoses) {
             auto vPose = ns_viewer::Posed(pose.so3.matrix(), pose.t * scale).cast<float>();
+            auto color = ns_viewer::Entity::GetUniqueColour();
             entities.push_back(ns_viewer::CubeCamera::Create(vPose, color, 0.05f));
         }
         _viewer->AddEntityLocal(entities);
