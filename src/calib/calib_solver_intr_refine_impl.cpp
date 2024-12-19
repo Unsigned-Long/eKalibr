@@ -179,8 +179,9 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     {
         auto estimator = Estimator::Create(_parMgr);
         spdlog::info("use circle-based batch optimization to refine the spline segments...");
-        // auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
-        // todo: add circle-based visual projection pairs
+        auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
+        // add circle-based visual projection pairs
+        this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, _refEvTopic, opt, 1.0);
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }

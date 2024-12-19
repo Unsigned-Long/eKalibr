@@ -40,6 +40,8 @@ class CalibParamManager;
 using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 struct VisualProjectionPair;
 using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
+struct VisualProjectionCircleBasedPair;
+using VisualProjectionCircleBasedPairPtr = std::shared_ptr<VisualProjectionCircleBasedPair>;
 
 using namespace magic_enum::bitwise_operators;
 
@@ -250,6 +252,13 @@ public:
                                     Opt option,
                                     double weight,
                                     int count = Configor::Prior::SplineOrder);
+
+    void AddVisualProjectionCircleBasedFactor(const So3SplineType &so3Spline,
+                                              const PosSplineType &posSpline,
+                                              const std::string &camTopic,
+                                              const VisualProjectionCircleBasedPairPtr &pair,
+                                              Opt option,
+                                              double weight);
 };
 }  // namespace ns_ekalibr
 

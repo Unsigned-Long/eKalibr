@@ -203,6 +203,12 @@ protected:
                                                    OptOption option,
                                                    const std::optional<double> &weight) const;
 
+    std::size_t AddVisualProjCircleBasedPairsToSplineSegments(
+        const EstimatorPtr &estimator,
+        const std::string &camTopic,
+        OptOption option,
+        const std::optional<double> &weight) const;
+
 private:
     // remove the head data according to the pred
     void EraseSeqHeadData(std::vector<EventArrayPtr> &seq,

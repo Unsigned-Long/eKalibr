@@ -34,6 +34,7 @@
 #include "factor/lin_scale_factor.hpp"
 #include "factor/so3_factor.hpp"
 #include "factor/visual_projection_factor.hpp"
+#include "factor/visual_projection_circle_based_factor.hpp"
 
 namespace ns_ekalibr {
 template struct IMUGyroFactor<Configor ::Prior::SplineOrder>;
@@ -47,4 +48,5 @@ template struct LinearScaleDerivFactor<Configor::Prior::SplineOrder, 1>;
 template struct LinearScaleDerivFactor<Configor::Prior::SplineOrder, 0>;
 template struct So3Factor<Configor::Prior::SplineOrder>;
 template struct VisualProjectionFactor<Configor::Prior::SplineOrder>;
+template struct VisualProjectionCircleBasedFactor<Configor::Prior::SplineOrder>;
 }  // namespace ns_ekalibr
