@@ -33,8 +33,8 @@
 #include "sensor/event.h"
 
 namespace ns_ekalibr {
-struct VisualProjectionCircleBasedPair {
-    using Ptr = std::shared_ptr<VisualProjectionCircleBasedPair>;
+struct Circle3D {
+    using Ptr = std::shared_ptr<Circle3D>;
     Eigen::Vector3d center;
     double radius;
     // [ xVec | yVec | zVec ]
@@ -44,16 +44,29 @@ struct VisualProjectionCircleBasedPair {
      * p = center + radius * xVec * cos(theta) + radius * yVec * sin(theta)
      */
 
-    VisualProjectionCircleBasedPair(const Eigen::Vector3d &center,
-                                    double radius,
-                                    const Eigen::Matrix3d &orientation)
+    Circle3D(const Eigen::Vector3d &center, double radius, const Eigen::Matrix3d &orientation)
         : center(center),
           radius(radius),
           orientation(orientation) {}
 
     static Ptr CreateFromGridPattern(const Eigen::Vector3d &center, const double radius) {
-        return std::make_shared<VisualProjectionCircleBasedPair>(center, radius,
-                                                                 Eigen::Matrix3d::Identity());
+        return std::make_shared<Circle3D>(center, radius, Eigen::Matrix3d::Identity());
+    }
+};
+
+struct VisualProjectionCircleBasedPair {
+public:
+    using Ptr = std::shared_ptr<VisualProjectionCircleBasedPair>;
+
+    Circle3D::Ptr circle;
+    Event::Ptr ev;
+
+    VisualProjectionCircleBasedPair(const Circle3D::Ptr &circle, const Event::Ptr &ev)
+        : circle(circle),
+          ev(ev) {}
+
+    static Ptr Create(const Circle3D::Ptr &circle, const Event::Ptr &ev) {
+        return std::make_shared<VisualProjectionCircleBasedPair>(circle, ev);
     }
 };
 }  // namespace ns_ekalibr

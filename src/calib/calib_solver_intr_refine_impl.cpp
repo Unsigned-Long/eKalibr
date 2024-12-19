@@ -32,6 +32,7 @@
 #include "calib/estimator.h"
 #include <core/circle_grid.h>
 #include "factor/visual_projection_circle_based_factor.hpp"
+#include "util/utils_tpl.hpp"
 
 namespace ns_ekalibr {
 void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
@@ -44,16 +45,10 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     }
 
     /**
-     * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
-     * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
-     * moving out of the field of view), it is necessary to identify the continuous segments for
-     * subsequent calibration.
+     * Here, we choose the event camera with the longest total duration as the reference camera
      */
     _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
     double timeSum = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
-    /**
-     * Here, we choose the event camera with the longest total duration as the reference camera
-     */
     if (Configor::DataStream::EventTopics.size() > 1) {
         for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
             if (topic == _refEvTopic) {
@@ -71,6 +66,12 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
                  timeSum);
 
+    /**
+     * Due to the low frequency of the chessboard extraction, it is insufficient to fit a spline
+     * with a small time distance between knots. Therefore, we first fit a rough spline (with a
+     * larger time distance), and then use this spline to initialize a finer spline with a smaller
+     * time distance.
+     */
     double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
     this->CreateSplineSegments(dtSpline, dtSpline);
 
@@ -96,11 +97,13 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     auto sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
-    // fitting small-knot-distance segments
+    /**
+     * fitting small-knot-distance segments
+     */
     auto roughSplineSegments = _splineSegments;
     this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
-    dtSpline = Configor::Prior::DecayTimeOfActiveEvents;
-    this->CreateSplineSegments(dtSpline, dtSpline);
+    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
+                               Configor::Prior::KnotTimeDist.ScaleSpline);
 
     spdlog::info("fitting small-knot-distance spline segments using rough spline segments...");
     estimator = Estimator::Create(_parMgr);
@@ -125,13 +128,45 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     sum = estimator->Solve(_ceresOption);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
-    // todo: using raw event to refine intrinsics and splines
-    std::vector<VisualProjectionCircleBasedPair::Ptr> circle3dVec(_grid3d->points.size());
+    /**
+     * Based on the prior knowledge of the chessboard, we construct circles in the world coordinate
+     * system and associate them with circular observations in the image domain.
+     */
+    std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
     for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
         const auto &p = _grid3d->points.at(i);
-        circle3dVec.at(i) = VisualProjectionCircleBasedPair::CreateFromGridPattern(
+        circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
             Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
     }
+
+    std::map<std::string, std::list<VisualProjectionCircleBasedPair::Ptr>> corrListMap;
+    std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
+    constexpr int PAIR_COUNT_PER_CIRCLE = 10;
+    for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
+        auto &corrList = corrListMap[topic];
+        for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
+            // correspondences of each grid
+            for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
+                const auto &evs = rawEvsOfGrids.at(i).second->GetEvents();
+                auto evsDownsample = SamplingWoutReplace2(eng, evs, PAIR_COUNT_PER_CIRCLE);
+                for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
+                    corrList.push_back(VisualProjectionCircleBasedPair::Create(
+                        circle3dVec.at(i),      // the circle in the world frame
+                        evsDownsample.at(j)));  // the event
+                }
+            }
+        }
+        spdlog::info("constructed 'VisualProjectionCircleBasedPair' count for camera '{}': {}",
+                     topic, corrList.size());
+    }
+
+    /**
+     * todo: Perform circle-based batch optimization (tight coupling).
+     */
+    for (const auto &[topic, corrList] : corrListMap) {
+
+    }
+
     std::cin.get();
 }
 
