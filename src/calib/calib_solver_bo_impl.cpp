@@ -54,7 +54,12 @@ void CalibSolver::BatchOptimizations() {
         }
     }
 
+    constexpr bool USE_CIRCLE_BASED_PROJ_FACTOR = false;
+
     this->CreateVisualProjectionPairs();
+    if (USE_CIRCLE_BASED_PROJ_FACTOR) {
+        this->CreateVisualProjectionCircleBasedPairs(2);
+    }
 
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
         const auto& option = options.at(i);
@@ -74,11 +79,19 @@ void CalibSolver::BatchOptimizations() {
         }
 
         for (const auto& [topic, _] : Configor::DataStream::EventTopics) {
-            auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
-            spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+            if (!USE_CIRCLE_BASED_PROJ_FACTOR || i < static_cast<int>(options.size()) - 1) {
+                auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
+                spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+            } else {
+                auto s = this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, topic,
+                                                                             option, {});
+                spdlog::info("add '{}' 'VisualProjectionCircleBasedFactor' for camera '{}'...", s,
+                             topic);
+            }
         }
         // make this problem full rank
         estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
+        _ceresOption.num_threads = 1;
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
