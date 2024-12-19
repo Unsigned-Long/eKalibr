@@ -61,15 +61,30 @@ struct VisualProjectionCircleBasedPair {
 public:
     using Ptr = std::shared_ptr<VisualProjectionCircleBasedPair>;
 
-    Circle3D::Ptr circle;
+    Circle3D::Ptr c;
     Event::Ptr ev;
+    Eigen::Vector3d p;
 
-    VisualProjectionCircleBasedPair(const Circle3D::Ptr &circle, const Event::Ptr &ev)
-        : circle(circle),
-          ev(ev) {}
+    VisualProjectionCircleBasedPair(const Circle3D::Ptr &circle,
+                                    const Event::Ptr &ev,
+                                    double cosTheta,
+                                    double sinTheta)
+        : c(circle),
+          ev(ev) {
+        /**
+         * a point on this circle can be obtained by:
+         * p = cenInCam + radius * xInCam * cos(theta) + radius * yInCam * sin(theta)
+         */
+        p = c->center +  // center
+            c->radius * cosTheta * c->orientation.col(0) +
+            c->radius * sinTheta * c->orientation.col(1);
+    }
 
-    static Ptr Create(const Circle3D::Ptr &circle, const Event::Ptr &ev) {
-        return std::make_shared<VisualProjectionCircleBasedPair>(circle, ev);
+    static Ptr Create(const Circle3D::Ptr &circle,
+                      const Event::Ptr &ev,
+                      double cosTheta,
+                      double sinTheta) {
+        return std::make_shared<VisualProjectionCircleBasedPair>(circle, ev, cosTheta, sinTheta);
     }
 };
 
@@ -105,73 +120,6 @@ public:
         return typeid(VisualProjectionCircleBasedFactor).hash_code();
     }
 
-    // Function to calculate the shortest distance from a point to a line segment
-    template <typename T>
-    static Eigen::Vector2<T> PointToSegDistVec(const Eigen::Vector2<T> &point,
-                                               const Eigen::Vector2<T> &A,
-                                               const Eigen::Vector2<T> &B) {
-        Eigen::Vector2<T> AB = B - A;      // Vector from A to B
-        Eigen::Vector2<T> AP = point - A;  // Vector from A to point
-        Eigen::Vector2<T> BP = point - B;  // Vector from B to point
-
-        T AB_AB = AB.squaredNorm();  // Square of the length of AB
-        if (AB_AB == T(0.0)) {
-            // If A and B are the same point, return distance from point to A
-            return point - A;
-        }
-
-        // Compute the projection coefficient
-        T t = AP.dot(AB) / AB_AB;
-        if (t < T(0.0)) {
-            // Projection falls outside A, return distance from point to A
-            return AP;
-        } else if (t > T(1.0)) {
-            // Projection falls outside B, return distance from point to B
-            return BP;
-        } else {
-            // Projection falls on the line segment, return perpendicular distance
-            Eigen::Vector2<T> projection = A + t * AB;
-            return point - projection;
-        }
-    }
-
-    // Function to calculate the shortest distance from a point to a convex polygon
-    template <typename T, std::size_t Size>
-    static Eigen::Vector2<T> PointToConvexPolygonDistance(
-        const Eigen::Vector2<T> &point, const std::array<Eigen::Vector2<T>, Size> &verts) {
-        // Initialize the minimum distance to a very large value
-        double minDistSquared = std::numeric_limits<double>::max();
-        Eigen::Vector2<T> minDistVec = Eigen::Vector2<T>::Zero();
-
-        // Iterate over each edge of the polygon
-        for (size_t i = 0; i < verts.size(); ++i) {
-            // Current vertex
-            Eigen::Vector2<T> A = verts[i];
-            // Next vertex (wraps around to the first vertex)
-            Eigen::Vector2<T> B = verts[(i + 1) % verts.size()];
-
-            // Calculate the distance from the point to the current edge (line segment)
-            Eigen::Vector2<T> distVec = PointToSegDistVec(point, A, B);
-            T squaredNorm = distVec.squaredNorm();
-            double squaredDist = 0.0;
-            if constexpr (std::is_same<T, double>::value) {
-                squaredDist = squaredNorm;
-            } else if (std::is_same<T, ceres::Jet<double, 4>>::value) {
-                squaredDist = squaredNorm.a;
-            } else {
-                throw Status(Status::CRITICAL, "Unsupported type, 'PointToConvexPolygonDistance'");
-            }
-
-            // Update the minimum distance
-            if (squaredDist < minDistSquared) {
-                minDistSquared = squaredDist;
-                minDistVec = distVec;
-            }
-        }
-
-        return minDistVec;  // Return the shortest distance to the polygon
-    }
-
 public:
     /**
      * param blocks:
@@ -183,20 +131,20 @@ public:
         std::size_t SO3_OFFSET;
         std::size_t LIN_SCALE_OFFSET;
 
-        std::size_t SO3_CjToCr_OFFSET = _so3Meta.NumParameters() + _scaleMeta.NumParameters();
-        std::size_t POS_CjInCr_OFFSET = SO3_CjToCr_OFFSET + 1;
-        std::size_t TO_CjToCr_OFFSET = POS_CjInCr_OFFSET + 1;
-        std::size_t FX_OFFSET = TO_CjToCr_OFFSET + 1;
+        std::size_t SO3_CjToBr_OFFSET = _so3Meta.NumParameters() + _scaleMeta.NumParameters();
+        std::size_t POS_CjInBr_OFFSET = SO3_CjToBr_OFFSET + 1;
+        std::size_t TO_CjToBr_OFFSET = POS_CjInBr_OFFSET + 1;
+        std::size_t FX_OFFSET = TO_CjToBr_OFFSET + 1;
         std::size_t FY_OFFSET = FX_OFFSET + 1;
         std::size_t CX_OFFSET = FY_OFFSET + 1;
         std::size_t CY_OFFSET = CX_OFFSET + 1;
         std::size_t DIST_COEFFS_OFFSET = CY_OFFSET + 1;
 
-        Eigen::Map<const Sophus::SO3<T>> SO3_CjToCr(sKnots[SO3_CjToCr_OFFSET]);
-        Eigen::Map<const Eigen::Vector3<T>> POS_CjInCr(sKnots[POS_CjInCr_OFFSET]);
-        Sophus::SE3<T> SE3_CjToCr(SO3_CjToCr, POS_CjInCr);
+        Eigen::Map<const Sophus::SO3<T>> SO3_CjToBr(sKnots[SO3_CjToBr_OFFSET]);
+        Eigen::Map<const Eigen::Vector3<T>> POS_CjInBr(sKnots[POS_CjInBr_OFFSET]);
+        Sophus::SE3<T> SE3_CjToBr(SO3_CjToBr, POS_CjInBr);
 
-        T TO_CjToCr = sKnots[TO_CjToCr_OFFSET][0];
+        T TO_CjToBr = sKnots[TO_CjToBr_OFFSET][0];
 
         T FX = sKnots[FX_OFFSET][0];
         T FY = sKnots[FY_OFFSET][0];
@@ -206,56 +154,40 @@ public:
         // this is for pinhole brow t2 [k1, k2, k3, p1, p2]
         Eigen::Map<const Eigen::Vector5<T>> DIST_COEFFS(sKnots[DIST_COEFFS_OFFSET]);
 
-        T timeByCr = static_cast<T>(_pair->ev->GetTimestamp()) + TO_CjToCr;
+        T timeByBr = static_cast<T>(_pair->ev->GetTimestamp()) + TO_CjToBr;
 
         // calculate the so3 and lin scale offset
         std::pair<std::size_t, T> iuSo3, iuScale;
-        _so3Meta.ComputeSplineIndex(timeByCr, iuSo3.first, iuSo3.second);
-        _scaleMeta.ComputeSplineIndex(timeByCr, iuScale.first, iuScale.second);
+        _so3Meta.ComputeSplineIndex(timeByBr, iuSo3.first, iuSo3.second);
+        _scaleMeta.ComputeSplineIndex(timeByBr, iuScale.first, iuScale.second);
 
         SO3_OFFSET = iuSo3.first;
         LIN_SCALE_OFFSET = iuScale.first + _so3Meta.NumParameters();
 
-        Sophus::SO3<T> SO3_CrToW;
+        Sophus::SO3<T> SO3_BrToW;
         ns_ctraj::CeresSplineHelperJet<T, Order>::EvaluateLie(sKnots + SO3_OFFSET, iuSo3.second,
-                                                              _so3DtInv, &SO3_CrToW);
-        Eigen::Vector3<T> POS_CrInW;
+                                                              _so3DtInv, &SO3_BrToW);
+        Eigen::Vector3<T> POS_BrInW;
         ns_ctraj::CeresSplineHelperJet<T, Order>::template Evaluate<3, 0>(
-            sKnots + LIN_SCALE_OFFSET, iuScale.second, _scaleDtInv, &POS_CrInW);
+            sKnots + LIN_SCALE_OFFSET, iuScale.second, _scaleDtInv, &POS_BrInW);
 
-        Sophus::SE3<T> SE3_CrToW(SO3_CrToW, POS_CrInW);
+        Sophus::SE3<T> SE3_BrToW(SO3_BrToW, POS_BrInW);
 
-        Sophus::SE3<T> SE3_WToCj = (SE3_CrToW * SE3_CjToCr /*SE3_CjToW*/).inverse();
+        Sophus::SE3<T> SE3_CjToW = SE3_BrToW * SE3_CjToBr;
 
-        // project the circle to image plane and calculate the 2d residual
-        Eigen::Vector3<T> cenInCam = SE3_WToCj * _pair->circle->center.cast<T>();
-        Eigen::Vector3<T> xInCam = SE3_WToCj.so3() * _pair->circle->orientation.col(0).cast<T>();
-        Eigen::Vector3<T> yInCam = SE3_WToCj.so3() * _pair->circle->orientation.col(1).cast<T>();
-        /**
-         * a point on this circle can be obtained by:
-         * p = cenInCam + radius * xInCam * cos(theta) + radius * yInCam * sin(theta)
-         */
+        // from world frame to camera frame
+        Eigen::Vector3<T> pInCam = SE3_CjToW.inverse() * _pair->p.cast<T>();
+        // from camera frame to camera normalized plane
+        Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
+        using Helper = VisualProjectionFactor<Configor::Prior::SplineOrder>;
+        // add distortion
+        pInCamPlane = Helper::AddDistortion<T>(DIST_COEFFS, pInCamPlane);
 
-        constexpr int COUNT_PER_CIRCLE = 16;
-        constexpr double DELTA_ANG = M_PI * 2.0 / COUNT_PER_CIRCLE;
-
-        std::array<Eigen::Vector2<T>, COUNT_PER_CIRCLE> pixOnCircle;
-        for (int i = 0; i < COUNT_PER_CIRCLE; i++) {
-            const double ang = DELTA_ANG * static_cast<double>(i);
-            const double c = std::cos(ang), s = std::sin(ang);
-            Eigen::Vector3<T> pInCam = cenInCam + T(c) * xInCam + T(s) * yInCam;
-            // from camera frame to camera normalized plane
-            Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
-            // add distortion
-            using Helper = VisualProjectionFactor<Configor::Prior::SplineOrder>;
-            pInCamPlane = Helper::AddDistortion<T>(DIST_COEFFS, pInCamPlane);
-
-            Helper::TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixOnCircle.at(i));
-        }
+        Eigen::Vector2<T> pixelPred;
+        Helper::TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixelPred);
 
         Eigen::Map<Eigen::Vector2<T>> residuals(sResiduals);
-        residuals = PointToConvexPolygonDistance<T, COUNT_PER_CIRCLE>(_pair->ev->GetPos().cast<T>(),
-                                                                      pixOnCircle);
+        residuals = pixelPred - _pair->ev->GetPos().cast<T>();
         residuals = T(_weight) * residuals;
 
         return true;

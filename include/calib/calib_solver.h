@@ -102,7 +102,7 @@ protected:
     // the topic of the reference event camera;
     std::string _refEvTopic;
     // circle-based visual reprojection pairs
-    std::map<std::string, std::list<VisualProjectionCircleBasedPairPtr>> _evCirProjPairs;
+    std::map<std::string, std::list<VisualProjectionPairPtr>> _evCirProjPairs;
 
     /**
      * utilized in event-inertial calibration

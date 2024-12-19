@@ -158,13 +158,14 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
             for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
                 // correspondences of each grid
                 for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
-                    const auto &evs = rawEvsOfGrids.at(i).second->GetEvents();
+                    const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
+                    const auto &evs = evAry->GetEvents();
                     const std::size_t sampleCount = std::min(PAIR_COUNT_PER_CIRCLE, evs.size());
                     auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
                     for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
-                        corrList.push_back(VisualProjectionCircleBasedPair::Create(
-                            circle3dVec.at(i),      // the circle in the world frame
-                            evsDownsample.at(j)));  // the event
+                        const auto &et = evsDownsample.at(j)->GetTimestamp();
+                        corrList.push_back(VisualProjectionPair::Create(
+                            et, circle3dVec.at(i)->center, tvCircle->PosAt(et)));
                     }
                 }
             }
