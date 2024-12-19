@@ -282,7 +282,7 @@ void CalibSolver::EventInertialAlignment() {
 
     // fix spatiotemporal parameters of reference sensor
     // make this problem full rank
-    estimator->SetRefIMUParamsConstant();
+    estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
 
     sum = estimator->Solve(_ceresOption);
     estimator = nullptr;

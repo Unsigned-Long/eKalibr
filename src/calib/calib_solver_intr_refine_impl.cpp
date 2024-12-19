@@ -46,127 +46,144 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
 
     /**
      * Here, we choose the event camera with the longest total duration as the reference camera
+     * Modify: '_refEvTopic', '_validTimeSegments'
      */
-    _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
-    double timeSum = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
-    if (Configor::DataStream::EventTopics.size() > 1) {
-        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-            if (topic == _refEvTopic) {
-                continue;
+    {
+        _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
+        double timeSum = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+        if (Configor::DataStream::EventTopics.size() > 1) {
+            for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+                if (topic == _refEvTopic) {
+                    continue;
+                }
+                double ts = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, topic);
+                if (ts > timeSum) {
+                    _refEvTopic = topic;
+                    timeSum = ts;
+                }
             }
-            double ts = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, topic);
-            if (ts > timeSum) {
-                _refEvTopic = topic;
-                timeSum = ts;
-            }
+            // update the '_validTimeSegments' as those of the '_refEvTopic'
+            this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
         }
-        // update the '_validTimeSegments' as those of the '_refEvTopic'
-        this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+        spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
+                     timeSum);
     }
-    spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
-                 timeSum);
 
     /**
      * Due to the low frequency of the chessboard extraction, it is insufficient to fit a spline
      * with a small time distance between knots. Therefore, we first fit a rough spline (with a
      * larger time distance), and then use this spline to initialize a finer spline with a smaller
      * time distance.
+     * Modify: '_splineSegments'
      */
-    double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
-    this->CreateSplineSegments(dtSpline, dtSpline);
+    {
+        double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
+        this->CreateSplineSegments(dtSpline, dtSpline);
 
-    // fitting rough segments
-    spdlog::info("fitting rough spline segments using visual poses of the reference camera...");
-    auto estimator = Estimator::Create(_parMgr);
-    for (const auto &pose : _camPoses.at(_refEvTopic)) {
-        auto idx = this->IsTimeInValidSegment(pose.timeStamp);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-            continue;
-        }
-        estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
-                                    OptOption::OPT_SO3_SPLINE, 1.0);
-        estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
-                                         OptOption::OPT_SCALE_SPLINE, 1.0);
-    }
-    for (auto &[so3Spline, posSpline] : _splineSegments) {
-        estimator->AddSo3LinearHeadConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-        estimator->AddPosLinearHeadConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
-        estimator->AddSo3LinearTailConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-        estimator->AddPosLinearTailConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
-    }
-    auto sum = estimator->Solve(_ceresOption);
-    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-
-    /**
-     * fitting small-knot-distance segments
-     */
-    auto roughSplineSegments = _splineSegments;
-    this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
-    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
-                               Configor::Prior::KnotTimeDist.ScaleSpline);
-
-    spdlog::info("fitting small-knot-distance spline segments using rough spline segments...");
-    estimator = Estimator::Create(_parMgr);
-    auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
-    for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
-        auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
-        auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
-        for (double t = st; t < et; t += 0.005) {
-            if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
-                continue;
-            }
-            auto idx = this->IsTimeInValidSegment(t);
+        // fitting rough segments
+        spdlog::info("fitting rough spline segments using visual poses of the reference camera...");
+        auto estimator = Estimator::Create(_parMgr);
+        for (const auto &pose : _camPoses.at(_refEvTopic)) {
+            auto idx = this->IsTimeInValidSegment(pose.timeStamp);
             if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
                 continue;
             }
-            const auto so3 = so3Spline.Evaluate(t);
-            const Eigen::Vector3d pos = posSpline.Evaluate(t);
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
+                                        OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
+                                             OptOption::OPT_SCALE_SPLINE, 1.0);
         }
+        for (auto &[so3Spline, posSpline] : _splineSegments) {
+            estimator->AddSo3LinearHeadConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPosLinearHeadConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+            estimator->AddSo3LinearTailConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPosLinearTailConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+        }
+        auto sum = estimator->Solve(_ceresOption);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
-    sum = estimator->Solve(_ceresOption);
-    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+
+    /**
+     * fitting small-knot-distance segments
+     * Modify: '_splineSegments', '_validTimeSegments'
+     */
+    {
+        auto roughSplineSegments = _splineSegments;
+        this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+        this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
+                                   Configor::Prior::KnotTimeDist.ScaleSpline);
+
+        spdlog::info("fitting small-knot-distance spline segments using rough spline segments...");
+        auto estimator = Estimator::Create(_parMgr);
+        auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
+        for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
+            auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
+            auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
+            for (double t = st; t < et; t += 0.005) {
+                if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
+                    continue;
+                }
+                auto idx = this->IsTimeInValidSegment(t);
+                if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                    continue;
+                }
+                const auto so3 = so3Spline.Evaluate(t);
+                const Eigen::Vector3d pos = posSpline.Evaluate(t);
+                estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
+                estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
+            }
+        }
+        auto sum = estimator->Solve(_ceresOption);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+    }
 
     /**
      * Based on the prior knowledge of the chessboard, we construct circles in the world coordinate
      * system and associate them with circular observations in the image domain.
+     * Modify: '_evCirProjPairs'
      */
-    std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
-    for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
-        const auto &p = _grid3d->points.at(i);
-        circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
-            Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
-    }
+    {
+        std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
+        for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
+            const auto &p = _grid3d->points.at(i);
+            circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
+                Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
+        }
 
-    std::map<std::string, std::list<VisualProjectionCircleBasedPair::Ptr>> corrListMap;
-    std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
-    constexpr int PAIR_COUNT_PER_CIRCLE = 10;
-    for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
-        auto &corrList = corrListMap[topic];
-        for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
-            // correspondences of each grid
-            for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
-                const auto &evs = rawEvsOfGrids.at(i).second->GetEvents();
-                auto evsDownsample = SamplingWoutReplace2(eng, evs, PAIR_COUNT_PER_CIRCLE);
-                for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
-                    corrList.push_back(VisualProjectionCircleBasedPair::Create(
-                        circle3dVec.at(i),      // the circle in the world frame
-                        evsDownsample.at(j)));  // the event
+        std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
+        constexpr int PAIR_COUNT_PER_CIRCLE = 10;
+        for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
+            auto &corrList = _evCirProjPairs[topic];
+            corrList.clear();
+            for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
+                // correspondences of each grid
+                for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
+                    const auto &evs = rawEvsOfGrids.at(i).second->GetEvents();
+                    auto evsDownsample = SamplingWoutReplace2(eng, evs, PAIR_COUNT_PER_CIRCLE);
+                    for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
+                        corrList.push_back(VisualProjectionCircleBasedPair::Create(
+                            circle3dVec.at(i),      // the circle in the world frame
+                            evsDownsample.at(j)));  // the event
+                    }
                 }
             }
+            spdlog::info("constructed 'VisualProjectionCircleBasedPair' count for camera '{}': {}",
+                         topic, corrList.size());
         }
-        spdlog::info("constructed 'VisualProjectionCircleBasedPair' count for camera '{}': {}",
-                     topic, corrList.size());
     }
 
     /**
-     * todo: Perform circle-based batch optimization (tight coupling).
+     * We use circle-based batch optimization to refine the spline of the reference event camera.
+     * Modify: '_splineSegments'
      */
-    for (const auto &[topic, corrList] : corrListMap) {
-
+    {
+        auto estimator = Estimator::Create(_parMgr);
+        spdlog::info("use circle-based batch optimization to refine the spline segments...");
+        // auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
+        // todo: add circle-based visual projection pairs
+        auto sum = estimator->Solve(_ceresOption);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
-
     std::cin.get();
 }
 

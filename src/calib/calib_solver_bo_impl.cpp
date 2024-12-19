@@ -99,7 +99,7 @@ void CalibSolver::BatchOptimizations() {
             spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
         }
         // make this problem full rank
-        estimator->SetRefIMUParamsConstant();
+        estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }

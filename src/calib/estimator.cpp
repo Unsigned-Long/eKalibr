@@ -115,20 +115,37 @@ void Estimator::PrintParameterInfo() const {
         totalParamBlocks, numOptimizedParamBlock, numOptimizedParameter);
 }
 
-void Estimator::SetRefIMUParamsConstant() {
-    auto SO3_BiToBr = parMagr->EXTRI.SO3_BiToBr.at(Configor::DataStream::RefIMUTopic).data();
+void Estimator::SetIMUParamsConstant(const std::string &refIMUTopic) {
+    auto SO3_BiToBr = parMagr->EXTRI.SO3_BiToBr.at(refIMUTopic).data();
     if (this->HasParameterBlock(SO3_BiToBr)) {
         this->SetParameterBlockConstant(SO3_BiToBr);
     }
 
-    auto POS_BiInBr = parMagr->EXTRI.POS_BiInBr.at(Configor::DataStream::RefIMUTopic).data();
+    auto POS_BiInBr = parMagr->EXTRI.POS_BiInBr.at(refIMUTopic).data();
     if (this->HasParameterBlock(POS_BiInBr)) {
         this->SetParameterBlockConstant(POS_BiInBr);
     }
 
-    auto TO_BiToBr = &parMagr->TEMPORAL.TO_BiToBr.at(Configor::DataStream::RefIMUTopic);
+    auto TO_BiToBr = &parMagr->TEMPORAL.TO_BiToBr.at(refIMUTopic);
     if (this->HasParameterBlock(TO_BiToBr)) {
         this->SetParameterBlockConstant(TO_BiToBr);
+    }
+}
+
+void Estimator::SetEvCamParamsConstant(const std::string &refCamTopic) {
+    auto SO3_CjToBr = parMagr->EXTRI.SO3_CjToBr.at(refCamTopic).data();
+    if (this->HasParameterBlock(SO3_CjToBr)) {
+        this->SetParameterBlockConstant(SO3_CjToBr);
+    }
+
+    auto POS_CjInBr = parMagr->EXTRI.POS_CjInBr.at(refCamTopic).data();
+    if (this->HasParameterBlock(POS_CjInBr)) {
+        this->SetParameterBlockConstant(POS_CjInBr);
+    }
+
+    auto TO_CjToBr = &parMagr->TEMPORAL.TO_CjToBr.at(refCamTopic);
+    if (this->HasParameterBlock(TO_CjToBr)) {
+        this->SetParameterBlockConstant(TO_CjToBr);
     }
 }
 

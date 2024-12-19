@@ -78,7 +78,7 @@ void CalibSolver::InitSo3Spline() const {
                                                100 /*down sampling*/);
         }
         // make this problem full rank
-        estimator->SetRefIMUParamsConstant();
+        estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
 
         sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());

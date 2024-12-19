@@ -113,7 +113,9 @@ public:
 
     void PrintParameterInfo() const;
 
-    void SetRefIMUParamsConstant();
+    void SetIMUParamsConstant(const std::string &refIMUTopic);
+
+    void SetEvCamParamsConstant(const std::string &refCamTopic);
 
 protected:
     void AddSo3KnotsData(std::vector<double *> &paramBlockVec,

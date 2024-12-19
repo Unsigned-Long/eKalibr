@@ -58,6 +58,8 @@ using EstimatorPtr = std::shared_ptr<Estimator>;
 enum class OptOption : std::uint64_t;
 struct VisualProjectionPair;
 using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
+struct VisualProjectionCircleBasedPair;
+using VisualProjectionCircleBasedPairPtr = std::shared_ptr<VisualProjectionCircleBasedPair>;
 
 class CalibSolver {
 public:
@@ -97,7 +99,10 @@ protected:
      * the raw events of the {j}-th circle of the {i}-th tracked grid pattern of camera {topic}
      */
     std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;
+    // the topic of the reference event camera;
     std::string _refEvTopic;
+    // circle-based visual reprojection pairs
+    std::map<std::string, std::list<VisualProjectionCircleBasedPairPtr>> _evCirProjPairs;
 
     /**
      * utilized in event-inertial calibration
