@@ -71,7 +71,7 @@ void CalibSolver::Process() {
      * refine intrinsics using raw events
      */
     _viewer->SetStates(&_splineSegments, nullptr, _grid3d);
-    this->RefineCameraIntrinsicsUsingRawEvents();
+    // this->RefineCameraIntrinsicsUsingRawEvents();
     _parMgr->ShowParamStatus();
 
     if (Configor::DataStream::IMUTopics.empty()) {

@@ -149,13 +149,13 @@ std::size_t CalibSolver::AddVisualProjCircleBasedPairsToSplineSegments(
     std::size_t count = 0;
 
     for (const auto &pair : _evCirProjPairs.at(camTopic)) {
-        auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
+        auto idx = this->IsTimeInValidSegment(pair->ev->GetTimestamp() + TO_CjToBr);
         if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
         }
-        estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
-                                             _splineSegments.at(idx).second, camTopic, pair, option,
-                                             weight);
+        estimator->AddVisualProjectionCircleBasedFactor(_splineSegments.at(idx).first,
+                                                        _splineSegments.at(idx).second, camTopic,
+                                                        pair, option, weight);
         ++count;
     }
     return count;

@@ -137,42 +137,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
-    /**
-     * Based on the prior knowledge of the chessboard, we construct circles in the world coordinate
-     * system and associate them with circular observations in the image domain.
-     * Modify: '_evCirProjPairs'
-     */
-    {
-        std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
-        for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
-            const auto &p = _grid3d->points.at(i);
-            circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
-                Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
-        }
-
-        std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
-        constexpr std::size_t PAIR_COUNT_PER_CIRCLE = 10;
-        for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
-            auto &corrList = _evCirProjPairs[topic];
-            corrList.clear();
-            for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
-                // correspondences of each grid
-                for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
-                    const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
-                    const auto &evs = evAry->GetEvents();
-                    const std::size_t sampleCount = std::min(PAIR_COUNT_PER_CIRCLE, evs.size());
-                    auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
-                    for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
-                        const auto &et = evsDownsample.at(j)->GetTimestamp();
-                        corrList.push_back(VisualProjectionPair::Create(
-                            et, circle3dVec.at(i)->center, tvCircle->PosAt(et)));
-                    }
-                }
-            }
-            spdlog::info("constructed 'VisualProjectionCircleBasedPair' count for camera '{}': {}",
-                         topic, corrList.size());
-        }
-    }
+    this->CreateVisualProjectionCircleBasedPairs(10);
 
     /**
      * We use circle-based batch optimization to refine the spline of the reference event camera.

@@ -63,28 +63,19 @@ public:
 
     Circle3D::Ptr c;
     Event::Ptr ev;
-    Eigen::Vector3d p;
+    Eigen::Vector2d pixCenter;
 
     VisualProjectionCircleBasedPair(const Circle3D::Ptr &circle,
                                     const Event::Ptr &ev,
-                                    double cosTheta,
-                                    double sinTheta)
+                                    const Eigen::Vector2d &pixCenter)
         : c(circle),
-          ev(ev) {
-        /**
-         * a point on this circle can be obtained by:
-         * p = cenInCam + radius * xInCam * cos(theta) + radius * yInCam * sin(theta)
-         */
-        p = c->center +  // center
-            c->radius * cosTheta * c->orientation.col(0) +
-            c->radius * sinTheta * c->orientation.col(1);
-    }
+          ev(ev),
+          pixCenter(pixCenter) {}
 
     static Ptr Create(const Circle3D::Ptr &circle,
                       const Event::Ptr &ev,
-                      double cosTheta,
-                      double sinTheta) {
-        return std::make_shared<VisualProjectionCircleBasedPair>(circle, ev, cosTheta, sinTheta);
+                      const Eigen::Vector2d &pixCenter) {
+        return std::make_shared<VisualProjectionCircleBasedPair>(circle, ev, pixCenter);
     }
 };
 
@@ -176,7 +167,7 @@ public:
         Sophus::SE3<T> SE3_CjToW = SE3_BrToW * SE3_CjToBr;
 
         // from world frame to camera frame
-        Eigen::Vector3<T> pInCam = SE3_CjToW.inverse() * _pair->p.cast<T>();
+        Eigen::Vector3<T> pInCam = SE3_CjToW.inverse() * _pair->c->center.cast<T>();
         // from camera frame to camera normalized plane
         Eigen::Vector2<T> pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
         using Helper = VisualProjectionFactor<Configor::Prior::SplineOrder>;
@@ -187,7 +178,7 @@ public:
         Helper::TransformCamToImg<T>(&FX, &FY, &CX, &CY, pInCamPlane, &pixelPred);
 
         Eigen::Map<Eigen::Vector2<T>> residuals(sResiduals);
-        residuals = pixelPred - _pair->ev->GetPos().cast<T>();
+        residuals = pixelPred - _pair->pixCenter.cast<T>();
         residuals = T(_weight) * residuals;
 
         return true;

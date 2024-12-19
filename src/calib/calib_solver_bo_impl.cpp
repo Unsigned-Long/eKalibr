@@ -54,28 +54,7 @@ void CalibSolver::BatchOptimizations() {
         }
     }
 
-    // create visual projection pairs
-    for (const auto& [topic, patterns] : _extractedPatterns) {
-        const auto& grid3d = patterns->GetGrid3d();
-        const auto& grid2dVec = patterns->GetGrid2d();
-
-        auto& pairs = _evProjPairs[topic];
-        pairs.reserve(grid2dVec.size() * grid3d->points.size());
-
-        for (const auto& grid2d : grid2dVec) {
-            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
-                const auto& center = grid2d->centers.at(i);
-                const Eigen::Vector2d pixel(center.x, center.y);
-
-                const auto& point3d = grid3d->points.at(i);
-                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
-
-                pairs.push_back(VisualProjectionPair::Create(grid2d->timestamp, point, pixel));
-            }
-        }
-        spdlog::info("create {} (={}x{}) visual projection pairs for camera '{}'", pairs.size(),
-                     grid2dVec.size(), grid3d->points.size(), topic);
-    }
+    this->CreateVisualProjectionPairs();
 
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
         const auto& option = options.at(i);

@@ -51,6 +51,8 @@
 #include "cereal/types/polymorphic.hpp"
 #include "cereal/types/utility.hpp"
 #include "tiny-viewer/entity/utils.h"
+#include "factor/visual_projection_factor.hpp"
+#include "factor/visual_projection_circle_based_factor.hpp"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
@@ -357,6 +359,67 @@ std::string CalibSolver::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string 
 
 int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
     return IsTimeInSegment(timeByBr, _validTimeSegments);
+}
+
+void CalibSolver::CreateVisualProjectionPairs() {
+    // create visual projection pairs
+    for (const auto &[topic, patterns] : _extractedPatterns) {
+        const auto &grid3d = patterns->GetGrid3d();
+        const auto &grid2dVec = patterns->GetGrid2d();
+
+        auto &pairs = _evProjPairs[topic];
+        pairs.clear();
+        pairs.reserve(grid2dVec.size() * grid3d->points.size());
+
+        for (const auto &grid2d : grid2dVec) {
+            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                const auto &center = grid2d->centers.at(i);
+                const Eigen::Vector2d pixel(center.x, center.y);
+
+                const auto &point3d = grid3d->points.at(i);
+                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
+
+                pairs.push_back(VisualProjectionPair::Create(grid2d->timestamp, point, pixel));
+            }
+        }
+        spdlog::info("create 'VisualProjectionPair' count for camera '{}': {}", topic,
+                     pairs.size());
+    }
+}
+
+void CalibSolver::CreateVisualProjectionCircleBasedPairs(std::size_t pairCountPerTvCircle) {
+    /**
+     * Based on the prior knowledge of the chessboard, we construct circles in the world coordinate
+     * system and associate them with circular observations in the image domain.
+     */
+    std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
+    for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
+        const auto &p = _grid3d->points.at(i);
+        circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
+            Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
+    }
+
+    std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
+    for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
+        auto &corrList = _evCirProjPairs[topic];
+        corrList.clear();
+        for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
+            // correspondences of each grid
+            for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
+                const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
+                const auto &evs = evAry->GetEvents();
+                const std::size_t sampleCount = std::min(pairCountPerTvCircle, evs.size());
+                auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
+                for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
+                    const auto &event = evsDownsample.at(j);
+                    corrList.push_back(VisualProjectionCircleBasedPair::Create(
+                        circle3dVec.at(i), event, tvCircle->PosAt(event->GetTimestamp())));
+                }
+            }
+        }
+        spdlog::info("constructed 'VisualProjectionCircleBasedPair' count for camera '{}': {}",
+                     topic, corrList.size());
+    }
 }
 
 double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,

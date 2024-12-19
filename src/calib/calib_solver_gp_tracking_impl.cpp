@@ -292,8 +292,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 #undef ENABLE_UNDISTORTION
 
     for (const auto &[topic, rawEvsOfCircle] : _rawEventsOfExtractedPatterns) {
-        // todo: remove this after finished
-        continue;
         if (!tryLoadAndSaveRes || !Configor::Preference::Visualization) {
             continue;
         }
