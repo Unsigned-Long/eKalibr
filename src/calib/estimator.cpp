@@ -1184,6 +1184,66 @@ void Estimator::AddSo3LinearHeadConstraint(So3SplineType &so3Spline,
 
 /**
  * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddPosLinearConstraint(PosSplineType &posSpline, Opt option, double weight) {
+    for (int j = 0; j < static_cast<int>(posSpline.GetKnots().size()) - 2; ++j) {
+        auto costFunc = RdLinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->AddParameterBlock(3);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            paramBlockVec.at(i) = posSpline.GetKnot(j + i).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        if (!IsOptionWith(Opt::OPT_SCALE_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
+    }
+}
+
+/**
+ * param blocks:
+ * [ example for four-order spline: Knot | Knot | Knot | Knot ]
+ */
+void Estimator::AddSo3LinearConstraint(So3SplineType &so3Spline, Opt option, double weight) {
+    for (int j = 0; j < static_cast<int>(so3Spline.GetKnots().size()) - 2; ++j) {
+        auto costFunc = So3LinearKnotsFactor::Create(weight);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->AddParameterBlock(4);
+        costFunc->SetNumResiduals(3);
+
+        // organize the param block vector
+        std::vector<double *> paramBlockVec(3);
+        for (int i = 0; i < 3; ++i) {
+            paramBlockVec.at(i) = so3Spline.GetKnot(j + i).data();
+        }
+
+        this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+        for (const auto &item : paramBlockVec) {
+            this->SetManifold(item, QUATER_MANIFOLD.get());
+        }
+
+        if (!IsOptionWith(Opt::OPT_SO3_SPLINE, option)) {
+            for (auto &knot : paramBlockVec) {
+                this->SetParameterBlockConstant(knot);
+            }
+        }
+    }
+}
+
+/**
+ * param blocks:
  * [ SO3 | ... | SO3 | LIN_SCALE | ... | LIN_SCALE | SO3_CjToCr | POS_CjInCr | TO_CjToCr |
  *   FX | FY | CX | CY | DIST_COEFFS ]
  */

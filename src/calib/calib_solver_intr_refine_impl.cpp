@@ -44,26 +44,29 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         return;
     }
 
+    constexpr double SEG_NEIGHBOR = 0.1; /*neighbor*/
+    constexpr double SEG_LENGTH = 0.5;   /*length*/
+
     /**
      * Here, we choose the event camera with the longest total duration as the reference camera
      * Modify: '_refEvTopic', '_validTimeSegments'
      */
     {
         _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
-        double timeSum = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+        double timeSum = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
         if (Configor::DataStream::EventTopics.size() > 1) {
             for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
                 if (topic == _refEvTopic) {
                     continue;
                 }
-                double ts = this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, topic);
+                double ts = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, topic);
                 if (ts > timeSum) {
                     _refEvTopic = topic;
                     timeSum = ts;
                 }
             }
             // update the '_validTimeSegments' as those of the '_refEvTopic'
-            this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/, _refEvTopic);
+            this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
         }
         spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
                      timeSum);
@@ -89,15 +92,13 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
                 continue;
             }
             estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
-                                        OptOption::OPT_SO3_SPLINE, 1.0);
+                                        OptOption::OPT_SO3_SPLINE, 10.0);
             estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
-                                             OptOption::OPT_SCALE_SPLINE, 1.0);
+                                             OptOption::OPT_SCALE_SPLINE, 10.0);
         }
         for (auto &[so3Spline, posSpline] : _splineSegments) {
-            estimator->AddSo3LinearHeadConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-            estimator->AddPosLinearHeadConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
-            estimator->AddSo3LinearTailConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-            estimator->AddPosLinearTailConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
         }
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
@@ -109,7 +110,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
      */
     {
         auto roughSplineSegments = _splineSegments;
-        this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
         this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
                                    Configor::Prior::KnotTimeDist.ScaleSpline);
 
@@ -149,10 +150,15 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
         // add circle-based visual projection pairs
         this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, _refEvTopic, opt, 1.0);
+        for (auto &[so3Spline, posSpline] : _splineSegments) {
+            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
+            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+        }
+        std::cin.get();
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+        std::cin.get();
     }
-    std::cin.get();
 }
 
 }  // namespace ns_ekalibr
