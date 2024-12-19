@@ -151,7 +151,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         }
 
         std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
-        constexpr int PAIR_COUNT_PER_CIRCLE = 10;
+        constexpr std::size_t PAIR_COUNT_PER_CIRCLE = 10;
         for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
             auto &corrList = _evCirProjPairs[topic];
             corrList.clear();
@@ -159,7 +159,8 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
                 // correspondences of each grid
                 for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
                     const auto &evs = rawEvsOfGrids.at(i).second->GetEvents();
-                    auto evsDownsample = SamplingWoutReplace2(eng, evs, PAIR_COUNT_PER_CIRCLE);
+                    const std::size_t sampleCount = std::min(PAIR_COUNT_PER_CIRCLE, evs.size());
+                    auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
                     for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
                         corrList.push_back(VisualProjectionCircleBasedPair::Create(
                             circle3dVec.at(i),      // the circle in the world frame
