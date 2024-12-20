@@ -31,7 +31,7 @@ Configor:
     #     AcceWeight: 17.68
     #     GyroWeight: 57.66
     RefIMUTopic: /dvs/imu
-    BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data_copy.bag"
+    BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag

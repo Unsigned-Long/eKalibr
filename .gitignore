@@ -26,3 +26,4 @@
 !/script/gen_pattern.py
 !/script/svgfig.py
 !/script/example.sh
+!script/davis_data_recoder.sh
