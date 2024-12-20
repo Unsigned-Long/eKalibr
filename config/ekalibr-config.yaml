@@ -10,12 +10,12 @@ Configor:
           Width: 346
           Height: 260
           Weight: 10.0
-      - key: "/dvs/events_copy"
-        value:
-          Type: "DVS_EVENT"
-          Width: 346
-          Height: 260
-          Weight: 10.0
+    #      - key: "/dvs/events_copy"
+    #        value:
+    #          Type: "DVS_EVENT"
+    #          Width: 346
+    #          Height: 260
+    #          Weight: 10.0
     # if the 'IMUTopics' field is empty, only visual intrinsic calibration
     # is performed for multiple event cameras!!!
     # key: IMU topic, value: IMU type. Supported IMU types are:

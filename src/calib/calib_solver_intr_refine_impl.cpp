@@ -138,7 +138,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
-    this->CreateVisualProjectionCircleBasedPairs(20);
+    this->CreateVisualProjPairsAsyncCircleBased(20);
 
     /**
      * We use circle-based batch optimization to refine the spline of the reference event camera.
@@ -149,7 +149,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         spdlog::info("use circle-based batch optimization to refine the spline segments...");
         auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
         // add circle-based visual projection pairs
-        this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, _refEvTopic, opt, 1.0);
+        this->AddVisualProjPairsAsyncCircleBasedToSplineSegments(estimator, _refEvTopic, opt, 1.0);
         for (auto &[so3Spline, posSpline] : _splineSegments) {
             estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 50.0);
             estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 50.0);

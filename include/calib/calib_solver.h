@@ -105,8 +105,11 @@ protected:
     std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;
     // the topic of the reference event camera;
     std::string _refEvTopic;
-    // circle-based visual reprojection pairs
-    std::map<std::string, std::list<VisualProjectionCircleBasedPairPtr>> _evCirProjPairs;
+    /**
+     * circle-based visual reprojection pairs (asynchronous, from time-varying circle,
+     * circle-edge-based)
+     */
+    std::map<std::string, std::list<VisualProjectionCircleBasedPairPtr>> _evAsyncCircleProjPairs;
 
     /**
      * utilized in event-inertial calibration
@@ -121,7 +124,9 @@ protected:
     // options used for ceres-related optimization
     ceres::Solver::Options _ceresOption;
     // visual reprojection pairs
-    std::map<std::string, std::vector<VisualProjectionPairPtr>> _evProjPairs;
+    std::map<std::string, std::vector<VisualProjectionPairPtr>> _evSyncPointProjPairs;
+    // visual reprojection pairs (asynchronous, from time-varying circle, circle-center-based)
+    std::map<std::string, std::list<VisualProjectionPairPtr>> _evAsyncPointProjPairs;
 
 public:
     CalibSolver(CalibParamManagerPtr parMgr);
@@ -181,9 +186,11 @@ protected:
 
     int IsTimeInValidSegment(double timeByBr) const;
 
-    void CreateVisualProjectionPairs();
+    void CreateVisualProjPairsSyncPointBased();
 
-    void CreateVisualProjectionCircleBasedPairs(std::size_t pairCountPerTvCircle = 10);
+    void CreateVisualProjPairsAsyncPointBased(double dt = 0.005);
+
+    void CreateVisualProjPairsAsyncCircleBased(std::size_t pairCountPerTvCircle = 10);
 
     void BatchOptimizations();
 
@@ -206,12 +213,19 @@ protected:
                                               const std::optional<double> &weight,
                                               const std::optional<double> &dsRate = {}) const;
 
-    std::size_t AddVisualProjPairsToSplineSegments(const EstimatorPtr &estimator,
-                                                   const std::string &camTopic,
-                                                   OptOption option,
-                                                   const std::optional<double> &weight) const;
+    std::size_t AddVisualProjPairsSyncPointBasedToSplineSegments(
+        const EstimatorPtr &estimator,
+        const std::string &camTopic,
+        OptOption option,
+        const std::optional<double> &weight) const;
 
-    std::size_t AddVisualProjCircleBasedPairsToSplineSegments(
+    std::size_t AddVisualProjPairsAsyncPointBasedToSplineSegments(
+        const EstimatorPtr &estimator,
+        const std::string &camTopic,
+        OptOption option,
+        const std::optional<double> &weight) const;
+
+    std::size_t AddVisualProjPairsAsyncCircleBasedToSplineSegments(
         const EstimatorPtr &estimator,
         const std::string &camTopic,
         OptOption option,

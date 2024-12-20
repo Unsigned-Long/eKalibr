@@ -54,11 +54,22 @@ void CalibSolver::BatchOptimizations() {
         }
     }
 
-    constexpr bool USE_CIRCLE_BASED_PROJ_FACTOR = false;
+    enum class VisualProjType { SYNC_POINT_BASED, ASYNC_POINT_BASED, ASYNC_CIRCLE_BASED };
+    constexpr VisualProjType vpType = VisualProjType::ASYNC_POINT_BASED;
 
-    this->CreateVisualProjectionPairs();
-    if (USE_CIRCLE_BASED_PROJ_FACTOR) {
-        this->CreateVisualProjectionCircleBasedPairs(2);
+    switch (vpType) {
+        case VisualProjType::SYNC_POINT_BASED: {
+            this->CreateVisualProjPairsSyncPointBased();
+            break;
+        }
+        case VisualProjType::ASYNC_POINT_BASED: {
+            this->CreateVisualProjPairsAsyncPointBased();
+            break;
+        }
+        case VisualProjType::ASYNC_CIRCLE_BASED: {
+            this->CreateVisualProjPairsAsyncCircleBased(2);
+            break;
+        }
     }
 
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
@@ -79,14 +90,26 @@ void CalibSolver::BatchOptimizations() {
         }
 
         for (const auto& [topic, _] : Configor::DataStream::EventTopics) {
-            if (!USE_CIRCLE_BASED_PROJ_FACTOR || i < static_cast<int>(options.size()) - 1) {
-                auto s = this->AddVisualProjPairsToSplineSegments(estimator, topic, option, {});
-                spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
-            } else {
-                auto s = this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, topic,
-                                                                             option, {});
-                spdlog::info("add '{}' 'VisualProjectionCircleBasedFactor' for camera '{}'...", s,
-                             topic);
+            switch (vpType) {
+                case VisualProjType::SYNC_POINT_BASED: {
+                    auto s = this->AddVisualProjPairsSyncPointBasedToSplineSegments(
+                        estimator, topic, option, {});
+                    spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+                    break;
+                }
+                case VisualProjType::ASYNC_POINT_BASED: {
+                    auto s = this->AddVisualProjPairsAsyncPointBasedToSplineSegments(
+                        estimator, topic, option, {});
+                    spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+                    break;
+                }
+                case VisualProjType::ASYNC_CIRCLE_BASED: {
+                    auto s = this->AddVisualProjPairsAsyncCircleBasedToSplineSegments(
+                        estimator, topic, option, {});
+                    spdlog::info("add '{}' 'VisualProjectionCircleBasedFactor' for camera '{}'...",
+                                 s, topic);
+                    break;
+                }
             }
         }
         // make this problem full rank

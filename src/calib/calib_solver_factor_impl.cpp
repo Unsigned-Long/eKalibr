@@ -118,15 +118,16 @@ std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estim
     return count;
 }
 
-std::size_t CalibSolver::AddVisualProjPairsToSplineSegments(const EstimatorPtr &estimator,
-                                                            const std::string &camTopic,
-                                                            OptOption option,
-                                                            const std::optional<double> &w) const {
+std::size_t CalibSolver::AddVisualProjPairsSyncPointBasedToSplineSegments(
+    const EstimatorPtr &estimator,
+    const std::string &camTopic,
+    OptOption option,
+    const std::optional<double> &w) const {
     auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
     const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
     std::size_t count = 0;
 
-    for (const auto &pair : _evProjPairs.at(camTopic)) {
+    for (const auto &pair : _evSyncPointProjPairs.at(camTopic)) {
         auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
         if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
@@ -139,7 +140,7 @@ std::size_t CalibSolver::AddVisualProjPairsToSplineSegments(const EstimatorPtr &
     return count;
 }
 
-std::size_t CalibSolver::AddVisualProjCircleBasedPairsToSplineSegments(
+std::size_t CalibSolver::AddVisualProjPairsAsyncPointBasedToSplineSegments(
     const EstimatorPtr &estimator,
     const std::string &camTopic,
     OptOption option,
@@ -148,7 +149,29 @@ std::size_t CalibSolver::AddVisualProjCircleBasedPairsToSplineSegments(
     const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
     std::size_t count = 0;
 
-    for (const auto &pair : _evCirProjPairs.at(camTopic)) {
+    for (const auto &pair : _evAsyncPointProjPairs.at(camTopic)) {
+        auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
+        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            continue;
+        }
+        estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
+                                             _splineSegments.at(idx).second, camTopic, pair, option,
+                                             weight);
+        ++count;
+    }
+    return count;
+}
+
+std::size_t CalibSolver::AddVisualProjPairsAsyncCircleBasedToSplineSegments(
+    const EstimatorPtr &estimator,
+    const std::string &camTopic,
+    OptOption option,
+    const std::optional<double> &w) const {
+    auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
+    const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
+    std::size_t count = 0;
+
+    for (const auto &pair : _evAsyncCircleProjPairs.at(camTopic)) {
         auto idx = this->IsTimeInValidSegment(pair->ev->GetTimestamp() + TO_CjToBr);
         if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
             continue;
