@@ -183,6 +183,16 @@ public:
                                 Opt option,
                                 double weight);
 
+    void AddHandEyeTransformAlignment(const So3SplineType &so3Spline,
+                                      const PosSplineType &posSpline,
+                                      const std::string &camTopic,
+                                      double tLastByCj,
+                                      double tCurByCj,
+                                      const Sophus::SE3d &se3LastCjToW,
+                                      const Sophus::SE3d &se3CurCjToW,
+                                      Opt option,
+                                      double weight);
+
     void AddSo3SplineAlignToWorldConstraint(const So3SplineType &so3Spline,
                                             Sophus::SO3d *SO3_Br0ToW,
                                             const std::string &camTopic,

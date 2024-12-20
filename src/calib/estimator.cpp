@@ -48,6 +48,7 @@
 #include "factor/prior_extri_so3_factor.hpp"
 #include "factor/prior_time_offset_factor.hpp"
 #include "calib/spat_temp_priori.h"
+#include <factor/hand_eye_transform_align_factor.hpp>
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -498,6 +499,114 @@ void Estimator::AddHandEyeRotAlignment(const So3SplineType &so3Spline,
 
     if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
         this->SetParameterBlockConstant(SO3_CjToBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        this->SetParameterBlockConstant(TO_CjToBr);
+    } else {
+        // set bound
+        this->SetParameterLowerBound(TO_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
+    }
+}
+
+void Estimator::AddHandEyeTransformAlignment(const So3SplineType &so3Spline,
+                                             const PosSplineType &posSpline,
+                                             const std::string &camTopic,
+                                             double tLastByCj,
+                                             double tCurByCj,
+                                             const Sophus::SE3d &se3LastCjToW,
+                                             const Sophus::SE3d &se3CurCjToW,
+                                             Opt option,
+                                             double weight) {
+    // prepare metas for splines
+    SplineMetaType so3Meta, posMeta;
+
+    // different relative control points finding [single vs. range]
+    if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
+        double lastMinTime = tLastByCj - Configor::Prior::TimeOffsetPadding;
+        double lastMaxTime = tLastByCj + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!so3Spline.TimeStampInRange(lastMinTime) || !so3Spline.TimeStampInRange(lastMaxTime) ||
+            !posSpline.TimeStampInRange(lastMinTime) || !posSpline.TimeStampInRange(lastMaxTime)) {
+            return;
+        }
+
+        double curMinTime = tCurByCj - Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = tCurByCj + Configor::Prior::TimeOffsetPadding;
+        // invalid time stamp
+        if (!so3Spline.TimeStampInRange(curMinTime) || !so3Spline.TimeStampInRange(curMaxTime) ||
+            !posSpline.TimeStampInRange(curMinTime) || !posSpline.TimeStampInRange(curMaxTime)) {
+            return;
+        }
+
+        SplineBundleType::CalculateSplineMeta(
+            so3Spline, {{lastMinTime, lastMaxTime}, {curMinTime, curMaxTime}}, so3Meta);
+        SplineBundleType::CalculateSplineMeta(
+            posSpline, {{lastMinTime, lastMaxTime}, {curMinTime, curMaxTime}}, posMeta);
+    } else {
+        double lastTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+        double curTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+
+        // check point time stamp
+        if (!so3Spline.TimeStampInRange(lastTime) || !so3Spline.TimeStampInRange(curTime) ||
+            !posSpline.TimeStampInRange(lastTime) || !posSpline.TimeStampInRange(curTime)) {
+            return;
+        }
+        SplineBundleType::CalculateSplineMeta(so3Spline, {{lastTime, lastTime}, {curTime, curTime}},
+                                              so3Meta);
+        SplineBundleType::CalculateSplineMeta(posSpline, {{lastTime, lastTime}, {curTime, curTime}},
+                                              posMeta);
+    }
+
+    // create a cost function
+    auto costFunc = HandEyeTransformAlignFactor<Configor::Prior::SplineOrder>::Create(
+        so3Meta, posMeta, tLastByCj, tCurByCj, se3LastCjToW.inverse() * se3CurCjToW, weight);
+
+    // so3 knots param block [each has four sub params]
+    for (int i = 0; i < static_cast<int>(so3Meta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(4);
+    }
+    // pos knots param block [each has three sub params]
+    for (int i = 0; i < static_cast<int>(posMeta.NumParameters()); ++i) {
+        costFunc->AddParameterBlock(3);
+    }
+
+    // SO3_CjToBr
+    costFunc->AddParameterBlock(4);
+    // TO_CjToBr
+    costFunc->AddParameterBlock(1);
+
+    // set Residuals
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    // so3 knots param block
+    AddSo3KnotsData(paramBlockVec, so3Spline, so3Meta, !IsOptionWith(Opt::OPT_SO3_SPLINE, option));
+    AddRdKnotsData(paramBlockVec, posSpline, posMeta, !IsOptionWith(Opt::OPT_SCALE_SPLINE, option));
+
+    auto SO3_CjToBr = parMagr->EXTRI.SO3_CjToBr.at(camTopic).data();
+    paramBlockVec.push_back(SO3_CjToBr);
+
+    auto POS_CjInBr = parMagr->EXTRI.POS_CjInBr.at(camTopic).data();
+    paramBlockVec.push_back(POS_CjInBr);
+
+    auto TO_CjToBr = &parMagr->TEMPORAL.TO_CjToBr.at(camTopic);
+    paramBlockVec.push_back(TO_CjToBr);
+
+    // pass to problem
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+
+    this->SetManifold(SO3_CjToBr, QUATER_MANIFOLD.get());
+
+    if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
+        this->SetParameterBlockConstant(SO3_CjToBr);
+    }
+
+    if (!IsOptionWith(Opt::OPT_POS_BiInBr, option)) {
+        this->SetParameterBlockConstant(POS_CjInBr);
     }
 
     if (!IsOptionWith(Opt::OPT_TO_CjToBr, option)) {

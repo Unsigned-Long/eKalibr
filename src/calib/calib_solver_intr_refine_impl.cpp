@@ -138,27 +138,38 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
-    this->CreateVisualProjPairsAsyncCircleBased(20);
+    this->CreateVisualProjPairsAsyncPointBased();
 
     /**
-     * We use circle-based batch optimization to refine the spline of the reference event camera.
+     * We use batch optimization to refine the spline of the reference event camera.
      * Modify: '_splineSegments'
      */
     {
         auto estimator = Estimator::Create(_parMgr);
-        spdlog::info("use circle-based batch optimization to refine the spline segments...");
+        spdlog::info(
+            "use circle-based batch optimization to refine the spline segments of of the reference "
+            "event camera...");
         auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
         // add circle-based visual projection pairs
-        this->AddVisualProjPairsAsyncCircleBasedToSplineSegments(estimator, _refEvTopic, opt, 1.0);
+        this->AddVisualProjPairsAsyncPointBasedToSplineSegments(estimator, _refEvTopic, opt, 1.0);
         for (auto &[so3Spline, posSpline] : _splineSegments) {
             estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 50.0);
             estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 50.0);
         }
-        std::cin.get();
         auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-        _parMgr->ShowParamStatus();
-        std::cin.get();
+    }
+
+    /**
+     * initialize extrinsics and time offsets of other event cameras
+     */
+    {
+    }
+
+    /**
+     * final batch optimization
+     */
+    {
     }
 }
 

@@ -50,12 +50,12 @@ private:
     double _weight;
 
 public:
-    explicit IMUAcceFactor(ns_ctraj::SplineMeta<Order> rotMeta,
-                           ns_ctraj::SplineMeta<Order> linScaleMeta,
+    explicit IMUAcceFactor(const ns_ctraj::SplineMeta<Order> &rotMeta,
+                           const ns_ctraj::SplineMeta<Order> &linScaleMeta,
                            IMUFrame::Ptr imuFrame,
                            double weight)
         : _so3Meta(rotMeta),
-          _scaleMeta(std::move(linScaleMeta)),
+          _scaleMeta(linScaleMeta),
           _imuFrame(std::move(imuFrame)),
           _so3DtInv(1.0 / rotMeta.segments.front().dt),
           _scaleDtInv(1.0 / _scaleMeta.segments.front().dt),

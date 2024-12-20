@@ -42,32 +42,32 @@ struct HandEyeRotationAlignFactor {
 private:
     ns_ctraj::SplineMeta<Order> _so3Meta;
 
-    Sophus::SO3d SO3_CurLkToLastLk;
-    double _tLastByLk, _tCurByLk;
+    Sophus::SO3d SO3_CurCjToLastCj;
+    double _tLastByCj, _tCurByCj;
 
     double _so3DtInv;
     double _weight;
 
 public:
-    explicit HandEyeRotationAlignFactor(ns_ctraj::SplineMeta<Order> so3Meta,
-                                        double tLastByLk,
-                                        double tCurByLk,
-                                        const Sophus::SO3d &so3CurLkToLastLk,
+    explicit HandEyeRotationAlignFactor(const ns_ctraj::SplineMeta<Order> &so3Meta,
+                                        double tLastByCj,
+                                        double tCurByCj,
+                                        const Sophus::SO3d &so3CurCjToLastCj,
                                         double weight)
-        : _so3Meta(std::move(so3Meta)),
-          SO3_CurLkToLastLk(so3CurLkToLastLk),
-          _tLastByLk(tLastByLk),
-          _tCurByLk(tCurByLk),
+        : _so3Meta(so3Meta),
+          SO3_CurCjToLastCj(so3CurCjToLastCj),
+          _tLastByCj(tLastByCj),
+          _tCurByCj(tCurByCj),
           _so3DtInv(1.0 / _so3Meta.segments.front().dt),
           _weight(weight) {}
 
     static auto Create(const ns_ctraj::SplineMeta<Order> &so3Meta,
-                       double tLastByLk,
-                       double tCurByLk,
-                       const Sophus::SO3d &so3CurLkToLastLk,
+                       double tLastByCj,
+                       double tCurByCj,
+                       const Sophus::SO3d &so3CurCjToLastCj,
                        double weight) {
         return new ceres::DynamicAutoDiffCostFunction<HandEyeRotationAlignFactor>(
-            new HandEyeRotationAlignFactor(so3Meta, tLastByLk, tCurByLk, so3CurLkToLastLk, weight));
+            new HandEyeRotationAlignFactor(so3Meta, tLastByCj, tCurByCj, so3CurCjToLastCj, weight));
     }
 
     static std::size_t TypeHashCode() { return typeid(HandEyeRotationAlignFactor).hash_code(); }
@@ -87,8 +87,8 @@ public:
         Eigen::Map<Sophus::SO3<T> const> const SO3_CjToBr(sKnots[SO3_CjToBr_OFFSET]);
         T TO_CjToBr = sKnots[TO_CjToBr_OFFSET][0];
 
-        auto tLastByBr = _tLastByLk + TO_CjToBr;
-        auto tCurByBr = _tCurByLk + TO_CjToBr;
+        auto tLastByBr = _tLastByCj + TO_CjToBr;
+        auto tCurByBr = _tCurByCj + TO_CjToBr;
 
         // calculate the so3 offset
         std::pair<std::size_t, T> iuLast;
@@ -107,7 +107,7 @@ public:
         ns_ctraj::CeresSplineHelperJet<T, Order>::EvaluateLie(sKnots + CUR_SO3_OFFSET, iuCur.second,
                                                               _so3DtInv, &SO3_CurBrToBr0);
 
-        Sophus::SO3<T> left = SO3_CjToBr * SO3_CurLkToLastLk;
+        Sophus::SO3<T> left = SO3_CjToBr * SO3_CurCjToLastCj;
         Sophus::SO3<T> right = (SO3_LastBrToBr0.inverse() * SO3_CurBrToBr0) * SO3_CjToBr;
 
         Eigen::Map<Eigen::Vector3<T>> residuals(sResiduals);
