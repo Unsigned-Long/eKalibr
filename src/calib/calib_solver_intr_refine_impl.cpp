@@ -164,6 +164,52 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
      * initialize extrinsics and time offsets of other event cameras
      */
     {
+        auto opt = OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_BiInBr | OptOption::OPT_TO_CjToBr;
+        static constexpr double DESIRED_TIME_INTERVAL = 0.1 /* 0.1 sed */;
+        const int ALIGN_STEP = std::max(
+            1, static_cast<int>(DESIRED_TIME_INTERVAL / Configor::Prior::DecayTimeOfActiveEvents));
+
+        for (const auto &[topic, poseVec] : _camPoses) {
+            if (topic == _refEvTopic) {
+                continue;
+            }
+            spdlog::info(
+                "initialize event extrinsics and time offsets between '{}' and '{}' based on "
+                "continuous-time hand-eye alignment...",
+                topic, _refEvTopic);
+
+            const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+            auto estimator = Estimator::Create(_parMgr);
+            const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
+
+            for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
+                const auto &sPose = poseVec.at(i);
+                const auto &ePose = poseVec.at(i + ALIGN_STEP);
+
+                auto sIdx = IsTimeInValidSegment(sPose.timeStamp + TO_CjToBr);
+                auto eIdx = IsTimeInValidSegment(ePose.timeStamp + TO_CjToBr);
+                if (sIdx < 0 || sIdx >= static_cast<int>(_splineSegments.size()) || eIdx < 0 ||
+                    eIdx >= static_cast<int>(_splineSegments.size()) || sIdx != eIdx) {
+                    continue;
+                }
+
+                estimator->AddHandEyeTransformAlignment(
+                    _splineSegments.at(sIdx).first, _splineSegments.at(sIdx).second,
+                    topic,            // the ros topic
+                    sPose.timeStamp,  // the time of start rotation stamped by the camera
+                    ePose.timeStamp,  // the time of end rotation stamped by the camera
+                    sPose.se3(),      // the start rotation
+                    ePose.se3(),      // the end rotation
+                    opt,              // the optimization option
+                    weight            // the weight
+                );
+            }
+            estimator->SetEvCamParamsConstant(_refEvTopic);
+            auto sum = estimator->Solve(_ceresOption, nullptr);
+            spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+            _parMgr->ShowParamStatus();
+            std::cin.get();
+        }
     }
 
     /**

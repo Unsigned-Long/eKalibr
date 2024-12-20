@@ -574,11 +574,13 @@ void Estimator::AddHandEyeTransformAlignment(const So3SplineType &so3Spline,
 
     // SO3_CjToBr
     costFunc->AddParameterBlock(4);
+    // POS_CjInBr
+    costFunc->AddParameterBlock(3);
     // TO_CjToBr
     costFunc->AddParameterBlock(1);
 
     // set Residuals
-    costFunc->SetNumResiduals(3);
+    costFunc->SetNumResiduals(6);
 
     // organize the param block vector
     std::vector<double *> paramBlockVec;

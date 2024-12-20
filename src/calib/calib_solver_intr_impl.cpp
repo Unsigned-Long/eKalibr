@@ -269,7 +269,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
             }
         }
 
-        auto sum = estimator->Solve(_ceresOption, _priori);
+        auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
