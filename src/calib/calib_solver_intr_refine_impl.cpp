@@ -44,8 +44,8 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         return;
     }
 
-    constexpr double SEG_NEIGHBOR = 0.1; /*neighbor*/
-    constexpr double SEG_LENGTH = 0.5;   /*length*/
+    const double SEG_NEIGHBOR = Configor::Prior::DecayTimeOfActiveEvents * 2.5; /*neighbor*/
+    const double SEG_LENGTH = Configor::Prior::DecayTimeOfActiveEvents * 5;     /*length*/
 
     /**
      * Here, we choose the event camera with the longest total duration as the reference camera
@@ -138,7 +138,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
-    this->CreateVisualProjectionCircleBasedPairs(10);
+    this->CreateVisualProjectionCircleBasedPairs(20);
 
     /**
      * We use circle-based batch optimization to refine the spline of the reference event camera.
@@ -151,12 +151,13 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
         // add circle-based visual projection pairs
         this->AddVisualProjCircleBasedPairsToSplineSegments(estimator, _refEvTopic, opt, 1.0);
         for (auto &[so3Spline, posSpline] : _splineSegments) {
-            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
+            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 50.0);
+            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 50.0);
         }
         std::cin.get();
         auto sum = estimator->Solve(_ceresOption);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+        _parMgr->ShowParamStatus();
         std::cin.get();
     }
 }
