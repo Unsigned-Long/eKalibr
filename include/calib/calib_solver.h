@@ -165,7 +165,7 @@ protected:
                                                 double SEG_NEIGHBOR,
                                                 double SEG_LENGTH);
 
-    void RefineCameraIntrinsicsUsingRawEvents();
+    void EvCamSpatialTemporalCalib();
 
     void GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion);
 

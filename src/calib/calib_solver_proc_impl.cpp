@@ -69,10 +69,10 @@ void CalibSolver::Process() {
     _parMgr->ShowParamStatus();
 
     /**
-     * refine intrinsics using raw events
+     * calibrate spatiotemporal parameters of events camera
      */
     _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
-    // this->RefineCameraIntrinsicsUsingRawEvents();
+    this->EvCamSpatialTemporalCalib();
     _parMgr->ShowParamStatus();
 
     if (Configor::DataStream::IMUTopics.empty()) {
