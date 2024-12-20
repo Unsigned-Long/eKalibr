@@ -92,7 +92,7 @@ void CalibSolver::BatchOptimizations() {
         // make this problem full rank
         estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
         _ceresOption.num_threads = 1;
-        auto sum = estimator->Solve(_ceresOption);
+        auto sum = estimator->Solve(_ceresOption, _priori);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 }

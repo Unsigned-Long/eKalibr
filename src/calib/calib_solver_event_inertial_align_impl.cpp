@@ -140,7 +140,7 @@ void CalibSolver::EventInertialAlignment() {
                     weight            // the weight
                 );
             }
-            auto sum = estimator->Solve(_ceresOption);
+            auto sum = estimator->Solve(_ceresOption, _priori);
             spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
         }
     }
@@ -214,7 +214,7 @@ void CalibSolver::EventInertialAlignment() {
     AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
                                  OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/, 100 /*down sampling*/);
 
-    auto sum = estimator->Solve(_ceresOption);
+    auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 #endif
 
@@ -317,7 +317,7 @@ void CalibSolver::EventInertialAlignment() {
     // make this problem full rank
     estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
 
-    sum = estimator->Solve(_ceresOption);
+    sum = estimator->Solve(_ceresOption, _priori);
     estimator = nullptr;
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }

@@ -60,6 +60,8 @@ struct VisualProjectionPair;
 using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
 struct VisualProjectionCircleBasedPair;
 using VisualProjectionCircleBasedPairPtr = std::shared_ptr<VisualProjectionCircleBasedPair>;
+class SpatialTemporalPriori;
+using SpatialTemporalPrioriPtr = std::shared_ptr<SpatialTemporalPriori>;
 
 class CalibSolver {
 public:
@@ -74,6 +76,8 @@ protected:
     ViewerPtr _viewer;
     // indicates whether the solving is finished
     bool _solveFinished;
+    // prior knowledge about spatiotemporal parameters used in optimization (if provided)
+    SpatialTemporalPrioriPtr _priori;
 
     /**
      * data

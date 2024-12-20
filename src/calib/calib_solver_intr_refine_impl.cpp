@@ -100,7 +100,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
             estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
             estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
         }
-        auto sum = estimator->Solve(_ceresOption);
+        auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
@@ -134,7 +134,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
                 estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
             }
         }
-        auto sum = estimator->Solve(_ceresOption);
+        auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
@@ -155,7 +155,7 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
             estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 50.0);
         }
         std::cin.get();
-        auto sum = estimator->Solve(_ceresOption);
+        auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
         _parMgr->ShowParamStatus();
         std::cin.get();

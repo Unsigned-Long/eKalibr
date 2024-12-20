@@ -42,6 +42,8 @@ struct VisualProjectionPair;
 using VisualProjectionPairPtr = std::shared_ptr<VisualProjectionPair>;
 struct VisualProjectionCircleBasedPair;
 using VisualProjectionCircleBasedPairPtr = std::shared_ptr<VisualProjectionCircleBasedPair>;
+class SpatialTemporalPriori;
+using SpatialTemporalPrioriPtr = std::shared_ptr<SpatialTemporalPriori>;
 
 using namespace magic_enum::bitwise_operators;
 
@@ -107,8 +109,8 @@ public:
                                                        bool toStdout = true,
                                                        bool useCUDA = false);
 
-    ceres::Solver::Summary Solve(
-        const ceres::Solver::Options &options = Estimator::DefaultSolverOptions());
+    ceres::Solver::Summary Solve(const ceres::Solver::Options &options,
+                                 const SpatialTemporalPrioriPtr &priori);
 
     Eigen::MatrixXd GetHessianMatrix(const std::vector<double *> &consideredParBlocks,
                                      int numThread = 1);
@@ -243,26 +245,6 @@ public:
                                            Opt option,
                                            double weight);
 
-    void AddPosLinearTailConstraint(PosSplineType &posSpline,
-                                    Opt option,
-                                    double weight,
-                                    int count = Configor::Prior::SplineOrder);
-
-    void AddSo3LinearTailConstraint(So3SplineType &so3Spline,
-                                    Opt option,
-                                    double weight,
-                                    int count = Configor::Prior::SplineOrder);
-
-    void AddPosLinearHeadConstraint(PosSplineType &posSpline,
-                                    Opt option,
-                                    double weight,
-                                    int count = Configor::Prior::SplineOrder);
-
-    void AddSo3LinearHeadConstraint(So3SplineType &so3Spline,
-                                    Opt option,
-                                    double weight,
-                                    int count = Configor::Prior::SplineOrder);
-
     void AddPosLinearConstraint(PosSplineType &posSpline, Opt option, double weight);
 
     void AddSo3LinearConstraint(So3SplineType &so3Spline, Opt option, double weight);
@@ -273,6 +255,22 @@ public:
                                               const VisualProjectionCircleBasedPairPtr &pair,
                                               Opt option,
                                               double weight);
+
+    void AddPriorExtriSO3Constraint(const Sophus::SO3d &SO3_Sen1ToSen2,
+                                    Sophus::SO3d *SO3_Sen1ToRef,
+                                    Sophus::SO3d *SO3_Sen2ToRef,
+                                    double weight);
+
+    void AddPriorExtriPOSConstraint(const Eigen::Vector3d &POS_Sen1InSen2,
+                                    Eigen::Vector3d *POS_Sen1InRef,
+                                    Sophus::SO3d *SO3_Sen2ToRef,
+                                    Eigen::Vector3d *POS_Sen2InRef,
+                                    double weight);
+
+    void AddPriorTimeOffsetConstraint(const double &TO_Sen1ToSen2,
+                                      double *TO_Sen1ToRef,
+                                      double *TO_Sen2ToRef,
+                                      double weight);
 };
 }  // namespace ns_ekalibr
 

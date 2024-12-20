@@ -64,6 +64,7 @@ double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 Configor::Prior::NormFlowEstimatorConfig Configor::Prior::NormFlowEstimator = {};
 Configor::Prior::KnotTimeDistConfig Configor::Prior::KnotTimeDist = {};
+std::string Configor::Prior::SpatTempPrioriPath = {};
 
 OutputOption Configor::Preference::Outputs = OutputOption::NONE;
 std::set<std::string> Configor::Preference::OutputsStr = {};
@@ -109,12 +110,13 @@ void Configor::PrintMainFields() {
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                     DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                        DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+                        DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
         DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::RefIMUTopic),
         DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
         DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
-        DESC_FIELD(Prior::GravityNorm), DESC_FIELD(Prior::TimeOffsetPadding),
-        DESC_FIELD(Prior::OptTemporalParams), DESC_FIELD(Prior::DecayTimeOfActiveEvents),
+        DESC_FIELD(Prior::SpatTempPrioriPath), DESC_FIELD(Prior::GravityNorm),
+        DESC_FIELD(Prior::TimeOffsetPadding), DESC_FIELD(Prior::OptTemporalParams),
+        DESC_FIELD(Prior::DecayTimeOfActiveEvents),
         // fields for CirclePattern
         "CirclePattern::Type", Prior::CirclePattern.Type,  // pattern type
         "CirclePattern::Cols", Prior::CirclePattern.Cols,  // number of circles (cols)

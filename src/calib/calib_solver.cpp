@@ -53,12 +53,14 @@
 #include "tiny-viewer/entity/utils.h"
 #include "factor/visual_projection_factor.hpp"
 #include "factor/visual_projection_circle_based_factor.hpp"
+#include "calib/spat_temp_priori.h"
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
     : _parMgr(std::move(parMgr)),
       _viewer(nullptr),
-      _solveFinished(false) {
+      _solveFinished(false),
+      _priori(nullptr) {
     // viewer
     if (Configor::Preference::Visualization) {
         _viewer = Viewer::Create(Configor::Preference::MaxEntityCountInViewer);
@@ -81,6 +83,14 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
     if (IsOptionWith(OutputOption::ParamInEachIter, Configor::Preference::Outputs)) {
         _ceresOption.callbacks.push_back(new CeresDebugCallBack(_parMgr));
         _ceresOption.update_state_every_iteration = true;
+    }
+
+    // spatial and temporal priori
+    if (std::filesystem::exists(Configor::Prior::SpatTempPrioriPath)) {
+        _priori = SpatialTemporalPriori::Load(Configor::Prior::SpatTempPrioriPath);
+        _priori->CheckValidityWithConfigor();
+        spdlog::info("priori about spatial and temporal parameters are given: '{}'",
+                     Configor::Prior::SpatTempPrioriPath);
     }
 }
 
@@ -493,7 +503,7 @@ void CalibSolver::InitSo3SplineSegments() {
                                   OptOption::OPT_SO3_SPLINE, 0.1, /*weight*/
                                   100 /*down sampling rate*/);
 
-    auto sum = estimator->Solve(_ceresOption);
+    auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
 

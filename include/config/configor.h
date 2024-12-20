@@ -109,6 +109,7 @@ public:
 
     static struct Prior {
         static constexpr int SplineOrder = 4;
+        static std::string SpatTempPrioriPath;
 
         static double GravityNorm;
         static double TimeOffsetPadding;
@@ -189,10 +190,11 @@ public:
     public:
         template <class Archive>
         void serialize(Archive &ar) {
-            ar(CEREAL_NVP(GravityNorm), CEREAL_NVP(TimeOffsetPadding),
-               CEREAL_NVP(OptTemporalParams), CEREAL_NVP(CirclePattern),
-               CEREAL_NVP(DecayTimeOfActiveEvents), CEREAL_NVP(CircleExtractor),
-               CEREAL_NVP(NormFlowEstimator), CEREAL_NVP(KnotTimeDist));
+            ar(CEREAL_NVP(SpatTempPrioriPath), CEREAL_NVP(GravityNorm),
+               CEREAL_NVP(TimeOffsetPadding), CEREAL_NVP(OptTemporalParams),
+               CEREAL_NVP(CirclePattern), CEREAL_NVP(DecayTimeOfActiveEvents),
+               CEREAL_NVP(CircleExtractor), CEREAL_NVP(NormFlowEstimator),
+               CEREAL_NVP(KnotTimeDist));
         }
     } prior;
 

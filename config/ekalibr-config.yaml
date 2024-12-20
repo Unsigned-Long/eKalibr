@@ -10,6 +10,12 @@ Configor:
           Width: 346
           Height: 260
           Weight: 10.0
+      - key: "/dvs/events_copy"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
+          Weight: 10.0
     # if the 'IMUTopics' field is empty, only visual intrinsic calibration
     # is performed for multiple event cameras!!!
     # key: IMU topic, value: IMU type. Supported IMU types are:
@@ -31,7 +37,7 @@ Configor:
           AcceWeight: 17.68
           GyroWeight: 57.66
     RefIMUTopic: /dvs/imu
-    BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
+    BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data_copy.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag
@@ -40,6 +46,8 @@ Configor:
     Duration: -1
     OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
+    # priori about spatiotemporal parameters, given by corresponding config file path
+    SpatTempPrioriPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/config/spat-temp-priori.yaml"
     # unit: m/s^2
     GravityNorm: 9.8
     # the range where the time offsets would be optimized.
