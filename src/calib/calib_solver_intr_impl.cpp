@@ -151,6 +151,27 @@ void CalibSolver::EstimateCameraIntrinsics() {
         distCoeffsMap[topic] = distCoeffs[idx];
     }
 
+    // organize
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        const auto &cameraMatrix = cameraMatrixMap.at(topic);
+        const auto &distCoeffs = distCoeffsMap.at(topic);
+
+        _parMgr->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
+            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgWidth),   // w
+            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgHeight),  // h
+            cameraMatrix.at<double>(0, 0),                                 // fx
+            cameraMatrix.at<double>(1, 1),                                 // fy
+            cameraMatrix.at<double>(0, 2),                                 // cx
+            cameraMatrix.at<double>(1, 2),                                 // cy
+            distCoeffs.at<double>(0),                                      // k1
+            distCoeffs.at<double>(1),                                      // k2
+            distCoeffs.at<double>(4),                                      // k3
+            distCoeffs.at<double>(2),                                      // p1
+            distCoeffs.at<double>(3)                                       // p2
+        );
+    }
+    _parMgr->ShowParamStatus();
+
     // topic, timestamp, rVec, tVec
     std::map<std::string, std::list<std::tuple<CircleGrid2D::Ptr, cv::Mat, cv::Mat>>> poseVecMap;
 
@@ -198,23 +219,6 @@ void CalibSolver::EstimateCameraIntrinsics() {
     }
 
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        const auto &cameraMatrix = cameraMatrixMap.at(topic);
-        const auto &distCoeffs = distCoeffsMap.at(topic);
-
-        _parMgr->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
-            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgWidth),   // w
-            static_cast<int>(_parMgr->INTRI.Camera.at(topic)->imgHeight),  // h
-            cameraMatrix.at<double>(0, 0),                                 // fx
-            cameraMatrix.at<double>(1, 1),                                 // fy
-            cameraMatrix.at<double>(0, 2),                                 // cx
-            cameraMatrix.at<double>(1, 2),                                 // cy
-            distCoeffs.at<double>(0),                                      // k1
-            distCoeffs.at<double>(1),                                      // k2
-            distCoeffs.at<double>(4),                                      // k3
-            distCoeffs.at<double>(2),                                      // p1
-            distCoeffs.at<double>(3)                                       // p2
-        );
-
         const auto &curPoseVec = poseVecMap.at(topic);
         auto &curCamPoses = _camPoses[topic];
         curCamPoses.reserve(curPoseVec.size());

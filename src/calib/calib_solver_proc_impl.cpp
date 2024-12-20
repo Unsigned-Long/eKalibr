@@ -71,9 +71,11 @@ void CalibSolver::Process() {
     /**
      * calibrate spatiotemporal parameters of events camera
      */
-    _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
-    this->EvCamSpatialTemporalCalib();
-    _parMgr->ShowParamStatus();
+    if (Configor::DataStream::EventTopics.size() > 1) {
+        _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+        this->EvCamSpatialTemporalCalib();
+        _parMgr->ShowParamStatus();
+    }
 
     if (Configor::DataStream::IMUTopics.empty()) {
         _solveFinished = true;
