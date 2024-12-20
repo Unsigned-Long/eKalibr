@@ -33,6 +33,7 @@
 #include <core/circle_grid.h>
 #include "factor/visual_projection_circle_based_factor.hpp"
 #include "util/utils_tpl.hpp"
+#include <magic_enum_flags.hpp>
 
 namespace ns_ekalibr {
 void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
@@ -228,7 +229,6 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
             auto sum = estimator->Solve(_ceresOption, nullptr);
             spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
             _parMgr->ShowParamStatus();
-            std::cin.get();
         }
     }
 
@@ -236,6 +236,43 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
      * extend the spline segments from all cameras
      */
     this->InitSplineSegmentsOfRefCamUsingCamPose(false, SEG_NEIGHBOR, SEG_LENGTH);
+
+    std::array<OptOption, 1> optionAry = {// the first one
+                                          OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE |
+                                          OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr |
+                                          OptOption::OPT_TO_CjToBr};
+
+    std::vector options(optionAry.size(), OptOption::NONE);
+    for (int i = 0; i < static_cast<int>(optionAry.size()); ++i) {
+        options.at(i) = optionAry.at(i);
+        // append
+        if (i != 0) {
+            options.at(i) |= options.at(i - 1);
+        }
+    }
+    for (int i = 0; i < static_cast<int>(options.size()); ++i) {
+        const auto &option = options.at(i);
+        std::stringstream stringStream;
+        stringStream << magic_enum::enum_flags_name(option);
+        spdlog::info("performing the '{}'-th batch optimization, option:\n{}", i,
+                     stringStream.str());
+
+        auto estimator = Estimator::Create(_parMgr);
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            auto s = this->AddVisualProjPairsAsyncPointBasedToSplineSegments(estimator, topic,
+                                                                             option, 1.0);
+            spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+        }
+        for (auto &[so3Spline, posSpline] : _splineSegments) {
+            estimator->AddSo3LinearConstraint(so3Spline, option, 1.0);
+            estimator->AddPosLinearConstraint(posSpline, option, 1.0);
+        }
+        // make this problem full rank
+        estimator->SetEvCamParamsConstant(_refEvTopic);
+        auto sum = estimator->Solve(_ceresOption, nullptr);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+    }
+    _parMgr->ShowParamStatus();
     std::cin.get();
 }
 
