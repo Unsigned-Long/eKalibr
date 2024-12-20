@@ -286,13 +286,16 @@ Viewer &Viewer::UpdateViewer(const Sophus::SE3f &SE3_RefToWorld, const float &pS
     }
 
     if (_grid3d != nullptr) {
-        this->AddGridPattern(_grid3d->points, Configor::Prior::CirclePattern.Radius(), pScale,
+        this->AddGridPattern(_grid3d->points,
+                             static_cast<float>(Configor::Prior::CirclePattern.Radius()), pScale,
                              ns_viewer::Colour::Black());
     }
 
     if (_parMagr != nullptr) {
         _parMagr->VisualizationSensors(*this, SE3_RefToWorld, pScale);
-        this->AddEntityLocal({Gravity()});
+        if (!Configor::DataStream::IMUTopics.empty()) {
+            this->AddEntityLocal({Gravity()});
+        }
     }
 
     return *this;

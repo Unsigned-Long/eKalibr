@@ -279,10 +279,12 @@ std::vector<ns_viewer::Entity::Ptr> CalibParamManager::EntitiesForVisualization(
     // reference imu
     auto SE3_BrToW = SE3_RefToWorld;
     SE3_BrToW.translation() *= pScale;
-    auto refIMU =
-        ns_viewer::IMU::Create(ns_viewer::Posef(SE3_BrToW.so3().matrix(), SE3_BrToW.translation()),
-                               IMU_SIZE * pScale, ns_viewer::Colour(0.3f, 0.3f, 0.3f, 1.0f));
-    entities.push_back(refIMU);
+    if (!Configor::DataStream::IMUTopics.empty()) {
+        auto refIMU = ns_viewer::IMU::Create(
+            ns_viewer::Posef(SE3_BrToW.so3().matrix(), SE3_BrToW.translation()), IMU_SIZE * pScale,
+            ns_viewer::Colour(0.3f, 0.3f, 0.3f, 1.0f));
+        entities.push_back(refIMU);
+    }
 
     // imus
     for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
