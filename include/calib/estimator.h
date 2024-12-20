@@ -200,6 +200,16 @@ public:
                                    Opt option,
                                    double weight);
 
+    void AddInertialAlignment(const So3SplineType &so3Spline,
+                              const std::vector<IMUFrame::Ptr> &data,
+                              const std::string &imuTopic,
+                              double sTimeByBr,
+                              double eTimeByBr,
+                              Eigen::Vector3d *sVel,
+                              Eigen::Vector3d *eVel,
+                              Opt option,
+                              double weight);
+
     void AddIMUAcceMeasurement(const So3SplineType &so3Spline,
                                const PosSplineType &posSpline,
                                const IMUFrame::Ptr &imuFrame,

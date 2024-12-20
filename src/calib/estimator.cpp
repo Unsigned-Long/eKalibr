@@ -42,7 +42,7 @@
 #include "factor/visual_projection_factor.hpp"
 #include <veta/camera/pinhole.h>
 #include "factor/linear_knots_factor.hpp"
-
+#include "factor/inertial_align_factor.hpp"
 #include <factor/visual_projection_circle_based_factor.hpp>
 
 namespace ns_ekalibr {
@@ -653,6 +653,64 @@ void Estimator::AddEventInertialAlignment(const So3SplineType &so3Spline,
     if (!IsOptionWith(Opt::OPT_POS_CjInBr, option)) {
         this->SetParameterBlockConstant(POS_CjInBr);
     }
+    if (!IsOptionWith(Opt::OPT_POS_BiInBr, option)) {
+        this->SetParameterBlockConstant(POS_BiInBr);
+    }
+    if (!IsOptionWith(Opt::OPT_GRAVITY, option)) {
+        this->SetParameterBlockConstant(GRAVITY);
+    }
+}
+
+/**
+ * param blocks:
+ * [ POS_BiInBr | START_VEL | END_VEL | GRAVITY ]
+ */
+void Estimator::AddInertialAlignment(const So3SplineType &so3Spline,
+                                     const std::vector<IMUFrame::Ptr> &data,
+                                     const std::string &imuTopic,
+                                     double sTimeByBr,
+                                     double eTimeByBr,
+                                     Eigen::Vector3d *sVel,
+                                     Eigen::Vector3d *eVel,
+                                     Opt option,
+                                     double weight) {
+    if (!so3Spline.TimeStampInRange(sTimeByBr) || !so3Spline.TimeStampInRange(eTimeByBr)) {
+        return;
+    }
+
+    double TO_BrToBi = -parMagr->TEMPORAL.TO_BiToBr.at(imuTopic);
+    auto velVecMat = InertialVelIntegration(so3Spline, data, imuTopic, sTimeByBr + TO_BrToBi,
+                                            eTimeByBr + TO_BrToBi);
+
+    if (velVecMat == std::nullopt) {
+        return;
+    }
+
+    auto helper = InertialAlignHelper(eTimeByBr - sTimeByBr, *velVecMat);
+    auto costFunc = InertialAlignFactor::Create(helper, weight);
+
+    costFunc->AddParameterBlock(3);
+    costFunc->AddParameterBlock(3);
+    costFunc->AddParameterBlock(3);
+    costFunc->AddParameterBlock(3);
+
+    costFunc->SetNumResiduals(3);
+
+    // organize the param block vector
+    std::vector<double *> paramBlockVec;
+
+    auto POS_BiInBr = parMagr->EXTRI.POS_BiInBr.at(imuTopic).data();
+    paramBlockVec.push_back(POS_BiInBr);
+
+    auto GRAVITY = parMagr->GRAVITY.data();
+    paramBlockVec.push_back(GRAVITY);
+
+    paramBlockVec.push_back(sVel->data());
+    paramBlockVec.push_back(eVel->data());
+
+    this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+    this->SetManifold(GRAVITY, GRAVITY_MANIFOLD.get());
+
     if (!IsOptionWith(Opt::OPT_POS_BiInBr, option)) {
         this->SetParameterBlockConstant(POS_BiInBr);
     }

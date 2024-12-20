@@ -242,6 +242,7 @@ void CalibSolver::EventInertialAlignment() {
     static constexpr double MIN_ALIGN_TIME = 1E-3 /* 0.001 sed */;
     static constexpr double MAX_ALIGN_TIME = 0.5 /* 1.0 sed */;
 
+    // event-inertial alignment
     std::map<std::string, std::vector<Eigen::Vector3d>> linVelSeqCm;
     for (const auto& [topic, poseVec] : _camPoses) {
         linVelSeqCm[topic] = std::vector<Eigen::Vector3d>(poseVec.size(), Eigen::Vector3d::Zero());
@@ -252,7 +253,7 @@ void CalibSolver::EventInertialAlignment() {
 
         spdlog::info("add visual-inertial alignment factors for '{}' and '{}', align step: {}",
                      topic, Configor::DataStream::RefIMUTopic, ALIGN_STEP);
-
+        int count = 0;
         for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; ++i) {
             const auto& sPose = poseVec.at(i);
             const auto& ePose = poseVec.at(i + ALIGN_STEP);
@@ -277,6 +278,38 @@ void CalibSolver::EventInertialAlignment() {
                 &curCamLinVelSeq.at(i + ALIGN_STEP),  // the end velocity (to be estimated)
                 optOption,                            // the optimize option
                 weight);                              // the weigh
+            ++count;
+        }
+        spdlog::info("constraint count of event-inertial alignment for '{}' and '{}': {}", topic,
+                     Configor::DataStream::RefIMUTopic, count);
+    }
+
+    // inertial alignment (only when more than or equal to 2 num IMUs are involved)
+    constexpr double dt = DESIRED_TIME_INTERVAL;
+    std::vector<Eigen::Vector3d> linVelSeqBr(std::floor((et - st) / dt), Eigen::Vector3d::Zero());
+    if (Configor::DataStream::IMUTopics.size() >= 2) {
+        for (const auto& [topic, frames] : _imuMes) {
+            spdlog::info("add inertial alignment factors for '{}'...", topic);
+            int count = 0;
+            for (int i = 0; i < static_cast<int>(linVelSeqBr.size()) - 1; ++i) {
+                int sIdx = i, eIdx = i + 1;
+                double sTimeByBr = sIdx * dt + st, eTimeByBr = eIdx * dt + st;
+                Eigen::Vector3d *sVel = &linVelSeqBr.at(sIdx), *eVel = &linVelSeqBr.at(eIdx);
+
+                estimator->AddInertialAlignment(
+                    _fullSo3Spline,  // so3 spline
+                    frames,          // imu frames
+                    topic,           // the ros topic of this imu
+                    sTimeByBr,       // the start time stamped by the reference imu
+                    eTimeByBr,       // the end time stamped by the reference imu
+                    sVel,            // the start velocity (to be estimated)
+                    eVel,            // the end velocity (to be estimated)
+                    optOption,       // the optimize option
+                    Configor::DataStream::IMUTopics.at(topic).AcceWeight);
+                ++count;
+            }
+            spdlog::info("constraint count of inertial alignment for '{}' and '{}': {}", topic,
+                         Configor::DataStream::RefIMUTopic, count);
         }
     }
 
