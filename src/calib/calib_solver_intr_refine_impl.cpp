@@ -35,6 +35,88 @@
 #include "util/utils_tpl.hpp"
 
 namespace ns_ekalibr {
+void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
+                                                         double SEG_NEIGHBOR,
+                                                         double SEG_LENGTH) {
+    if (onlyRefCam) {
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
+    } else {
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {});
+    }
+    const double dtRoughSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
+    this->CreateSplineSegments(dtRoughSpline, dtRoughSpline);
+    const auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
+
+    // fitting rough spline segments
+    spdlog::info("fitting rough spline segments using visual poses of cameras...");
+    auto estimator = Estimator::Create(_parMgr);
+    for (const auto &[topic, camPoseVec] : _camPoses) {
+        if (onlyRefCam && topic != _refEvTopic) {
+            continue;
+        }
+        auto SE3_CrToCj = _parMgr->EXTRI.SE3_CjToBr(topic).inverse();
+        auto TO_CjToCr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        for (const auto &pose : camPoseVec) {
+            double time = pose.timeStamp + TO_CjToCr;
+            auto idx = this->IsTimeInValidSegment(time);
+            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                continue;
+            }
+            // from {Cr} to {W}
+            auto SE3_CrToW = pose.se3() * SE3_CrToCj;
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, time, SE3_CrToW.so3(),
+                                        OptOption::OPT_SO3_SPLINE, 10.0);
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, time,
+                                             SE3_CrToW.translation(), OptOption::OPT_SCALE_SPLINE,
+                                             10.0);
+        }
+    }
+    for (auto &[so3Spline, posSpline] : _splineSegments) {
+        estimator->AddSo3LinearConstraint(so3Spline, opt, 1.0);
+        estimator->AddPosLinearConstraint(posSpline, opt, 1.0);
+    }
+    auto sum = estimator->Solve(_ceresOption, nullptr);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+
+    // fitting small-knot-distance segments
+    auto roughSplineSegments = _splineSegments;
+    if (onlyRefCam) {
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
+    } else {
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {});
+    }
+    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
+                               Configor::Prior::KnotTimeDist.ScaleSpline);
+
+    spdlog::info(
+        "fitting small-knot-distance spline segments using initialized rough spline "
+        "segments...");
+    estimator = Estimator::Create(_parMgr);
+    for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
+        auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
+        auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
+        for (double t = st; t < et; t += 0.005) {
+            if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
+                continue;
+            }
+            auto idx = this->IsTimeInValidSegment(t);
+            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+                continue;
+            }
+            const auto so3 = so3Spline.Evaluate(t);
+            const Eigen::Vector3d pos = posSpline.Evaluate(t);
+            estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
+            estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
+        }
+    }
+    for (auto &[so3Spline, posSpline] : _splineSegments) {
+        estimator->AddSo3LinearConstraint(so3Spline, opt, 1.0);
+        estimator->AddPosLinearConstraint(posSpline, opt, 1.0);
+    }
+    sum = estimator->Solve(_ceresOption, nullptr);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+}
+
 void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     if (CirclePatternType::SYMMETRIC_GRID ==
         CirclePattern::FromString(Configor::Prior::CirclePattern.Type)) {
@@ -72,72 +154,10 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
                      timeSum);
     }
 
-    /**
-     * Due to the low frequency of the chessboard extraction, it is insufficient to fit a spline
-     * with a small time distance between knots. Therefore, we first fit a rough spline (with a
-     * larger time distance), and then use this spline to initialize a finer spline with a smaller
-     * time distance.
-     * Modify: '_splineSegments'
-     */
-    {
-        double dtSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
-        this->CreateSplineSegments(dtSpline, dtSpline);
+    // initialize the spline segments using poses from the reference camera
+    this->InitSplineSegmentsOfRefCamUsingCamPose(true, SEG_NEIGHBOR, SEG_LENGTH);
 
-        // fitting rough segments
-        spdlog::info("fitting rough spline segments using visual poses of the reference camera...");
-        auto estimator = Estimator::Create(_parMgr);
-        for (const auto &pose : _camPoses.at(_refEvTopic)) {
-            auto idx = this->IsTimeInValidSegment(pose.timeStamp);
-            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-                continue;
-            }
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp, pose.so3,
-                                        OptOption::OPT_SO3_SPLINE, 10.0);
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, pose.timeStamp, pose.t,
-                                             OptOption::OPT_SCALE_SPLINE, 10.0);
-        }
-        for (auto &[so3Spline, posSpline] : _splineSegments) {
-            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1.0);
-            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 1.0);
-        }
-        auto sum = estimator->Solve(_ceresOption, nullptr);
-        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-    }
-
-    /**
-     * fitting small-knot-distance segments
-     * Modify: '_splineSegments', '_validTimeSegments'
-     */
-    {
-        auto roughSplineSegments = _splineSegments;
-        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
-        this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
-                                   Configor::Prior::KnotTimeDist.ScaleSpline);
-
-        spdlog::info("fitting small-knot-distance spline segments using rough spline segments...");
-        auto estimator = Estimator::Create(_parMgr);
-        auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
-        for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
-            auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
-            auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
-            for (double t = st; t < et; t += 0.005) {
-                if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
-                    continue;
-                }
-                auto idx = this->IsTimeInValidSegment(t);
-                if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-                    continue;
-                }
-                const auto so3 = so3Spline.Evaluate(t);
-                const Eigen::Vector3d pos = posSpline.Evaluate(t);
-                estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
-                estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
-            }
-        }
-        auto sum = estimator->Solve(_ceresOption, nullptr);
-        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-    }
-
+    // create visual projection pairs
     this->CreateVisualProjPairsAsyncPointBased();
 
     /**
@@ -213,10 +233,10 @@ void CalibSolver::RefineCameraIntrinsicsUsingRawEvents() {
     }
 
     /**
-     * final batch optimization
+     * extend the spline segments from all cameras
      */
-    {
-    }
+    this->InitSplineSegmentsOfRefCamUsingCamPose(false, SEG_NEIGHBOR, SEG_LENGTH);
+    std::cin.get();
 }
 
 }  // namespace ns_ekalibr

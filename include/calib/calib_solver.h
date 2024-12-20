@@ -161,6 +161,10 @@ protected:
 
     void EstimateCameraIntrinsics();
 
+    void InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
+                                                double SEG_NEIGHBOR,
+                                                double SEG_LENGTH);
+
     void RefineCameraIntrinsicsUsingRawEvents();
 
     void GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion);
