@@ -295,6 +295,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         if (!tryLoadAndSaveRes || !Configor::Preference::Visualization) {
             continue;
         }
+        if (!patternLoadFromFile.at(topic)) {
+            continue;
+        }
         // for each topic
         const auto &config = Configor::DataStream::EventTopics.at(topic);
         std::map<int, CircleGrid2D::Ptr> grid2dMap;
