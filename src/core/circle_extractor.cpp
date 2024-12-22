@@ -36,8 +36,11 @@
 #include "opencv4/opencv2/highgui.hpp"
 #include "opencv4/opencv2/imgproc.hpp"
 #include "factor/time_varying_circle_fitting.hpp"
+#include "factor/time_varying_ellipse_fitting.hpp"
 #include "config/configor.h"
 #include <util/status.hpp>
+#include <utility>
+#include "sophus/ceres_manifold.hpp"
 
 namespace ns_ekalibr {
 /**
@@ -45,12 +48,12 @@ namespace ns_ekalibr {
  */
 EventCircleExtractor::CircleClusterInfo::CircleClusterInfo(const std::list<NormFlowPtr>& nf_cluster,
                                                            bool polarity,
-                                                           const Eigen::Vector2d& center,
-                                                           const Eigen::Vector2d& dir)
+                                                           Eigen::Vector2d center,
+                                                           Eigen::Vector2d dir)
     : nfCluster(nf_cluster),
       polarity(polarity),
-      center(center),
-      dir(dir) {}
+      center(std::move(center)),
+      dir(std::move(dir)) {}
 
 EventCircleExtractor::CircleClusterInfo::Ptr EventCircleExtractor::CircleClusterInfo::Create(
     const std::list<NormFlowPtr>& nf_cluster,
@@ -66,14 +69,22 @@ EventCircleExtractor::CircleClusterInfo::Ptr EventCircleExtractor::CircleCluster
 
 EventCircleExtractor::TimeVaryingCircle::TimeVaryingCircle(double st,
                                                            double et,
-                                                           const Eigen::Vector2d& cx,
-                                                           const Eigen::Vector2d& cy,
-                                                           const Eigen::Vector2d& m)
+                                                           Eigen::Vector2d cx,
+                                                           Eigen::Vector2d cy,
+                                                           Eigen::Vector2d m,
+                                                           Eigen::Vector2d mx,
+                                                           Eigen::Vector2d my,
+                                                           const Sophus::SO2d& theta,
+                                                           TVType type)
     : st(st),
       et(et),
-      cx(cx),
-      cy(cy),
-      m(m) {}
+      cx(std::move(cx)),
+      cy(std::move(cy)),
+      m(std::move(m)),
+      mx(std::move(mx)),
+      my(std::move(my)),
+      theta(theta),
+      type(type) {}
 
 EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::TimeVaryingCircle::Create(
     double st,
@@ -81,7 +92,21 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::TimeVaryingCi
     const Eigen::Vector2d& cx,
     const Eigen::Vector2d& cy,
     const Eigen::Vector2d& m) {
-    return std::make_shared<TimeVaryingCircle>(st, et, cx, cy, m);
+    return std::make_shared<TimeVaryingCircle>(st, et, cx, cy, m, Eigen::Vector2d::Zero(),
+                                               Eigen::Vector2d::Zero(), Sophus::SO2d(),
+                                               TVType::CIRCLE);
+}
+
+EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::TimeVaryingCircle::Create(
+    double st,
+    double et,
+    const Eigen::Vector2d& cx,
+    const Eigen::Vector2d& cy,
+    const Eigen::Vector2d& mx,
+    const Eigen::Vector2d& my,
+    const Sophus::SO2d& theta) {
+    return std::make_shared<TimeVaryingCircle>(st, et, cx, cy, Eigen::Vector2d::Zero(), mx, my,
+                                               theta, TVType::ELLIPSE);
 }
 
 Eigen::Vector2d EventCircleExtractor::TimeVaryingCircle::PosAt(double t) const {
@@ -95,7 +120,7 @@ std::vector<Eigen::Vector3d> EventCircleExtractor::TimeVaryingCircle::PosVecAt(d
     while (t < et) {
         // t, x, y
         Eigen::Vector2d p = PosAt(t);
-        posList.push_back({t, p(0), p(1)});
+        posList.emplace_back(t, p(0), p(1));
         t += dt;
     }
     return std::vector<Eigen::Vector3d>{posList.cbegin(), posList.cend()};
@@ -103,8 +128,47 @@ std::vector<Eigen::Vector3d> EventCircleExtractor::TimeVaryingCircle::PosVecAt(d
 
 double EventCircleExtractor::TimeVaryingCircle::RadiusAt(double t) const {
     Eigen::Vector2d tVec(t, 1.0);
-    double mVal = m.dot(tVec);
-    return mVal * mVal;
+    switch (type) {
+        case TVType::NONE: {
+            throw Status(Status::ERROR, "'TVType::NONE' Circle does not have a radius!!!");
+        }
+        case TVType::CIRCLE: {
+            double mVal = m.dot(tVec);
+            return mVal * mVal;
+        }
+        case TVType::ELLIPSE: {
+            return (EllipseAxs1At(t) + EllipseAxs2At(t)) * 0.5;
+        }
+    }
+    return -1.0;
+}
+
+double EventCircleExtractor::TimeVaryingCircle::EllipseAxs1At(double t) const {
+    if (type != TVType::ELLIPSE) {
+        throw Status(Status::ERROR, "only 'TVType::ELLIPSE' have axes!!!");
+    }
+    Eigen::Vector2d tVec(t, 1.0);
+    double mxVal = mx.dot(tVec);
+    return mxVal * mxVal;
+}
+
+double EventCircleExtractor::TimeVaryingCircle::EllipseAxs2At(double t) const {
+    if (type != TVType::ELLIPSE) {
+        throw Status(Status::ERROR, "only 'TVType::ELLIPSE' have axes!!!");
+    }
+    Eigen::Vector2d tVec(t, 1.0);
+    double myVal = my.dot(tVec);
+    return myVal * myVal;
+}
+
+EventCircleExtractor::TimeVaryingCircle::Circle EventCircleExtractor::TimeVaryingCircle::CircleAt(
+    double t) const {
+    return {PosAt(t), RadiusAt(t)};
+}
+
+EventCircleExtractor::TimeVaryingCircle::Ellipse EventCircleExtractor::TimeVaryingCircle::EllipseAt(
+    double t) const {
+    return {PosAt(t), EllipseAxs1At(t), EllipseAxs2At(t), theta};
 }
 
 double EventCircleExtractor::TimeVaryingCircle::PointToCircleDistance(
@@ -251,7 +315,7 @@ EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
             continue;
         }
         auto evAry = EventArray::Create(evs.back()->GetTimestamp(), evs);
-        circleWithEvs.push_back({tvCircles.at(i), evAry});
+        circleWithEvs.emplace_back(tvCircles.at(i), evAry);
     }
     return circleWithEvs;
 }
@@ -320,6 +384,23 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
                 }
             }
             verifiedCircles.at(i) = circles.at(j);
+            // refine time-varying circle to time-varying ellipse
+            verifiedCircles.at(i).first = RefineTimeVaryingCircleToEllipse(
+                verifiedCircles.at(i).first,   // initialized time-varying circle
+                verifiedCircles.at(i).second,  // events
+                POINT_TO_CIRCLE_AVG_THD);
+        }
+
+        if (visualization) {
+            for (const auto& [e, evs] : verifiedCircles) {
+                auto [cen, rx, ry, theta] = e->EllipseAt(nfPack->timestamp);
+                // cv::circle(imgExtractCircles, cv::Point2d(cen(0), cen(1)), c.second,
+                // cv::Scalar(0, 0, 255), 1);
+                constexpr double RAD_DEG = 180.0 / M_PI;
+                cv::ellipse(imgExtractCircles, cv::Point2d(cen(0), cen(1)), cv::Size2d(rx, ry),
+                            -theta.log() * RAD_DEG, 0.0, 360.0, cv::Scalar(0, 0, 255));
+                DrawKeypointOnCVMat(imgExtractCircles, cen, false, cv::Scalar(0, 0, 255));
+            }
         }
 
         return std::pair{centers, verifiedCircles};
@@ -489,6 +570,43 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
     } else {
         return circle;
     }
+}
+
+EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::RefineTimeVaryingCircleToEllipse(
+    const TimeVaryingCircle::Ptr& c, const EventArrayPtr& ary, double avgDistThd) {
+    auto e = TimeVaryingCircle::Create(c->st, c->et, c->cx, c->cy, c->m, c->m, Sophus::SO2d());
+
+    ceres::Problem problem;
+
+    for (const auto& event : ary->GetEvents()) {
+        auto cf = TimeVaryingEllipseFittingFactor::Create(event, 1.0);
+        cf->AddParameterBlock(2);
+        cf->AddParameterBlock(2);
+        cf->AddParameterBlock(2);
+        cf->AddParameterBlock(2);
+        cf->AddParameterBlock(2);
+        cf->SetNumResiduals(1);
+
+        std::vector<double*> params;
+        params.push_back(e->cx.data());
+        params.push_back(e->cy.data());
+        params.push_back(e->mx.data());
+        params.push_back(e->my.data());
+        params.push_back(e->theta.data());
+
+        problem.AddResidualBlock(cf, new ceres::HuberLoss(std::pow(avgDistThd, 4)), params);
+    }
+
+    problem.SetManifold(e->theta.data(), new Sophus::Manifold<Sophus::SO2>());
+
+    ceres::Solver::Options options;
+    options.linear_solver_type = ceres::DENSE_QR;
+    options.max_num_iterations = 50;
+    // options.minimizer_progress_to_stdout = true;
+    ceres::Solver::Summary summary;
+    ceres::Solve(options, &problem, &summary);
+
+    return e;
 }
 
 std::vector<std::pair<EventArray::Ptr, EventArray::Ptr>>

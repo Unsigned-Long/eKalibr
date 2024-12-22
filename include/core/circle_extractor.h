@@ -34,6 +34,7 @@
 #include "set"
 #include "tiny-viewer/entity/utils.h"
 #include <ostream>
+#include <ctraj/utils/sophus_utils.hpp>
 #include <sensor/sensor_model.h>
 
 namespace ns_ekalibr {
@@ -65,8 +66,8 @@ public:
 
         CircleClusterInfo(const std::list<NormFlowPtr>& nf_cluster,
                           bool polarity,
-                          const Eigen::Vector2d& center,
-                          const Eigen::Vector2d& dir);
+                          Eigen::Vector2d center,
+                          Eigen::Vector2d dir);
 
         static Ptr Create(const std::list<NormFlowPtr>& nf_cluster,
                           bool polarity,
@@ -78,17 +79,32 @@ public:
         using Ptr = std::shared_ptr<TimeVaryingCircle>;
         // center, radius
         using Circle = std::pair<Eigen::Vector2d, double>;
+        // center, radius_x, radius_y, theta
+        using Ellipse = std::tuple<Eigen::Vector2d, double, double, Sophus::SO2d>;
+
+        enum class TVType { NONE, CIRCLE, ELLIPSE };
 
         double st, et;
         Eigen::Vector2d cx;
         Eigen::Vector2d cy;
         Eigen::Vector2d m;
 
+        Eigen::Vector2d mx;
+        Eigen::Vector2d my;
+        Sophus::SO2d theta;
+
+        TVType type = TVType::NONE;
+
+    public:
         TimeVaryingCircle(double st = -1.0,
                           double et = -1.0,
-                          const Eigen::Vector2d& cx = Eigen::Vector2d::Zero(),
-                          const Eigen::Vector2d& cy = Eigen::Vector2d::Zero(),
-                          const Eigen::Vector2d& m = Eigen::Vector2d::Zero());
+                          Eigen::Vector2d cx = Eigen::Vector2d::Zero(),
+                          Eigen::Vector2d cy = Eigen::Vector2d::Zero(),
+                          Eigen::Vector2d m = Eigen::Vector2d::Zero(),
+                          Eigen::Vector2d mx = Eigen::Vector2d::Zero(),
+                          Eigen::Vector2d my = Eigen::Vector2d::Zero(),
+                          const Sophus::SO2d& theta = Sophus::SO2d(),
+                          TVType type = TVType::NONE);
 
         static Ptr Create(double st,
                           double et,
@@ -96,19 +112,48 @@ public:
                           const Eigen::Vector2d& cy,
                           const Eigen::Vector2d& m);
 
+        static Ptr Create(double st,
+                          double et,
+                          const Eigen::Vector2d& cx,
+                          const Eigen::Vector2d& cy,
+                          const Eigen::Vector2d& mx,
+                          const Eigen::Vector2d& my,
+                          const Sophus::SO2d& theta);
+
         Eigen::Vector2d PosAt(double t) const;
 
         std::vector<Eigen::Vector3d> PosVecAt(double dt) const;
 
         double RadiusAt(double t) const;
 
-        Circle CircleAt(double t) const { return {PosAt(t), RadiusAt(t)}; }
+        double EllipseAxs1At(double t) const;
+
+        double EllipseAxs2At(double t) const;
+
+        Circle CircleAt(double t) const;
+
+        Ellipse EllipseAt(double t) const;
 
         double PointToCircleDistance(const EventPtr& event) const;
 
         friend std::ostream& operator<<(std::ostream& os, const TimeVaryingCircle& obj) {
-            return os << "st: " << obj.st << " et: " << obj.et << " cx: " << obj.cx.transpose()
-                      << " cy: " << obj.cy.transpose() << " m: " << obj.m.transpose();
+            switch (obj.type) {
+                case TVType::NONE:
+                    return os << "TVType::NONE";
+                    break;
+                case TVType::CIRCLE:
+                    return os << "TVType::CIRCLE, " << "st: " << obj.st << " et: " << obj.et
+                              << " cx: " << obj.cx.transpose() << " cy: " << obj.cy.transpose()
+                              << " m: " << obj.m.transpose();
+                    break;
+                case TVType::ELLIPSE:
+                    return os << "TVType::ELLIPSE, " << "st: " << obj.st << " et: " << obj.et
+                              << " cx: " << obj.cx.transpose() << " cy: " << obj.cy.transpose()
+                              << " mx: " << obj.mx.transpose() << " my: " << obj.my.transpose()
+                              << " theta: " << obj.theta.unit_complex().transpose();
+                    break;
+            }
+            return os;
         }
 
     public:
@@ -166,6 +211,10 @@ protected:
     static TimeVaryingCircle::Ptr FitTimeVaryingCircle(const EventArrayPtr& ary1,
                                                        const EventArrayPtr& ary2,
                                                        double avgDistThd);
+
+    static TimeVaryingCircle::Ptr RefineTimeVaryingCircleToEllipse(const TimeVaryingCircle::Ptr& c,
+                                                                   const EventArrayPtr& ary,
+                                                                   double avgDistThd);
 
     template <typename Type>
     static void RemoveElemBasedOnIndices(std::vector<Type>& vec,
