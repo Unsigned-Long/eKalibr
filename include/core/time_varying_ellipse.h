@@ -92,19 +92,19 @@ public:
                        const Sophus::SO2d& theta = Sophus::SO2d(),
                        TVType type = TVType::NONE);
 
-    static Ptr Create(double st,
-                      double et,
-                      const Eigen::Vector2d& cx,
-                      const Eigen::Vector2d& cy,
-                      const Eigen::Vector2d& m);
+    static Ptr CreateTvCircle(double st,
+                              double et,
+                              const Eigen::Vector2d& cx,
+                              const Eigen::Vector2d& cy,
+                              const Eigen::Vector2d& m);
 
-    static Ptr Create(double st,
-                      double et,
-                      const Eigen::Vector2d& cx,
-                      const Eigen::Vector2d& cy,
-                      const Eigen::Vector2d& mx,
-                      const Eigen::Vector2d& my,
-                      const Sophus::SO2d& theta);
+    static Ptr CreateTvEllipse(double st,
+                               double et,
+                               const Eigen::Vector2d& cx,
+                               const Eigen::Vector2d& cy,
+                               const Eigen::Vector2d& mx,
+                               const Eigen::Vector2d& my,
+                               const Sophus::SO2d& theta);
 
 public:
     Eigen::Vector2d PosAt(double t) const;

@@ -70,22 +70,22 @@ TimeVaryingEllipse::TimeVaryingEllipse(double st,
       theta(theta),
       type(type) {}
 
-TimeVaryingEllipse::Ptr TimeVaryingEllipse::Create(double st,
-                                                   double et,
-                                                   const Eigen::Vector2d& cx,
-                                                   const Eigen::Vector2d& cy,
-                                                   const Eigen::Vector2d& m) {
+TimeVaryingEllipse::Ptr TimeVaryingEllipse::CreateTvCircle(double st,
+                                                           double et,
+                                                           const Eigen::Vector2d& cx,
+                                                           const Eigen::Vector2d& cy,
+                                                           const Eigen::Vector2d& m) {
     return std::make_shared<TimeVaryingEllipse>(st, et, cx, cy, m, Eigen::Vector2d::Zero(),
                                                 Sophus::SO2d(), TVType::CIRCLE);
 }
 
-TimeVaryingEllipse::Ptr TimeVaryingEllipse::Create(double st,
-                                                   double et,
-                                                   const Eigen::Vector2d& cx,
-                                                   const Eigen::Vector2d& cy,
-                                                   const Eigen::Vector2d& mx,
-                                                   const Eigen::Vector2d& my,
-                                                   const Sophus::SO2d& theta) {
+TimeVaryingEllipse::Ptr TimeVaryingEllipse::CreateTvEllipse(double st,
+                                                            double et,
+                                                            const Eigen::Vector2d& cx,
+                                                            const Eigen::Vector2d& cy,
+                                                            const Eigen::Vector2d& mx,
+                                                            const Eigen::Vector2d& my,
+                                                            const Sophus::SO2d& theta) {
     return std::make_shared<TimeVaryingEllipse>(st, et, cx, cy, mx, my, theta, TVType::ELLIPSE);
 }
 

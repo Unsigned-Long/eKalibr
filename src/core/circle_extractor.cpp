@@ -207,6 +207,7 @@ std::optional<std::pair<std::vector<cv::Point2f>, EventCircleExtractor::Extracte
 EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                          const cv::Size& gridSize,
                                          CirclePatternType circlePatternType,
+                                         bool refineCirclesToEllipse,
                                          const ViewerPtr& viewer) {
     auto circles = ExtractCircles(nfPack, viewer);
 
@@ -269,25 +270,28 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
             verifiedCircles.at(i) = circles.at(j);
         }
 
+        if (refineCirclesToEllipse) {
 #pragma omp parallel for
-        for (int i = 0; i < static_cast<int>(verifiedCircles.size()); ++i) {
-            // refine time-varying circle to time-varying ellipse
-            verifiedCircles.at(i).first = RefineTimeVaryingCircleToEllipse(
-                verifiedCircles.at(i).first,   // initialized time-varying circle
-                verifiedCircles.at(i).second,  // events
-                POINT_TO_CIRCLE_AVG_THD);
-        }
+            for (int i = 0; i < static_cast<int>(verifiedCircles.size()); ++i) {
+                // refine time-varying circle to time-varying ellipse
+                verifiedCircles.at(i).first = RefineTimeVaryingCircleToEllipse(
+                    verifiedCircles.at(i).first,   // initialized time-varying circle
+                    verifiedCircles.at(i).second,  // events
+                    POINT_TO_CIRCLE_AVG_THD);
+            }
 
-        if (visualization) {
-            for (const auto& [tvEllipse, evs] : verifiedCircles) {
-                auto e = tvEllipse->EllipseAt(nfPack->timestamp);
-                constexpr double RAD_DEG = 180.0 / M_PI;
-                cv::ellipse(imgExtractCircles, cv::Point2d(e->c(0), e->c(1)),
-                            cv::Size2d(e->r(0), e->r(1)), -e->theta.log() * RAD_DEG, 0.0, 360.0,
-                            cv::Scalar(0, 255, 0));
-                DrawKeypointOnCVMat(imgExtractCircles, e->c, false, cv::Scalar(0, 255, 0));
+            if (visualization) {
+                for (const auto& [tvEllipse, evs] : verifiedCircles) {
+                    auto e = tvEllipse->EllipseAt(nfPack->timestamp);
+                    constexpr double RAD_DEG = 180.0 / M_PI;
+                    cv::ellipse(imgExtractCircles, cv::Point2d(e->c(0), e->c(1)),
+                                cv::Size2d(e->r(0), e->r(1)), -e->theta.log() * RAD_DEG, 0.0, 360.0,
+                                cv::Scalar(0, 255, 0));
+                    DrawKeypointOnCVMat(imgExtractCircles, e->c, false, cv::Scalar(0, 255, 0));
+                }
             }
         }
+
 
         return std::pair{centers, verifiedCircles};
     }
@@ -418,7 +422,8 @@ TimeVaryingEllipse::Ptr EventCircleExtractor::FitTimeVaryingCircle(const EventAr
     const Eigen::Vector2d c = 0.5 * (c1 + c2);
     const double r = 0.5 * (c1 - c2).norm();
 
-    auto circle = TimeVaryingEllipse::Create(st, et, {0.0, c(0)}, {0.0, c(1)}, {0.0, std::sqrt(r)});
+    auto circle =
+        TimeVaryingEllipse::CreateTvCircle(st, et, {0.0, c(0)}, {0.0, c(1)}, {0.0, std::sqrt(r)});
 
     circle->FitTimeVaryingCircle(ary1, ary2, avgDistThd);
 
@@ -431,7 +436,8 @@ TimeVaryingEllipse::Ptr EventCircleExtractor::FitTimeVaryingCircle(const EventAr
 
 TimeVaryingEllipse::Ptr EventCircleExtractor::RefineTimeVaryingCircleToEllipse(
     const TimeVaryingEllipse::Ptr& c, const EventArrayPtr& ary, double avgDistThd) {
-    auto e = TimeVaryingEllipse::Create(c->st, c->et, c->cx, c->cy, c->mx, c->mx, Sophus::SO2d());
+    auto e = TimeVaryingEllipse::CreateTvEllipse(c->st, c->et, c->cx, c->cy, c->mx, c->mx,
+                                                 Sophus::SO2d());
     e->FittingTimeVaryingEllipse(ary, avgDistThd);
     return e;
 }

@@ -112,6 +112,7 @@ public:
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
         const cv::Size& gridSize,
         CirclePatternType circlePatternType,
+        bool refineCirclesToEllipse,
         const ViewerPtr& viewer = nullptr);
 
     void Visualization() const;

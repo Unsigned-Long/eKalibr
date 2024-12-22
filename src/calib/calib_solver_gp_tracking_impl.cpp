@@ -205,7 +205,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
 
                 auto res = circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern,
-                                                               _viewer);
+                                                               true, _viewer);
 
                 if (res != std::nullopt) {
 #if ENABLE_UNDISTORTION
