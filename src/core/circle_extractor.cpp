@@ -481,10 +481,10 @@ EventCircleExtractor::TimeVaryingCircle::Ptr EventCircleExtractor::FitTimeVaryin
     ceres::Solver::Summary summary;
     ceres::Solve(options, &problem, &summary);
 
-    if (summary.termination_type == ceres::NO_CONVERGENCE) {
-        return nullptr;
-    } else if (auto radius = circle->RadiusAt(circle->et);
-               radius < 1.0 || radius > 500.0 /*pixel*/) {
+    // if (summary.termination_type == ceres::NO_CONVERGENCE) {
+    //     return nullptr;
+    // } else
+    if (auto radius = circle->RadiusAt(circle->et); radius < 1.0 || radius > 500.0 /*pixel*/) {
         return nullptr;
     } else {
         return circle;
