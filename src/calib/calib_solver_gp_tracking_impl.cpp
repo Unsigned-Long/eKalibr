@@ -38,7 +38,7 @@
 #include "util/tqdm.h"
 #include "core/visual_distortion.h"
 #include "calib/calib_param_mgr.h"
-
+#include <core/time_varying_ellipse.h>
 #include <tiny-viewer/object/landmark.h>
 #include <util/status.hpp>
 #include <veta/camera/pinhole.h>
@@ -239,7 +239,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
                     curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
                     _viewer->SetCamView(curViewCamPose);
-                    cv::waitKey(0);
+                    cv::waitKey(1);
                 }
             }
         }

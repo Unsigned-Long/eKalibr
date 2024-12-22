@@ -54,6 +54,7 @@
 #include "factor/visual_projection_factor.hpp"
 #include "factor/visual_projection_circle_based_factor.hpp"
 #include "calib/spat_temp_priori.h"
+#include <core/time_varying_ellipse.h>
 
 namespace ns_ekalibr {
 CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
@@ -345,7 +346,8 @@ std::map<int, CalibSolver::ExtractedCirclesVec> CalibSolver::LoadRawEventsOfExtr
              */
             tvCircles->cx(1) = -tvCircles->cx(0) * (time_bias - newTimeBias) + tvCircles->cx(1);
             tvCircles->cy(1) = -tvCircles->cy(0) * (time_bias - newTimeBias) + tvCircles->cy(1);
-            tvCircles->m(1) = -tvCircles->m(0) * (time_bias - newTimeBias) + tvCircles->m(1);
+            tvCircles->mx(1) = -tvCircles->mx(0) * (time_bias - newTimeBias) + tvCircles->mx(1);
+            tvCircles->my(1) = -tvCircles->my(0) * (time_bias - newTimeBias) + tvCircles->my(1);
 
             for (const auto &ev : rawEvs->GetEvents()) {
                 ev->SetTimestamp(ev->GetTimestamp() + time_bias - newTimeBias);

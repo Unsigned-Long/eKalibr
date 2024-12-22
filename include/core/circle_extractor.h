@@ -47,6 +47,10 @@ struct Event;
 using EventPtr = std::shared_ptr<Event>;
 struct EventArray;
 using EventArrayPtr = std::shared_ptr<EventArray>;
+struct Ellipse;
+using EllipsePtr = std::shared_ptr<Ellipse>;
+struct TimeVaryingEllipse;
+using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
 
 class EventCircleExtractor {
 public:
@@ -75,95 +79,7 @@ public:
                           const Eigen::Vector2d& dir);
     };
 
-    struct TimeVaryingCircle {
-        using Ptr = std::shared_ptr<TimeVaryingCircle>;
-        // center, radius
-        using Circle = std::pair<Eigen::Vector2d, double>;
-        // center, radius_x, radius_y, theta
-        using Ellipse = std::tuple<Eigen::Vector2d, double, double, Sophus::SO2d>;
-
-        enum class TVType { NONE, CIRCLE, ELLIPSE };
-
-        double st, et;
-        Eigen::Vector2d cx;
-        Eigen::Vector2d cy;
-        Eigen::Vector2d m;
-
-        Eigen::Vector2d mx;
-        Eigen::Vector2d my;
-        Sophus::SO2d theta;
-
-        TVType type = TVType::NONE;
-
-    public:
-        TimeVaryingCircle(double st = -1.0,
-                          double et = -1.0,
-                          Eigen::Vector2d cx = Eigen::Vector2d::Zero(),
-                          Eigen::Vector2d cy = Eigen::Vector2d::Zero(),
-                          Eigen::Vector2d m = Eigen::Vector2d::Zero(),
-                          Eigen::Vector2d mx = Eigen::Vector2d::Zero(),
-                          Eigen::Vector2d my = Eigen::Vector2d::Zero(),
-                          const Sophus::SO2d& theta = Sophus::SO2d(),
-                          TVType type = TVType::NONE);
-
-        static Ptr Create(double st,
-                          double et,
-                          const Eigen::Vector2d& cx,
-                          const Eigen::Vector2d& cy,
-                          const Eigen::Vector2d& m);
-
-        static Ptr Create(double st,
-                          double et,
-                          const Eigen::Vector2d& cx,
-                          const Eigen::Vector2d& cy,
-                          const Eigen::Vector2d& mx,
-                          const Eigen::Vector2d& my,
-                          const Sophus::SO2d& theta);
-
-        Eigen::Vector2d PosAt(double t) const;
-
-        std::vector<Eigen::Vector3d> PosVecAt(double dt) const;
-
-        double RadiusAt(double t) const;
-
-        double EllipseAxs1At(double t) const;
-
-        double EllipseAxs2At(double t) const;
-
-        Circle CircleAt(double t) const;
-
-        Ellipse EllipseAt(double t) const;
-
-        double PointToCircleDistance(const EventPtr& event) const;
-
-        friend std::ostream& operator<<(std::ostream& os, const TimeVaryingCircle& obj) {
-            switch (obj.type) {
-                case TVType::NONE:
-                    return os << "TVType::NONE";
-                    break;
-                case TVType::CIRCLE:
-                    return os << "TVType::CIRCLE, " << "st: " << obj.st << " et: " << obj.et
-                              << " cx: " << obj.cx.transpose() << " cy: " << obj.cy.transpose()
-                              << " m: " << obj.m.transpose();
-                    break;
-                case TVType::ELLIPSE:
-                    return os << "TVType::ELLIPSE, " << "st: " << obj.st << " et: " << obj.et
-                              << " cx: " << obj.cx.transpose() << " cy: " << obj.cy.transpose()
-                              << " mx: " << obj.mx.transpose() << " my: " << obj.my.transpose()
-                              << " theta: " << obj.theta.unit_complex().transpose();
-                    break;
-            }
-            return os;
-        }
-
-    public:
-        template <class Archive>
-        void serialize(Archive& ar) {
-            ar(CEREAL_NVP(st), CEREAL_NVP(et), CEREAL_NVP(cx), CEREAL_NVP(cy), CEREAL_NVP(m));
-        }
-    };
-
-    using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingCircle::Ptr, EventArrayPtr>>;
+    using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingEllipsePtr, EventArrayPtr>>;
 
 protected:
     const double CLUSTER_AREA_THD;
@@ -208,13 +124,13 @@ protected:
         double CLUSTER_AREA_THD,
         double DIR_DIFF_DEG_THD);
 
-    static TimeVaryingCircle::Ptr FitTimeVaryingCircle(const EventArrayPtr& ary1,
-                                                       const EventArrayPtr& ary2,
-                                                       double avgDistThd);
+    static TimeVaryingEllipsePtr FitTimeVaryingCircle(const EventArrayPtr& ary1,
+                                                      const EventArrayPtr& ary2,
+                                                      double avgDistThd);
 
-    static TimeVaryingCircle::Ptr RefineTimeVaryingCircleToEllipse(const TimeVaryingCircle::Ptr& c,
-                                                                   const EventArrayPtr& ary,
-                                                                   double avgDistThd);
+    static TimeVaryingEllipsePtr RefineTimeVaryingCircleToEllipse(const TimeVaryingEllipsePtr& c,
+                                                                  const EventArrayPtr& ary,
+                                                                  double avgDistThd);
 
     template <typename Type>
     static void RemoveElemBasedOnIndices(std::vector<Type>& vec,

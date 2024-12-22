@@ -38,7 +38,6 @@
 #include "sensor/imu.hpp"
 #include "ctraj/core/spline_bundle.h"
 #include "config/configor.h"
-#include "core/circle_extractor.h"
 
 namespace ns_ekalibr {
 class Viewer;
@@ -62,6 +61,8 @@ struct VisualProjectionCircleBasedPair;
 using VisualProjectionCircleBasedPairPtr = std::shared_ptr<VisualProjectionCircleBasedPair>;
 class SpatialTemporalPriori;
 using SpatialTemporalPrioriPtr = std::shared_ptr<SpatialTemporalPriori>;
+struct TimeVaryingEllipse;
+using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
 
 class CalibSolver {
 public:
@@ -95,8 +96,7 @@ protected:
     // topic, [3d grid, tracked 2d grids]
     std::map<std::string, CircleGridPatternPtr> _extractedPatterns;
     // for a tracked 2d grid pattern
-    using ExtractedCirclesVec =
-        std::vector<std::pair<EventCircleExtractor::TimeVaryingCircle::Ptr, EventArrayPtr>>;
+    using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingEllipsePtr, EventArrayPtr>>;
     /**
      * topic, [raw events vector of circles of each tracked 2d grid (id)], example:
      * _extractedPatterns[topic].Grid2D[i]][j] -> _rawEventsOfExtractedPatterns[topic].Grid2D[i][j]
