@@ -115,7 +115,7 @@ public:
         bool refineCirclesToEllipse,
         const ViewerPtr& viewer = nullptr);
 
-    void Visualization() const;
+    void Visualization(bool save = false) const;
 
     void InitMatsForVisualization(const EventNormFlow::NormFlowPack::Ptr& nfPack);
 

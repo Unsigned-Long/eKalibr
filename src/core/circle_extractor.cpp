@@ -292,12 +292,11 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
             }
         }
 
-
         return std::pair{centers, verifiedCircles};
     }
 }
 
-void EventCircleExtractor::Visualization() const {
+void EventCircleExtractor::Visualization(bool save) const {
     if (!this->visualization) {
         return;
     }
@@ -310,6 +309,26 @@ void EventCircleExtractor::Visualization() const {
 
     cv::imshow("Event-Based Circle Extraction", matExtraction);
     cv::imshow("Found Circle Grid", matGrid);
+
+    if (save) {
+        static int count = 0;
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgClusterNormFlowEvents-" +
+                        std::to_string(count) + ".png",
+                    imgClusterNormFlowEvents);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgIdentifyCategory-" +
+                        std::to_string(count) + ".png",
+                    imgIdentifyCategory);
+        cv::imwrite(
+            Configor::DataStream::DebugPath + "/imgSearchMatches-" + std::to_string(count) + ".png",
+            imgSearchMatches);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgExtractCircles-" +
+                        std::to_string(count) + ".png",
+                    imgExtractCircles);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgExtractCirclesGrid-" +
+                        std::to_string(count) + ".png",
+                    imgExtractCirclesGrid);
+        ++count;
+    }
 }
 
 void EventCircleExtractor::InitMatsForVisualization(

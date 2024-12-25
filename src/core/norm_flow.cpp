@@ -32,6 +32,8 @@
 #include "util/utils.h"
 #include "opencv4/opencv2/imgproc.hpp"
 #include "opengv/sac/Ransac.hpp"
+#include <config/configor.h>
+#include <opencv2/imgcodecs.hpp>
 
 namespace ns_ekalibr {
 /**
@@ -87,15 +89,32 @@ std::list<Event::Ptr> EventNormFlow::NormFlowPack::NormFlowInlierEvents() const 
     return events;
 }
 
-cv::Mat EventNormFlow::NormFlowPack::Visualization(double dt) const {
+cv::Mat EventNormFlow::NormFlowPack::Visualization(double dt, bool save) const {
     cv::Mat m1;
     cv::hconcat(nfSeedsImg, nfsImg, m1);
 
     cv::Mat m2;
-    cv::hconcat(AccumulativeEventMat(dt), NormFlowInlierEventMat(), m2);
+    cv::Mat accEvMat = AccumulativeEventMat(dt);
+    cv::Mat nfInlierEvMat = NormFlowInlierEventMat();
+    cv::hconcat(accEvMat, nfInlierEvMat, m2);
 
     cv::Mat m3;
     cv::vconcat(m1, m2, m3);
+
+    if (save) {
+        static int count = 0;
+        cv::imwrite(
+            Configor::DataStream::DebugPath + "/nfSeedsImg-" + std::to_string(count) + ".png",
+            nfSeedsImg);
+        cv::imwrite(Configor::DataStream::DebugPath + "/nfsImg-" + std::to_string(count) + ".png",
+                    nfsImg);
+        cv::imwrite(Configor::DataStream::DebugPath + "/accEvMat-" + std::to_string(count) + ".png",
+                    accEvMat);
+        cv::imwrite(
+            Configor::DataStream::DebugPath + "/nfInlierEvMat-" + std::to_string(count) + ".png",
+            nfInlierEvMat);
+        ++count;
+    }
 
     return m3;
 }

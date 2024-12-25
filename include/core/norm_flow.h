@@ -83,7 +83,7 @@ public:
 
         std::list<EventPtr> NormFlowInlierEvents() const;
 
-        cv::Mat Visualization(double dt = 0.02) const;
+        cv::Mat Visualization(double dt = 0.02, bool save = false) const;
 
         cv::Mat InliersOccupyMat() const;
 
