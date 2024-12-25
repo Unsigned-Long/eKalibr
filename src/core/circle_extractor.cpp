@@ -984,11 +984,16 @@ EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::P
         }
     }
 
+    // static int count = 0;
     // auto mat = nfPack->NormFlowInlierEventMat();
     // DrawContours(mat, pContours, {255, 255, 255}), DrawContours(mat, nContours, {0, 255, 0});
-    // cv::imshow("Cluster Contours", mat);
-    // cv::imshow("pMat", pMat);
+    // cv::imwrite(Configor::DataStream::DebugPath + "/contours-" + std::to_string(count) + ".png",
+    //             mat);
+    // cv::imwrite(Configor::DataStream::DebugPath + "/pMat-" + std::to_string(count) + ".png",
+    // pMat); cv::imwrite(Configor::DataStream::DebugPath + "/nMat-" + std::to_string(count) +
+    // ".png", nMat); cv::imshow("Cluster Contours", mat); cv::imshow("pMat", pMat);
     // cv::imshow("nMat", nMat);
+    // ++count;
 
     return {pNormFlowCluster, ncNormFlowCluster};
 }
