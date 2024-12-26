@@ -302,7 +302,7 @@ void EventCircleExtractor::Visualization(bool save) const {
     }
     cv::Mat matExtraction;
     cv::hconcat(imgClusterNormFlowEvents, imgIdentifyCategory, matExtraction);
-    cv::hconcat(matExtraction, imgSearchMatches, matExtraction);
+    cv::hconcat(matExtraction, imgSearchMatches3, matExtraction);
 
     cv::Mat matGrid;
     cv::hconcat(imgExtractCircles, imgExtractCirclesGrid, matGrid);
@@ -318,9 +318,15 @@ void EventCircleExtractor::Visualization(bool save) const {
         cv::imwrite(Configor::DataStream::DebugPath + "/imgIdentifyCategory-" +
                         std::to_string(count) + ".png",
                     imgIdentifyCategory);
-        cv::imwrite(
-            Configor::DataStream::DebugPath + "/imgSearchMatches-" + std::to_string(count) + ".png",
-            imgSearchMatches);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches1-" +
+                        std::to_string(count) + ".png",
+                    imgSearchMatches1);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches2-" +
+                        std::to_string(count) + ".png",
+                    imgSearchMatches2);
+        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches3-" +
+                        std::to_string(count) + ".png",
+                    imgSearchMatches3);
         cv::imwrite(Configor::DataStream::DebugPath + "/imgExtractCircles-" +
                         std::to_string(count) + ".png",
                     imgExtractCircles);
@@ -335,7 +341,9 @@ void EventCircleExtractor::InitMatsForVisualization(
     const EventNormFlow::NormFlowPack::Ptr& nfPack) {
     imgClusterNormFlowEvents = nfPack->tsImg.clone();
     imgIdentifyCategory = nfPack->tsImg.clone();
-    imgSearchMatches = nfPack->tsImg.clone();
+    imgSearchMatches1 = nfPack->tsImg.clone();
+    imgSearchMatches2 = nfPack->tsImg.clone();
+    imgSearchMatches3 = nfPack->tsImg.clone();
     imgExtractCircles = nfPack->tsImg.clone();
     imgExtractCirclesGrid = nfPack->tsImg.clone();
 }
@@ -379,6 +387,10 @@ EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFl
     const double DIR_DIFF_COS_THD = std::cos(DIR_DIFF_DEG_THD /*degree*/ * DEG2RAD);
     auto pairs = SearchMatchesInRunChasePair(clusters, DIR_DIFF_COS_THD);
     RemovingAmbiguousMatches(pairs);
+    if (visualization) {
+        imgSearchMatches1 = nfPack->tsImg.clone();
+        DrawCircleClusterPair(imgSearchMatches1, pairs, nfPack);
+    }
 
     /**
      * Next, we re-pair those clusters that are already registered as 'RUN' or 'CHASE' types but
@@ -392,6 +404,10 @@ EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFl
     auto newPairs = ReSearchMatchesCirclesOtherPair(clusters, alreadyMatched, DIR_DIFF_COS_THD);
     RemovingAmbiguousMatches(newPairs);
     pairs.insert(newPairs.begin(), newPairs.end());
+    if (visualization) {
+        imgSearchMatches2 = nfPack->tsImg.clone();
+        DrawCircleClusterPair(imgSearchMatches2, pairs, nfPack);
+    }
 
     /**
      * Finally, we attempt to build new potential matching relationships within clusters that have
@@ -405,8 +421,8 @@ EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFl
     pairs.insert(newPairs2.begin(), newPairs2.end());
 
     if (visualization) {
-        imgSearchMatches = nfPack->tsImg.clone();
-        DrawCircleClusterPair(imgSearchMatches, pairs, nfPack);
+        imgSearchMatches3 = nfPack->tsImg.clone();
+        DrawCircleClusterPair(imgSearchMatches3, pairs, nfPack);
     }
 
     /**

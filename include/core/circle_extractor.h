@@ -90,7 +90,7 @@ protected:
     bool visualization;
     cv::Mat imgClusterNormFlowEvents;
     cv::Mat imgIdentifyCategory;
-    cv::Mat imgSearchMatches;
+    cv::Mat imgSearchMatches1, imgSearchMatches2, imgSearchMatches3;
     cv::Mat imgExtractCircles;
     cv::Mat imgExtractCirclesGrid;
 
