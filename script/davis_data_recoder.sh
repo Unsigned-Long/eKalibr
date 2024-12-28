@@ -50,15 +50,15 @@ case $1 in
         ;;
 esac
 
-# launch drive
+# launch driver first
 # roslaunch dvs_renderer davis_mono_events_only.launch
 
 # EKALIBR_ROOT_PATH=$(rospack find ekalibr)
-EKALIBR_ROOT_PATH=/media/csl/samsung/eKalibr/dataset
+EKALIBR_ROOT_PATH=/media/csl/samsung/eKalibr
 OutputPath=$EKALIBR_ROOT_PATH/dataset/$Category
 
 mkdir -p ${OutputPath}
 BagPath=$OutputPath/eKalibr-data-$(date +%Y-%m-%d-%H-%M-%S).bag
 echo "record davis data [/dvs/events;/dvs/imu] as ros bag [$BagPath]..."
 
-rosbag record --duration=15 -O $BagPath /dvs/events /dvs/imu /dvs/image_raw
+rosbag record --duration=30 -O $BagPath /dvs/events /dvs/imu /dvs/image_raw
