@@ -877,6 +877,25 @@ EventCircleExtractor::CircleClusterType EventCircleExtractor::IdentifyCategory(
         }
     }
 
+    Eigen::Matrix2d featMatrix = weightTypeCount.normalized();
+
+    // Eigen::EigenSolver<Eigen::Matrix2d> solver(featMatrix);
+    // Eigen::Vector2d eigenvalues = solver.eigenvalues().real();
+    // double eigenValAbsDiff = std::abs(std::abs(eigenvalues(0)) - std::abs(eigenvalues(1)));
+    // if (eigenValAbsDiff < 0.5) {
+    //     return (eigenvalues(0) * eigenvalues(1)) > 0 ? CircleClusterType::RUN
+    //                                                  : CircleClusterType::CHASE;
+    // } else {
+    //     return CircleClusterType::OTHER;
+    // }
+
+    // Function to compute Frobenius norm similarity
+    auto FrobeniusSimilarity = [](const Eigen::Matrix2d& A, const Eigen::Matrix2d& B) {
+        double normDiff = (A - B).norm();  // Frobenius norm of (A - B)
+        double normB = B.norm();           // Frobenius norm of B
+        return 1.0 - normDiff / normB;     // Similarity metric
+    };
+
     /**
      * CircleClusterType::RUN
      * [ 0.7, 0.;
@@ -885,30 +904,27 @@ EventCircleExtractor::CircleClusterType EventCircleExtractor::IdentifyCategory(
      * CircleClusterType::CHASE
      * [ 0.,  0.7;
      *   0.7, 0.  ]
+     *
+     * CircleClusterType::OTHER
+     * [ 0.5,  0.5;
+     *   0.5, 0.5 ]
      */
-
-    // todo: How to better identify categories
-    Eigen::Matrix2d featMatrix = weightTypeCount.normalized();
-
-    // const double t1 = featMatrix(0, 0) + featMatrix(1, 1);
-    // const double t2 = featMatrix(0, 1) + featMatrix(1, 0);
-    // if (t1 > 2.0 * t2) {
-    //     return CircleClusterType::RUN;
-    // } else if (t2 > 2.0 * t1) {
-    //     return CircleClusterType::CHASE;
-    // } else {
-    //     return CircleClusterType::OTHER;
-    // }
-
-    Eigen::EigenSolver<Eigen::Matrix2d> solver(featMatrix);
-    Eigen::Vector2d eigenvalues = solver.eigenvalues().real();
-    double eigenValAbsDiff = std::abs(std::abs(eigenvalues(0)) - std::abs(eigenvalues(1)));
-    if (eigenValAbsDiff < 0.5) {
-        return (eigenvalues(0) * eigenvalues(1)) > 0 ? CircleClusterType::RUN
-                                                     : CircleClusterType::CHASE;
-    } else {
-        return CircleClusterType::OTHER;
-    }
+    Eigen::Matrix2d LRun, LChase, LUnknown;
+    LRun << std::sqrt(2) / 2, 0, 0, std::sqrt(2) / 2;
+    LChase << 0, std::sqrt(2) / 2, std::sqrt(2) / 2, 0;
+    LUnknown << 0.5, 0.5, 0.5, 0.5;
+    double similarity[3];
+    similarity[static_cast<int>(CircleClusterType::RUN)] = FrobeniusSimilarity(featMatrix, LRun);
+    similarity[static_cast<int>(CircleClusterType::CHASE)] =
+        FrobeniusSimilarity(featMatrix, LChase);
+    similarity[static_cast<int>(CircleClusterType::OTHER)] =
+        FrobeniusSimilarity(featMatrix, LUnknown);
+    auto maxAddress = std::max_element(similarity, similarity + 3);
+    // std::cout << featMatrix << std::endl;
+    // std::cout << EnumCast::enumToString(
+    //                  static_cast<CircleClusterType>(std::distance(similarity, maxAddress)))
+    //           << std::endl;
+    return static_cast<CircleClusterType>(std::distance(similarity, maxAddress));
 }
 
 std::vector<std::pair<Eigen::Vector2d, Eigen::Vector2d>> EventCircleExtractor::ComputeCenterDir(
