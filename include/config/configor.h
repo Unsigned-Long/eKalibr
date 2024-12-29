@@ -43,8 +43,9 @@ enum class OutputOption : std::uint32_t {
     ParamInEachIter = 1 << 1,
     BSplines = 1 << 2,
     HessianMat = 1 << 3,
+    VisualReprojError = 1 << 4,
 
-    ALL = ParamInEachIter | BSplines | HessianMat
+    ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError
 };
 
 struct Configor {

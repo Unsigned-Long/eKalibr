@@ -220,8 +220,11 @@ void CalibSolver::EstimateCameraIntrinsics() {
 
     for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
         const auto &curPoseVec = poseVecMap.at(topic);
+
         auto &curCamPoses = _camPoses[topic];
         curCamPoses.reserve(curPoseVec.size());
+        auto &curGridIdToPoseIdxMap = _gridIdToPoseIdxMap[topic];
+
         const auto &patterns = _extractedPatterns.at(topic);
 
         spdlog::info(
@@ -231,6 +234,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
         auto option = OptOption::OPT_CAM_PRINCIPAL_POINT | OptOption::OPT_CAM_FOCAL_LEN |
                       OptOption::OPT_CAM_DIST_COEFFS;
 
+        int poseIdx = 0;
         for (const auto &[grid2d, rVec, tVec] : curPoseVec) {
             // rotation
             cv::Mat rotMatrix;
@@ -255,6 +259,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
 
             // storage
             curCamPoses.emplace_back(R, t, grid2d->timestamp);
+            curGridIdToPoseIdxMap.insert({grid2d->id, poseIdx++});
 
             // add constraints
             auto &pose = curCamPoses.back();

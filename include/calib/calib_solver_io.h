@@ -56,6 +56,9 @@ public:
 
     void SaveByProductsToDisk() const;
 
+protected:
+    void SaveVisualReprojError() const;
+
 public:
     static bool SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
                                                  const std::string &filename,

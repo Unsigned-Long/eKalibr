@@ -37,8 +37,11 @@
 
 namespace ns_ekalibr {
 const static std::map<std::string, OutputOption> OutputOptionMap = {
-    {"NONE", OutputOption::NONE},         {"ParamInEachIter", OutputOption::ParamInEachIter},
-    {"BSplines", OutputOption::BSplines}, {"HessianMat", OutputOption::HessianMat},
+    {"NONE", OutputOption::NONE},
+    {"ParamInEachIter", OutputOption::ParamInEachIter},
+    {"BSplines", OutputOption::BSplines},
+    {"HessianMat", OutputOption::HessianMat},
+    {"VisualReprojError", OutputOption::VisualReprojError},
     {"ALL", OutputOption::ALL},
 };
 

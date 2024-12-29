@@ -39,6 +39,10 @@
 #include "cereal/types/list.hpp"
 #include "cereal/types/polymorphic.hpp"
 #include "cereal/types/utility.hpp"
+#include "core/circle_grid.h"
+#include "calib/calib_param_mgr.h"
+#include "veta/camera/pinhole.h"
+#include "util/utils_tpl.hpp"
 
 namespace ns_ekalibr {
 
@@ -54,9 +58,61 @@ CalibSolverIO::Ptr CalibSolverIO::Create(const CalibSolver::Ptr &solver) {
 }
 
 void CalibSolverIO::SaveByProductsToDisk() const {
-    // if (IsOptionWith(OutputOption::LiDARMaps, Configor::Preference::Outputs)) {
-    //     this->SaveLiDARMaps();
-    // }
+    if (IsOptionWith(OutputOption::VisualReprojError, Configor::Preference::Outputs)) {
+        this->SaveVisualReprojError();
+    }
+}
+
+void CalibSolverIO::SaveVisualReprojError() const {
+    std::string saveDir = Configor::DataStream::OutputPath + "/residual/reproj";
+    if (TryCreatePath(saveDir)) {
+        spdlog::info("saving visual reprojection error to dir: '{}'...", saveDir);
+    } else {
+        return;
+    }
+
+    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        auto subSaveDir = saveDir + "/" + topic;
+        if (!TryCreatePath(subSaveDir)) {
+            spdlog::warn("create sub directory for '{}' failed: '{}'", topic, subSaveDir);
+            continue;
+        }
+
+        auto &curCamPoses = _solver->_camPoses.at(topic);
+        const auto &patterns = _solver->_extractedPatterns.at(topic);
+        const auto &curGridIdToPoseIdxMap = _solver->_gridIdToPoseIdxMap.at(topic);
+        const auto &intri = _solver->_parMgr->INTRI.Camera.at(topic);
+
+        std::map<int, std::vector<Eigen::Vector2d>> residuals;
+
+        for (const auto &grid2d : patterns->GetGrid2d()) {
+            auto SE3_WtoCam = curCamPoses.at(curGridIdToPoseIdxMap.at(grid2d->id)).se3().inverse();
+            auto &errorVec = residuals[grid2d->id];
+            errorVec.resize(grid2d->centers.size());
+
+            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                const auto &center = grid2d->centers.at(i);
+                const Eigen::Vector2d pixel(center.x, center.y);
+
+                const auto &point3d = patterns->GetGrid3d()->points.at(i);
+                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
+
+                Eigen::Vector3d pInCam = SE3_WtoCam * point;
+                Eigen::Vector2d pInCamPlane(pInCam(0) / pInCam(2), pInCam(1) / pInCam(2));
+                Eigen::Vector2d pixelPred = intri->CamToImg(intri->AddDisto(pInCamPlane));
+
+                Eigen::Vector2d error = pixel - pixelPred;
+                errorVec.at(i) = error;
+            }
+        }
+
+        std::ofstream file(subSaveDir + "/residuals" + Configor::GetFormatExtension(),
+                           std::ios::out);
+        auto ar = GetOutputArchiveVariant(file, Configor::Preference::OutputDataFormat);
+        SerializeByOutputArchiveVariant(ar, Configor::Preference::OutputDataFormat,
+                                        cereal::make_nvp("reproj_residuals", residuals));
+    }
+    spdlog::info("saving visual reprojection errors finished!");
 }
 
 bool CalibSolverIO::SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,

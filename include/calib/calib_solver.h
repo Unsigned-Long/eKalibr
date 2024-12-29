@@ -120,6 +120,8 @@ protected:
      */
     // from camera frame to world frame
     std::map<std::string, std::vector<ns_ctraj::Posed>> _camPoses;
+    // topic, gridId, pose index in '_camPoses'
+    std::map<std::string, std::map<int, int>> _gridIdToPoseIdxMap;
     // start time, end  time
     std::vector<std::pair<double, double>> _validTimeSegments;
     std::vector<std::pair<So3SplineType, PosSplineType>> _splineSegments;
