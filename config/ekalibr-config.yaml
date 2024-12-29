@@ -23,14 +23,7 @@ Configor:
     # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)
     # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)
     IMUTopics:
-    # - key: /dvs/imu
-    #   value:
-    #     Type: SENSOR_IMU
-    #     # the weights should be set based on the noise level of your own IMUs
-    #     # large noise level points to small weight
-    #     AcceWeight: 17.68
-    #     GyroWeight: 57.66
-    RefIMUTopic: /dvs/imu
+    RefIMUTopic: ""
     BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
@@ -38,7 +31,6 @@ Configor:
     # and is not related to the timestamp of the data recorded in the package.
     BeginTime: -1
     Duration: -1
-    OutputPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test"
   Prior:
     # priori about spatiotemporal parameters, given by corresponding config file path
     SpatTempPrioriPath: ""

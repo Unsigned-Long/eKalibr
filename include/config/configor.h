@@ -102,8 +102,7 @@ public:
         template <class Archive>
         void serialize(Archive &ar) {
             ar(CEREAL_NVP(IMUTopics), CEREAL_NVP(EventTopics), CEREAL_NVP(RefIMUTopic),
-               CEREAL_NVP(BagPath), CEREAL_NVP(BeginTime), CEREAL_NVP(Duration),
-               CEREAL_NVP(OutputPath));
+               CEREAL_NVP(BagPath), CEREAL_NVP(BeginTime), CEREAL_NVP(Duration));
         }
     } dataStream;
 

@@ -355,6 +355,17 @@ bool Configor::LoadConfigure(const std::string &filename, CerealArchiveType::Enu
             Configor::Preference::Outputs |= iter->second;
         }
     }
+    if (std::filesystem::exists(DataStream::BagPath)) {
+        auto bagPath = std::filesystem::path(DataStream::BagPath);
+        auto outputDir = (bagPath.parent_path() / bagPath.stem()).string();
+        if (!std::filesystem::exists(outputDir) &&
+            !std::filesystem::create_directories(outputDir)) {
+            throw Status(Status::CRITICAL, "create directory '{}' to save outputs failed!!!",
+                         outputDir);
+        } else {
+            DataStream::OutputPath = outputDir;
+        }
+    }
     // perform checking
     CheckConfigure();
     return true;
