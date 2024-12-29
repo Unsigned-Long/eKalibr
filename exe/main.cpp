@@ -36,6 +36,7 @@
 #include "filesystem"
 #include "calib/calib_solver.h"
 #include "calib/calib_param_mgr.h"
+#include "calib/calib_solver_io.h"
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ekalibr_prog");
@@ -84,6 +85,9 @@ int main(int argc, char **argv) {
         const auto filename = ns_ekalibr::Configor::DataStream::OutputPath + "/ekalibr_param" +
                               ns_ekalibr::Configor::GetFormatExtension();
         parMgr->Save(filename, ns_ekalibr::Configor::Preference::OutputDataFormat);
+
+        // save the by-products from the spatiotemporal calibration to the disk
+        ns_ekalibr::CalibSolverIO::Create(solver)->SaveByProductsToDisk();
 
         static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
         spdlog::info(format(FStyle, "solving and outputting finished!!! Everything is fine!!!"));

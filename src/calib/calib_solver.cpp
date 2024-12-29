@@ -29,7 +29,6 @@
 #include "calib/calib_solver.h"
 #include "util/utils.h"
 #include "util/utils_tpl.hpp"
-#include <utility>
 #include "sensor/event_rosbag_loader.h"
 #include "sensor/imu_rosbag_loader.h"
 #include "config/configor.h"
@@ -45,11 +44,6 @@
 #include "calib/ceres_callback.h"
 #include <calib/calib_param_mgr.h>
 #include <core/circle_grid.h>
-#include <cereal/types/map.hpp>
-#include <cereal/types/vector.hpp>
-#include "cereal/types/list.hpp"
-#include "cereal/types/polymorphic.hpp"
-#include "cereal/types/utility.hpp"
 #include "tiny-viewer/entity/utils.h"
 #include "factor/visual_projection_factor.hpp"
 #include "factor/visual_projection_circle_based_factor.hpp"
@@ -285,88 +279,6 @@ CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st, double et, do
     spdlog::info("create pos spline: start time: '{:07.3f}', end time: '{:07.3f}', dt : '{:07.3f}'",
                  st, et, posDt);
     return bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
-}
-
-std::pair<std::string, std::string> CalibSolver::GetDiskPathOfExtractedGridPatterns(
-    const std::string &topic) {
-    const std::string dir = Configor::DataStream::OutputPath + "/" + topic;
-    if (!TryCreatePath(dir)) {
-        spdlog::info(
-            "find directory '{}' to save/load extracted circle grid patterns of '{}' failed!!!",
-            dir, topic);
-        return {};
-    }
-    const auto &e = Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
-    return {dir + "/patterns" + e, dir + "/patterns_raw_evs.bin"};
-}
-
-bool CalibSolver::SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
-                                                   const std::string &filename,
-                                                   double timeBias,
-                                                   CerealArchiveType::Enum archiveType) {
-    std::ofstream file(filename);
-    if (!file.is_open()) {
-        return false;
-    }
-    auto archive = GetOutputArchiveVariant(file, archiveType);
-    SerializeByOutputArchiveVariant(archive, archiveType, cereal::make_nvp("time_bias", timeBias),
-                                    cereal::make_nvp("raw_ev_arys_of_circles_of_grid2d", data));
-    return true;
-}
-
-std::map<int, CalibSolver::ExtractedCirclesVec> CalibSolver::LoadRawEventsOfExtractedPatterns(
-    const std::string &filename, double newTimeBias, CerealArchiveType::Enum archiveType) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        return {};
-    }
-    std::map<int, ExtractedCirclesVec> rawEvsOfPattern;
-    double time_bias;
-    try {
-        auto archive = GetInputArchiveVariant(file, archiveType);
-        SerializeByInputArchiveVariant(
-            archive, archiveType, cereal::make_nvp("time_bias", time_bias),
-            cereal::make_nvp("raw_ev_arys_of_circles_of_grid2d", rawEvsOfPattern));
-    } catch (const cereal::Exception &exception) {
-        throw Status(
-            Status::CRITICAL,
-            "Can not load 'map<int, ExtractedCirclesVec>' file '{}' into eKalibr using cereal!!! "
-            "Detailed cereal exception information: \n'{}'",
-            filename, exception.what());
-    }
-    for (auto &[id, circles] : rawEvsOfPattern) {
-        for (auto &[tvCircles, rawEvs] : circles) {
-            tvCircles->st = tvCircles->st + time_bias - newTimeBias;
-            tvCircles->et = tvCircles->et + time_bias - newTimeBias;
-            /**
-             * time-varying function should be modified!!!
-             * v(t) = a * t + b
-             * v(t - dt) = a * t + (-a * dt + b)
-             * attention: not v(t + dt) = a * t + (a * dt + b)
-             */
-            tvCircles->cx(1) = -tvCircles->cx(0) * (time_bias - newTimeBias) + tvCircles->cx(1);
-            tvCircles->cy(1) = -tvCircles->cy(0) * (time_bias - newTimeBias) + tvCircles->cy(1);
-            tvCircles->mx(1) = -tvCircles->mx(0) * (time_bias - newTimeBias) + tvCircles->mx(1);
-            tvCircles->my(1) = -tvCircles->my(0) * (time_bias - newTimeBias) + tvCircles->my(1);
-
-            for (const auto &ev : rawEvs->GetEvents()) {
-                ev->SetTimestamp(ev->GetTimestamp() + time_bias - newTimeBias);
-            }
-        }
-    }
-    return rawEvsOfPattern;
-}
-
-std::string CalibSolver::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic) {
-    const std::string dir = Configor::DataStream::OutputPath + "/" + topic;
-    if (!TryCreatePath(dir)) {
-        spdlog::info(
-            "find directory '{}' to save/load extracted circle grid patterns of '{}' failed!!!",
-            dir, topic);
-        return {};
-    }
-    const auto &e = Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
-    return dir + "/intrinsics" + e;
 }
 
 int CalibSolver::IsTimeInValidSegment(double timeByBr) const {

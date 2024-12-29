@@ -42,6 +42,7 @@
 #include <tiny-viewer/object/landmark.h>
 #include <util/status.hpp>
 #include <veta/camera/pinhole.h>
+#include "calib/calib_solver_io.h"
 
 namespace ns_ekalibr {
 void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion) {
@@ -72,14 +73,15 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
     for (const auto &[topic, eventMes] : _evMes) {
         if (tryLoadAndSaveRes) {
             // try load
-            auto [gridPatternPath, rawEvsPath] = GetDiskPathOfExtractedGridPatterns(topic);
+            auto [gridPatternPath, rawEvsPath] =
+                CalibSolverIO::GetDiskPathOfExtractedGridPatterns(topic);
             if (std::filesystem::exists(gridPatternPath) && std::filesystem::exists(rawEvsPath)) {
                 // try load '_rawEventsOfExtractedPatterns'
                 spdlog::info(
                     "try to load existing raw events of extracted circles of grid patterns for "
                     "camera '{}' from '{}'...",
                     topic, rawEvsPath);
-                auto rawEvsOfPattern = LoadRawEventsOfExtractedPatterns(
+                auto rawEvsOfPattern = CalibSolverIO::LoadRawEventsOfExtractedPatterns(
                     rawEvsPath, _dataRawTimestamp.first, CerealArchiveType::Enum::BINARY);
 
                 // try load '_extractedPatterns'
@@ -269,7 +271,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         if (patternLoadFromFile.at(topic)) {
             continue;
         }
-        auto [gridPatternPath, rawEvsPath] = GetDiskPathOfExtractedGridPatterns(topic);
+        auto [gridPatternPath, rawEvsPath] =
+            CalibSolverIO::GetDiskPathOfExtractedGridPatterns(topic);
 
         spdlog::info("saving extracted circle grid patterns of '{}' to path: '{}'...", topic,
                      gridPatternPath);
@@ -281,9 +284,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 
         spdlog::info("saving raw events of extracted circle grid patterns of '{}' to path: '{}'...",
                      topic, rawEvsPath);
-        if (!SaveRawEventsOfExtractedPatterns(_rawEventsOfExtractedPatterns.at(topic), rawEvsPath,
-                                              _dataRawTimestamp.first,
-                                              CerealArchiveType::Enum::BINARY)) {
+        if (!CalibSolverIO::SaveRawEventsOfExtractedPatterns(
+                _rawEventsOfExtractedPatterns.at(topic), rawEvsPath, _dataRawTimestamp.first,
+                CerealArchiveType::Enum::BINARY)) {
             spdlog::warn("failed to save raw events of patterns of '{}'!!!", topic);
         } else {
             spdlog::info("saved raw events of extracted patterns of '{}' to path finished!", topic);

@@ -63,8 +63,12 @@ class SpatialTemporalPriori;
 using SpatialTemporalPrioriPtr = std::shared_ptr<SpatialTemporalPriori>;
 struct TimeVaryingEllipse;
 using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
+class CalibSolverIO;
 
 class CalibSolver {
+public:
+    friend class CalibSolverIO;
+
 public:
     using Ptr = std::shared_ptr<CalibSolver>;
     using So3SplineType = ns_ctraj::So3Spline<Configor::Prior::SplineOrder>;
@@ -145,19 +149,6 @@ protected:
     static So3SplineType CreateSo3Spline(double st, double et, double so3Dt);
 
     static PosSplineType CreatePosSpline(double st, double et, double posDt);
-
-    static std::pair<std::string, std::string> GetDiskPathOfExtractedGridPatterns(
-        const std::string &topic);
-
-    static bool SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
-                                                 const std::string &filename,
-                                                 double timeBias,
-                                                 CerealArchiveType::Enum archiveType);
-
-    static std::map<int, ExtractedCirclesVec> LoadRawEventsOfExtractedPatterns(
-        const std::string &filename, double newTimeBias, CerealArchiveType::Enum archiveType);
-
-    static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
 
     void EstimateCameraIntrinsics();
 
