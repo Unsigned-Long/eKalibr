@@ -283,6 +283,9 @@ void CalibSolver::EstimateCameraIntrinsics() {
     }
 
     // visualization
+    if (!Configor::Preference::Visualization) {
+        return;
+    }
     const auto scale = static_cast<float>(Configor::Preference::SplineViewerSpatialScale);
     for (const auto &[topic, curCamPoses] : _camPoses) {
         // grid pattern
