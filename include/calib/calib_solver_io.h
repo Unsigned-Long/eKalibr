@@ -31,6 +31,7 @@
 
 #include "memory"
 #include "util/cereal_archive_helper.hpp"
+#include "opencv4/opencv2/core.hpp"
 
 namespace ns_ekalibr {
 class CalibSolver;
@@ -39,6 +40,8 @@ class TimeVaryingEllipse;
 using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
 struct EventArray;
 using EventArrayPtr = std::shared_ptr<EventArray>;
+struct EventCircleExtractor;
+using EventCircleExtractorPtr = std::shared_ptr<EventCircleExtractor>;
 
 class CalibSolverIO {
 public:
@@ -72,6 +75,10 @@ public:
         const std::string &topic);
 
     static std::string GetDiskPathOfOpenCVIntrinsicCalibRes(const std::string &topic);
+
+    static void SaveSAEMaps(const std::string &topic,
+                            const EventCircleExtractorPtr &extractor,
+                            const cv::Mat &sae = cv::Mat());
 };
 }  // namespace ns_ekalibr
 

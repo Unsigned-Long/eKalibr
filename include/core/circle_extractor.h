@@ -119,6 +119,15 @@ public:
 
     void InitMatsForVisualization(const EventNormFlow::NormFlowPack::Ptr& nfPack);
 
+public:
+    [[nodiscard]] cv::Mat SAEMapClusterNormFlowEvents() const { return imgClusterNormFlowEvents; }
+    [[nodiscard]] cv::Mat SAEMapIdentifyCategory() const { return imgIdentifyCategory; }
+    [[nodiscard]] cv::Mat SAEMapSearchMatches1() const { return imgSearchMatches1; }
+    [[nodiscard]] cv::Mat SAEMapSearchMatches2() const { return imgSearchMatches2; }
+    [[nodiscard]] cv::Mat SAEMapSearchMatches3() const { return imgSearchMatches3; }
+    [[nodiscard]] cv::Mat SAEMapExtractCircles() const { return imgExtractCircles; }
+    [[nodiscard]] cv::Mat SAEMapExtractCirclesGrid() const { return imgExtractCirclesGrid; }
+
 protected:
     std::vector<std::pair<EventArrayPtr, EventArrayPtr>> ExtractPotentialCircleClusters(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,

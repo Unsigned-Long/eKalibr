@@ -44,8 +44,16 @@ enum class OutputOption : std::uint32_t {
     BSplines = 1 << 2,
     HessianMat = 1 << 3,
     VisualReprojError = 1 << 4,
+    SAEMapClusterNormFlowEvents = 1 << 5,
+    SAEMapIdentifyCategory = 1 << 6,
+    SAEMapSearchMatches = 1 << 7,
+    SAEMapExtractCircles = 1 << 8,
+    SAEMapExtractCirclesGrid = 1 << 9,
+    SAEMap = 1 << 10,
 
-    ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError
+    ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError |
+          SAEMapClusterNormFlowEvents | SAEMapIdentifyCategory | SAEMapSearchMatches |
+          SAEMapExtractCircles | SAEMapExtractCirclesGrid | SAEMap
 };
 
 struct Configor {

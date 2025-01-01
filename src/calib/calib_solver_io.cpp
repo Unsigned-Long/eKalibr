@@ -43,6 +43,8 @@
 #include "calib/calib_param_mgr.h"
 #include "veta/camera/pinhole.h"
 #include "util/utils_tpl.hpp"
+#include "core/circle_extractor.h"
+#include <opencv2/imgcodecs.hpp>
 
 namespace ns_ekalibr {
 
@@ -195,5 +197,62 @@ std::string CalibSolverIO::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::strin
     }
     const auto &e = Configor::Preference::FileExtension.at(Configor::Preference::OutputDataFormat);
     return dir + "/intrinsics" + e;
+}
+
+void CalibSolverIO::SaveSAEMaps(const std::string &topic,
+                                const EventCircleExtractorPtr &extractor,
+                                const cv::Mat &sae) {
+    static std::map<std::string, int> idxMap;
+    const auto count = idxMap[topic]++;
+
+    if (IsOptionWith(OutputOption::SAEMapClusterNormFlowEvents, Configor::Preference::Outputs)) {
+        std::string saveDir =
+            Configor::DataStream::OutputPath + "/sae/cluster_norm_flow_events" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/SAEMapClusterNormFlowEvents-" + std::to_string(count) + ".png",
+                    extractor->SAEMapClusterNormFlowEvents());
+    }
+    if (IsOptionWith(OutputOption::SAEMapExtractCircles, Configor::Preference::Outputs)) {
+        std::string saveDir = Configor::DataStream::OutputPath + "/sae/extract_circles" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/SAEMapExtractCircles-" + std::to_string(count) + ".png",
+                    extractor->SAEMapExtractCircles());
+    }
+    if (IsOptionWith(OutputOption::SAEMapExtractCirclesGrid, Configor::Preference::Outputs)) {
+        std::string saveDir =
+            Configor::DataStream::OutputPath + "/sae/extract_circles_grid" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/SAEMapExtractCirclesGrid-" + std::to_string(count) + ".png",
+                    extractor->SAEMapExtractCirclesGrid());
+    }
+    if (IsOptionWith(OutputOption::SAEMapIdentifyCategory, Configor::Preference::Outputs)) {
+        std::string saveDir = Configor::DataStream::OutputPath + "/sae/identify_category" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/SAEMapIdentifyCategory-" + std::to_string(count) + ".png",
+                    extractor->SAEMapIdentifyCategory());
+    }
+    if (IsOptionWith(OutputOption::SAEMapSearchMatches, Configor::Preference::Outputs)) {
+        std::string saveDir = Configor::DataStream::OutputPath + "/sae/search_matches" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/SAEMapSearchMatches-" + std::to_string(count) + ".png",
+                    extractor->SAEMapSearchMatches3());
+    }
+    if (!sae.empty() && IsOptionWith(OutputOption::SAEMap, Configor::Preference::Outputs)) {
+        std::string saveDir = Configor::DataStream::OutputPath + "/sae/sae" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/sae-" + std::to_string(count) + ".png", sae);
+    }
 }
 }  // namespace ns_ekalibr

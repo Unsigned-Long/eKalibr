@@ -231,6 +231,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     ++grid2dIdx;
                 }
 
+                CalibSolverIO::SaveSAEMaps(topic, circleExtractor, nfPack->tsImg);
+
                 if (Configor::Preference::Visualization) {
                     circleExtractor->Visualization();
 
