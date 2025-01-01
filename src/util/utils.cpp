@@ -32,6 +32,7 @@
 #include "opencv2/imgproc.hpp"
 #include "iomanip"
 #include "filesystem"
+#include "list"
 
 namespace ns_ekalibr {
 void ConfigSpdlog() {
@@ -189,22 +190,26 @@ double NormalizeAngle(double ang_degree) {
     return ang_degree;
 }
 
-std::vector<std::string> FilesInDir(const std::string &directory) {
-    std::vector<std::string> files;
+std::vector<std::string> FilesInDir(const std::string &directory, bool sort) {
+    std::list<std::string> files;
     for (const auto &elem : std::filesystem::directory_iterator(directory))
         if (elem.status().type() != std::filesystem::file_type::directory)
             files.emplace_back(std::filesystem::canonical(elem.path()).c_str());
-    std::sort(files.begin(), files.end());
-    return files;
+    if (sort) {
+        files.sort();
+    }
+    return std::vector(files.begin(), files.end());
 }
 
-std::vector<std::string> FilesInDirRecursive(const std::string &directory) {
-    std::vector<std::string> files;
+std::vector<std::string> FilesInDirRecursive(const std::string &directory, bool sort) {
+    std::list<std::string> files;
     for (const auto &elem : std::filesystem::recursive_directory_iterator(directory))
         if (elem.status().type() != std::filesystem::file_type::directory)
             files.emplace_back(std::filesystem::canonical(elem.path()).c_str());
-    std::sort(files.begin(), files.end());
-    return files;
+    if (sort) {
+        files.sort();
+    }
+    return std::vector(files.begin(), files.end());
 }
 
 std::vector<std::string> SplitString(const std::string &str, char splitor, bool ignoreEmpty) {

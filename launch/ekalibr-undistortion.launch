@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+
+    <node pkg="ekalibr" type="ekalibr_undistortion" name="ekalibr_undistortion" output="screen">
+        <param name="imgs_dir"
+               value="/media/csl/samsung/eKalibr/dataset/acircle-11x4-50mm/eKalibr-data-2024-12-28-16-52-04/sae"
+               type="string"/>
+        <param name="valid_name_regex" value="(SAEMapExtractCirclesGrid-\d+\.png)" type="string"/>
+        <param name="ekalibr_param_file"
+               value="/media/csl/samsung/eKalibr/dataset/acircle-11x4-50mm/eKalibr-data-2024-12-28-16-52-04/ekalibr_param.yaml"
+               type="string"/>
+        <param name="topic_in_param_file" value="/dvs/events" type="string"/>
+    </node>
+
+</launch>

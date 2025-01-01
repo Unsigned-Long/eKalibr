@@ -261,9 +261,9 @@ std::string FormatValueVector(const std::vector<const char *> &descVec,
  * @param directory the directory
  * @return the filenames in the directory
  */
-std::vector<std::string> FilesInDir(const std::string &directory);
+std::vector<std::string> FilesInDir(const std::string &directory, bool sort = false);
 
-std::vector<std::string> FilesInDirRecursive(const std::string &directory);
+std::vector<std::string> FilesInDirRecursive(const std::string &directory, bool sort = false);
 
 /**
  * @brief a function to split a string to some string elements according the splitor
