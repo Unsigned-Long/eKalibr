@@ -69,6 +69,14 @@ void CalibSolver::Process() {
     _parMgr->ShowParamStatus();
 
     /**
+     * Currently, we only support intrinsic calibration for event cameras. For other types of
+     * calibration, such as spatiotemporal calibration for multi-camera systems and event-inertial
+     * systems, please stay tuned.
+     */
+    _solveFinished = true;
+    return;
+
+    /**
      * calibrate spatiotemporal parameters of events camera
      */
     if (Configor::DataStream::EventTopics.size() > 1) {

@@ -3,47 +3,39 @@ Configor:
     # key: event camera topic, value: event type. Supported event types:
     # (1) PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
     # (2)       DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
+    # (3) ...
+    # If support for other types of event camera messages is required,
+    # please feel free to contact us through a GitHub issue.
     EventTopics:
       - key: "/dvs/events"
         value:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
+          # It is not particularly critical in intrinsic calibration.
           Weight: 10.0
-    # if the 'IMUTopics' field is empty, only visual intrinsic calibration
-    # is performed for multiple event cameras!!!
-    # key: IMU topic, value: IMU type. Supported IMU types are:
-    # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git
-    # (2)           SENSOR_IMU: gyro unit (rad/s), acce unit (m/s^2)
-    #                           https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Imu.html
-    # (3)         SENSOR_IMU_G: gyro unit (rad/s), acce unit (G)
-    # (4)     SENSOR_IMU_G_NEG: gyro unit (rad/s), acce unit (-G)
-    # (5)       SENSOR_IMU_DEG: gyro unit (deg/s), acce unit (m/s^2)
-    #                           https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Imu.html
-    # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)
-    # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)
+    # ------------------------------------------------------------------------------------ #
+    # Ignore these fields; they are not used in the intrinsic calibration of event cameras #                                   #
+    # ------------------------------------------------------------------------------------ #
+    # key: IMU topic, value: IMU type. Supported IMU types are:                            #
+    # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git          #
+    # (2)           SENSOR_IMU: gyro unit (rad/s), acce unit (m/s^2)                       #
+    # (3)         SENSOR_IMU_G: gyro unit (rad/s), acce unit (G)                           #
+    # (4)     SENSOR_IMU_G_NEG: gyro unit (rad/s), acce unit (-G)                          #
+    # (5)       SENSOR_IMU_DEG: gyro unit (deg/s), acce unit (m/s^2)                       #
+    # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)                           #
+    # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)                          #
     IMUTopics:
-    RefIMUTopic: ""
+    RefIMUTopic: ""                                                                        #
+    # ------------------------------------------------------------------------------------ #
     BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag
     # and is not related to the timestamp of the data recorded in the package.
     BeginTime: -1
-    Duration: -1
+    Duration: 5
   Prior:
-    # priori about spatiotemporal parameters, given by corresponding config file path
-    SpatTempPrioriPath: ""
-    # SpatTempPrioriPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/config/spat-temp-priori.yaml"
-    # unit: m/s^2
-    GravityNorm: 9.8
-    # the range where the time offsets would be optimized.
-    # make sure this range contains the ground truth of time offsets
-    # If you're not sure, make this field large, but this could lead to longer optimization time
-    TimeOffsetPadding: 0.10
-    # if sensor are hardware-synchronized, you could choose to fix temporal parameters
-    # by setting this field to 'false'
-    OptTemporalParams: true
     # +---------------+----------------+        +---------------+----------------+
     # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
     # +---------------+----------------+        +---------------+----------------+
@@ -75,12 +67,6 @@ Configor:
       SpacingMeters: 0.05
       # radius of circles: SpacingMeters / RadiusRate, in this example, it's 0.02 [m]
       RadiusRate: 2.5
-    # the time distance of two neighbor control points, which determines the accuracy
-    # of the representation of the B-splines. Smaller distance would lead to longer optimization time
-    # common choices: from '0.02' to '0.10'
-    KnotTimeDist:
-      So3Spline: 0.05
-      ScaleSpline: 0.05
 
     # -------------------------------------------------------------------#
     # The following settings generally do not need to be adjusted unless #
@@ -115,11 +101,34 @@ Configor:
       # is computed in the time domain. The following value represents the distance threshold
       # for classifying a point as an inlier.
       EventToPlaneTimeDistThd: 2E-3
+
+    # ------------------------------------------------------------------------------------ #
+    # Ignore these fields; they are not used in the intrinsic calibration of event cameras #                                   #
+    # ------------------------------------------------------------------------------------ #
+    # priori about spatiotemporal parameters, given by corresponding config file path      #
+    SpatTempPrioriPath: ""                                                                 #
+    # unit: m/s^2                                                                          #
+    GravityNorm: 9.8                                                                       #
+    # the range where the time offsets would be optimized.                                 #
+    # make sure this range contains the ground truth of time offsets                       #
+    # If you're not sure, make this field large, but this could lead to longer time        #
+    TimeOffsetPadding: 0.10                                                                #
+    # if sensor are hardware-synchronized, you could choose to fix temporal parameters     #
+    # by setting this field to 'false'                                                     #
+    OptTemporalParams: true                                                                #
+    # the time distance of two neighbor control points, which determines the accuracy      #
+    # of the representation of the B-splines. Smaller distance would lead to longer time   #
+    # common choices: from '0.02' to '0.10'                                                #
+    KnotTimeDist:
+      So3Spline: 0.05                                                                      #
+      ScaleSpline: 0.05                                                                    #
+    # ------------------------------------------------------------------------------------ #
   Preference:
     # currently available output content:
-    # ParamInEachIter, BSplines, HessianMat,
+    # ParamInEachIter, VisualReprojError, SAEMapClusterNormFlowEvents, SAEMapIdentifyCategory,
+    # SAEMapSearchMatches, SAEMapExtractCircles, SAEMapExtractCirclesGrid, SAEMap, ALL, NONE
     Outputs:
-      - ParamInEachIter
+      - NONE
     # supported data output format:
     # (1) JSON
     # (2) XML
