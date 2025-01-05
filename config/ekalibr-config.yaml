@@ -7,7 +7,21 @@ Configor:
     # If support for other types of event camera messages is required,
     # please feel free to contact us through a GitHub issue.
     EventTopics:
-      - key: "/dvs/events"
+      - key: "/dvs1/events"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
+          # It is not particularly critical in intrinsic calibration.
+          Weight: 10.0
+      - key: "/dvs2/events"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
+          # It is not particularly critical in intrinsic calibration.
+          Weight: 10.0
+      - key: "/dvs3/events"
         value:
           Type: "DVS_EVENT"
           Width: 346
@@ -28,13 +42,13 @@ Configor:
     IMUTopics:
     RefIMUTopic: ""                                                                        #
     # ------------------------------------------------------------------------------------ #
-    BagPath: "/home/csl/ros_ws/eKalibr/src/ekalibr/data/test/data.bag"
+    BagPath: "/the_absolute_path_of_the_ROS_bag_file.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag
     # and is not related to the timestamp of the data recorded in the package.
     BeginTime: -1
-    Duration: 5
+    Duration: -1
   Prior:
     # +---------------+----------------+        +---------------+----------------+
     # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
