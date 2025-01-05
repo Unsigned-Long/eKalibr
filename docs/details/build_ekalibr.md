@@ -90,7 +90,7 @@ Congratulations :clap:, if everything goes well and no error happened.
 
 Considering the common issues reported by most people regarding the configuration and compilation of the `eKalibr`
 environment, I will provide here a step-by-step guide for setting up the `eKalibr` environment from scratch on an
-`Ubuntu 20.04` system. All steps have been tested and successfully compiled `eKalibr` on Ubuntu 20.04.
+`Ubuntu 20.04` system. All steps have been tested and successfully compiled `eKalibr` on `Ubuntu 20.04`.
 
 **Attention:** This install pipeline has already been, and only been tested on `Ubuntu 20.04`.
 
