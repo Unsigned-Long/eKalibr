@@ -45,6 +45,7 @@
 #include "util/utils_tpl.hpp"
 #include "core/circle_extractor.h"
 #include <opencv2/imgcodecs.hpp>
+#include <pangolin/display/display.h>
 
 namespace ns_ekalibr {
 
@@ -254,5 +255,17 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         }
         cv::imwrite(saveDir + "/sae-" + std::to_string(count) + ".png", sae);
     }
+}
+
+void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic) {
+    static std::map<std::string, int> idxMap;
+    const auto count = idxMap[topic]++;
+
+    std::string saveDir = Configor::DataStream::OutputPath + "/render/" + topic;
+    if (!TryCreatePath(saveDir)) {
+        return;
+    }
+    auto filename = saveDir + "/tv-render-" + std::to_string(count) + ".png";
+    pangolin::SaveWindowOnRender(filename);
 }
 }  // namespace ns_ekalibr

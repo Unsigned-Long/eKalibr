@@ -79,6 +79,8 @@ public:
     static void SaveSAEMaps(const std::string &topic,
                             const EventCircleExtractorPtr &extractor,
                             const cv::Mat &sae = cv::Mat());
+
+    static void SaveTinyViewerOnRender(const std::string &topic);
 };
 }  // namespace ns_ekalibr
 
