@@ -10,7 +10,7 @@
 </p>
 <p align="center"><i>"The naming of <strong>eKalibr</strong> is inspired by <a href="https://github.com/ethz-asl/kalibr.git">Kalibr</a>, but not an extension of it."</i></p>
 <p align="center">
-    :tada: <a href="https://github.com/Unsigned-Long/iKalibr/blob/master/docs/details/news.md"><i><strong>News »</strong> eKalibr Version 1.0.0 Is Released!</i></a>
+    :tada: <a href="https://github.com/Unsigned-Long/eKalibr/blob/master/docs/details/news.md"><i><strong>News »</strong> eKalibr Version 1.0.0 Is Released!</i></a>
 </p>
 
 
