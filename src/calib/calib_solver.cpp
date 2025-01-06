@@ -69,7 +69,7 @@ CalibSolver::CalibSolver(CalibParamManagerPtr parMgr)
 
     // pass the 'CeresViewerCallBack' to ceres option so that update the viewer after every
     // iteration in ceres
-    _ceresOption = Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, true);
+    _ceresOption = Estimator::DefaultSolverOptions(-1, /*use all threads*/ true, false /*cuda*/);
     if (Configor::Preference::Visualization) {
         _ceresOption.callbacks.push_back(new CeresViewerCallBack(_viewer));
         _ceresOption.update_state_every_iteration = true;
