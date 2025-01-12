@@ -14,8 +14,8 @@
 /.vscode
 *.mp4
 
-/data/*
-!/data/intrinsics
+/dataset/*
+#!/dataset/intrinsics
 
 /thirdparty/ctraj-build
 /thirdparty/ctraj-install
