@@ -39,6 +39,14 @@
 #include "ctraj/core/spline_bundle.h"
 #include "config/configor.h"
 
+namespace ns_veta {
+struct PinholeIntrinsic;
+using PinholeIntrinsicPtr = std::shared_ptr<PinholeIntrinsic>;
+
+struct PinholeIntrinsicBrownT2;
+using PinholeIntrinsicBrownT2Ptr = std::shared_ptr<PinholeIntrinsicBrownT2>;
+}  // namespace ns_veta
+
 namespace ns_ekalibr {
 class Viewer;
 using ViewerPtr = std::shared_ptr<Viewer>;
@@ -153,6 +161,24 @@ protected:
     static PosSplineType CreatePosSpline(double st, double et, double posDt);
 
     void EstimateCameraIntrinsics();
+
+    std::pair<cv::Mat, cv::Mat> EstimateCameraIntrinsicsInitials(
+        const std::string &topic,
+        int ATTEMPT_COUNT_PER_CAMERA = 50,
+        int FRAME_COUNT_PER_ATTEMPT = 20) const;
+
+    static ns_veta::PinholeIntrinsicPtr OrganizeCamParamsOpenCVToVeta(const cv::Mat &cameraMatrix,
+                                                                      const cv::Mat &distCoeffs,
+                                                                      std::size_t imgWidth,
+                                                                      std::size_t imgHeight);
+
+    static std::tuple<cv::Mat, cv::Mat, std::size_t, std::size_t> OrganizeCamParamsVetaToOpenCV(
+        const ns_veta::PinholeIntrinsicBrownT2Ptr &intri);
+
+    std::pair<std::vector<ns_ctraj::Posed>, std::map<int, int>> EstimateCameraPoses(
+        const std::string &topic) const;
+
+    void RefineCameraIntrinsicsInitials(const std::string &topic);
 
     void InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
                                                 double SEG_NEIGHBOR,

@@ -28,7 +28,7 @@ Configor:
     IMUTopics:
     RefIMUTopic: ""                                                                        #
     # ------------------------------------------------------------------------------------ #
-    BagPath: "/media/csl/samsung/eKalibr/dataset/acircle-7x3-50mm/eKalibr-data-2024-12-28-16-41-21.bag"
+    BagPath: "/media/csl/samsung/eKalibr/dataset/intrinsics/acircle-7x3-50mm/eKalibr-data-2024-12-28-16-41-21.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
     # Note that the 'BegTime' here is measured from the start time of bag

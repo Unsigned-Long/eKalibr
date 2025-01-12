@@ -55,10 +55,17 @@ esac
 
 # EKALIBR_ROOT_PATH=$(rospack find ekalibr)
 EKALIBR_ROOT_PATH=/media/csl/samsung/eKalibr
-OutputPath=$EKALIBR_ROOT_PATH/dataset/$Category
 
+# output path for intrinsic calibration experiments
+# OutputPath=$EKALIBR_ROOT_PATH/dataset/intrinsics/$Category
+
+# output path for multi-camera spatiotemporal calibration experiments
+OutputPath=$EKALIBR_ROOT_PATH/dataset/multi-camera/$Category
+
+# create directory and organize path to save the rosbag
 mkdir -p ${OutputPath}
 BagPath=$OutputPath/eKalibr-data-$(date +%Y-%m-%d-%H-%M-%S).bag
 echo "record davis data [/dvs/events;/dvs/imu] as ros bag [$BagPath]..."
 
+# record davis data (single event camera)
 rosbag record --duration=30 -O $BagPath /dvs/events /dvs/imu /dvs/image_raw
