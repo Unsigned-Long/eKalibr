@@ -111,7 +111,7 @@ protected:
     using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingEllipsePtr, EventArrayPtr>>;
     /**
      * topic, [raw events vector of circles of each tracked 2d grid (id)], example:
-     * _extractedPatterns[topic].Grid2D[i]][j] -> _rawEventsOfExtractedPatterns[topic].Grid2D[i][j]
+     * _extractedPatterns[topic].Grid2D[i][j] -> _rawEventsOfExtractedPatterns[topic].Grid2D[i][j]
      * the raw events of the {j}-th circle of the {i}-th tracked grid pattern of camera {topic}
      */
     std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;

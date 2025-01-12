@@ -109,9 +109,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     spdlog::info(
                         "load extracted circles grid patterns and raw events for camera '{}' "
                         "success! details:\n{}\nif you want to use a different configuration for "
-                        "circle grid extraction, please delete existing grid pattern file first at "
-                        "'{}'",
-                        topic, curPattern->InfoString(), gridPatternPath);
+                        "circle grid extraction, please delete existing file at '{}' and '{}'",
+                        topic, curPattern->InfoString(), rawEvsPath, gridPatternPath);
                     continue;
                 }
             }
@@ -119,8 +118,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             // failed
             spdlog::info(
                 "try to load extracted circles grid patterns failed! perform norm-flow-based "
-                "circle "
-                "grid identification for camera '{}'",
+                "circle grid identification for camera '{}'",
                 topic);
         } else {
             spdlog::info("perform norm-flow-based circle grid identification for camera '{}'",
