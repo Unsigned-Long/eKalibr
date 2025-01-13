@@ -29,7 +29,7 @@ Next, please create a circular grid pattern. We provide a [program](../../script
 
 
 
-An event camera generates events only when there is a change in luminosity. Therefore, to calibrate the event camera, the user needs to position the camera towards a calibration board and move it to capture data. It is recommended to use visualization software compatible with the event camera during data collection to monitor the quality of the data in real-time (ensuring that the target remains within the camera’s field of view). We suggest that users refer to our [open-source data](https://drive.google.com/drive/folders/13Qd08xRzj5DgvpTplmUMfo9EgQ6P_WzM?usp=sharing) or the demo [video]() we have created to replicate the procedures for data collection.
+An event camera generates events only when there is a change in luminosity. Therefore, to calibrate the event camera, the user needs to position the camera towards a calibration board and move it to capture data. It is recommended to use visualization software compatible with the event camera during data collection to monitor the quality of the data in real-time (ensuring that the target remains within the camera’s field of view). We suggest that users refer to our [open-source data](https://drive.google.com/drive/folders/13Qd08xRzj5DgvpTplmUMfo9EgQ6P_WzM?usp=sharing) or the demo [video](https://www.bilibili.com/video/BV1yKc1e8Edc) we have created to replicate the procedures for data collection.
 
 
 

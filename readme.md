@@ -25,12 +25,14 @@
 
 For more details, please refer to our article :point_down::
 
-+ **S. Chen**, X. Li*, L. Yuan, and Z. Liu. eKalibr: Dynamic Intrinsic Calibration for Event Cameras From First Principles of Events[J]. arXiv:2407.11420 [cs.RO]. [[paper-arXiv]()] [[video]()]
++ **S. Chen**, X. Li*, L. Yuan, and Z. Liu. eKalibr: Dynamic Intrinsic Calibration for Event Cameras From First Principles of Events[J]. arXiv preprint arXiv:2501.05688, 2025. [[paper-arXiv](https://arxiv.org/abs/2501.05688)] [[video](https://www.bilibili.com/video/BV1yKc1e8Edc)]
+
+
 
 ---
 
 <p align="middle">
-    <a href="https://www.bilibili.com/..."><strong>« The Demonstration Video of eKalibr »</strong></a>
+    <a href="https://www.bilibili.com/video/BV1yKc1e8Edc"><strong>« The Demonstration Video of eKalibr »</strong></a>
 </p> 
 <p align="center"><i>"Event-Based, Intrinsic, Spatial, Temporal, Multiple, Easy To Use, You Only Calibrate Once"</i></p>
 
