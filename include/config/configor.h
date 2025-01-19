@@ -83,13 +83,17 @@ public:
             std::uint16_t Width;
             std::uint16_t Height;
             double Weight;
+            std::string Intrinsics;
 
             EventConfig() = default;
+
+            bool NeedEstIntrinsics() const;
 
         public:
             template <class Archive>
             void serialize(Archive &ar) {
-                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height), CEREAL_NVP(Weight));
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height), CEREAL_NVP(Weight),
+                   CEREAL_NVP(Intrinsics));
             }
         };
 

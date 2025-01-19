@@ -42,19 +42,24 @@
 #include "calib/estimator.h"
 #include "factor/visual_projection_factor.hpp"
 #include <util/status.hpp>
+#include "magic_enum_flags.hpp"
 
 namespace ns_ekalibr {
 
 void CalibSolver::EstimateCameraIntrinsics() {
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        // compute intrinsics initials for each uncalibrated event camera using OpenCV
-        const auto &[cameraMatrix, distCoeffs] =
-            this->EstimateCameraIntrinsicsInitials(topic, 50, 20);
+    for (const auto &[topic, config] : Configor::DataStream::EventTopics) {
+        if (config.NeedEstIntrinsics()) {
+            // compute intrinsics initials for each uncalibrated event camera using OpenCV
+            const auto &[cameraMatrix, distCoeffs] =
+                this->EstimateCameraIntrinsicsInitials(topic, 50, 20);
 
-        // organize eKalibr-format intrinsics using intrinsic matrix from OpenCV
-        _parMgr->INTRI.Camera.at(topic) = OrganizeCamParamsOpenCVToVeta(
-            cameraMatrix, distCoeffs, _parMgr->INTRI.Camera.at(topic)->imgWidth,
-            _parMgr->INTRI.Camera.at(topic)->imgHeight);
+            // organize eKalibr-format intrinsics using intrinsic matrix from OpenCV
+            _parMgr->INTRI.Camera.at(topic) = OrganizeCamParamsOpenCVToVeta(
+                cameraMatrix, distCoeffs, _parMgr->INTRI.Camera.at(topic)->imgWidth,
+                _parMgr->INTRI.Camera.at(topic)->imgHeight);
+        } else {
+            spdlog::warn("intrinsics of camera '{}' are not estimated as have been loaded!", topic);
+        }
 
         // compute poses for each event camera
         const auto &poseRes = this->EstimateCameraPoses(topic);
@@ -62,7 +67,7 @@ void CalibSolver::EstimateCameraIntrinsics() {
         _gridIdToPoseIdxMap[topic] = poseRes.second;
 
         // refine intrinsics initials using reprojection-based bundle adjustment
-        this->RefineCameraIntrinsicsInitials(topic);
+        this->RefineCameraIntrinsicsInitials(topic, !config.NeedEstIntrinsics());
     }
 
     // visualization
@@ -336,12 +341,16 @@ std::pair<std::vector<ns_ctraj::Posed>, std::map<int, int>> CalibSolver::Estimat
     return {poseVecRes, gridIdToPoseIdxMap};
 }
 
-void CalibSolver::RefineCameraIntrinsicsInitials(const std::string &topic) {
+void CalibSolver::RefineCameraIntrinsicsInitials(const std::string &topic, bool fixIntrinsics) {
+    OptOption option = OptOption::NONE;
+    if (!fixIntrinsics) {
+        option = OptOption::OPT_CAM_PRINCIPAL_POINT | OptOption::OPT_CAM_FOCAL_LEN |
+                 OptOption::OPT_CAM_DIST_COEFFS;
+    }
+
     spdlog::info("refine intrinsics using non-linear least-squares optimization for camera '{}'...",
                  topic);
     auto estimator = Estimator::Create(_parMgr);
-    auto option = OptOption::OPT_CAM_PRINCIPAL_POINT | OptOption::OPT_CAM_FOCAL_LEN |
-                  OptOption::OPT_CAM_DIST_COEFFS;
 
     const auto &gridIdToPoseIdxMap = _gridIdToPoseIdxMap.at(topic);
     auto &poseVec = _camPoses.at(topic);

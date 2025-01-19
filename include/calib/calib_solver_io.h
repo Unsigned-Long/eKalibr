@@ -59,6 +59,8 @@ public:
 
     void SaveByProductsToDisk() const;
 
+    void SaveVisualIntrinsics() const;
+
 protected:
     void SaveVisualReprojError() const;
 
@@ -81,6 +83,9 @@ public:
                             const cv::Mat &sae = cv::Mat());
 
     static void SaveTinyViewerOnRender(const std::string &topic);
+
+protected:
+    static std::string TopicConvertToFilename(const std::string &topic);
 };
 }  // namespace ns_ekalibr
 

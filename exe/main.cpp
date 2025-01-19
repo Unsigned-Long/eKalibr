@@ -82,11 +82,12 @@ int main(int argc, char **argv) {
         solver->Process();
 
         // solve finished, save calibration results (file type: JSON | YAML | XML | BINARY)
-        const auto filename = ns_ekalibr::Configor::DataStream::OutputPath + "/ekalibr_param" +
+        const auto filename = ns_ekalibr::Configor::DataStream::OutputPath + "/ekalibr_param.all" +
                               ns_ekalibr::Configor::GetFormatExtension();
         parMgr->Save(filename, ns_ekalibr::Configor::Preference::OutputDataFormat);
 
         // save the by-products from the spatiotemporal calibration to the disk
+        ns_ekalibr::CalibSolverIO::Create(solver)->SaveVisualIntrinsics();
         ns_ekalibr::CalibSolverIO::Create(solver)->SaveByProductsToDisk();
 
         static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);

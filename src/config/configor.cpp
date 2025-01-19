@@ -92,6 +92,8 @@ int Configor::Preference::MaxEntityCountInViewer = {};
 const std::string Configor::Preference::SO3_SPLINE = "SO3_SPLINE";
 const std::string Configor::Preference::SCALE_SPLINE = "SCALE_SPLINE";
 
+bool Configor::DataStream::EventConfig::NeedEstIntrinsics() const { return Intrinsics.empty(); }
+
 Configor::Configor() = default;
 
 void Configor::PrintMainFields() {

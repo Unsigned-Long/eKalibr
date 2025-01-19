@@ -85,8 +85,30 @@ CalibParamManager::Ptr CalibParamManager::InitParamsFromConfigor() {
         parMarg->INTRI.IMU.at(topic) = IMUIntrinsics::Create();
     }
     for (const auto &[topic, config] : Configor::DataStream::EventTopics) {
-        parMarg->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
-            config.Width, config.Height, 0.0, 0.0, config.Width * 0.5, config.Height * 0.5);
+        if (!config.NeedEstIntrinsics()) {
+            if (!std::filesystem::exists(config.Intrinsics)) {
+                throw Status(Status::CRITICAL,
+                             "the provided intrinsics of camera '{}', i.e., '{}', don't exist!!!",
+                             topic, config.Intrinsics);
+            }
+            auto intri = ParIntri::LoadCameraIntri(config.Intrinsics,
+                                                   Configor::Preference::OutputDataFormat);
+            if (intri == nullptr) {
+                throw Status(Status::CRITICAL, "load intrinsics for event camera '{}' failed!!!",
+                             topic);
+            }
+            if (std::dynamic_pointer_cast<ns_veta::PinholeIntrinsicBrownT2>(intri) == nullptr) {
+                throw Status(
+                    Status::CRITICAL,
+                    "only intrinsics type 'ns_veta::PinholeIntrinsicBrownT2' is supported in "
+                    "eKalibr!!!");
+            }
+            parMarg->INTRI.Camera.at(topic) = intri;
+            spdlog::info("intrinsics of camera '{}' have been loaded!", topic);
+        } else {
+            parMarg->INTRI.Camera.at(topic) = ns_veta::PinholeIntrinsicBrownT2::Create(
+                config.Width, config.Height, 0.0, 0.0, config.Width * 0.5, config.Height * 0.5);
+        }
     }
 
     // align to the negative 'z' axis

@@ -178,7 +178,7 @@ protected:
     std::pair<std::vector<ns_ctraj::Posed>, std::map<int, int>> EstimateCameraPoses(
         const std::string &topic) const;
 
-    void RefineCameraIntrinsicsInitials(const std::string &topic);
+    void RefineCameraIntrinsicsInitials(const std::string &topic, bool fixIntrinsics);
 
     void InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
                                                 double SEG_NEIGHBOR,

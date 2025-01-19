@@ -66,6 +66,17 @@ void CalibSolverIO::SaveByProductsToDisk() const {
     }
 }
 
+void CalibSolverIO::SaveVisualIntrinsics() const {
+    for (const auto &[topic, intri] : _solver->_parMgr->INTRI.Camera) {
+        const std::string filename = Configor::DataStream::OutputPath + '/' +
+                                     TopicConvertToFilename(topic) + ".intri" +
+                                     Configor::GetFormatExtension();
+        spdlog::info("saving intrinsics for '{}' to '{}'", topic, filename);
+        CalibParamManager::ParIntri::SaveCameraIntri(intri, filename,
+                                                     Configor::Preference::OutputDataFormat);
+    }
+}
+
 void CalibSolverIO::SaveVisualReprojError() const {
     std::string saveDir = Configor::DataStream::OutputPath + "/residual/reproj";
     if (TryCreatePath(saveDir)) {
@@ -267,5 +278,17 @@ void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic) {
     }
     auto filename = saveDir + "/tv-render-" + std::to_string(count) + ".png";
     pangolin::SaveWindowOnRender(filename);
+}
+
+std::string CalibSolverIO::TopicConvertToFilename(const std::string &topic) {
+    std::string result = topic;
+
+    std::replace(result.begin(), result.end(), '/', '_');
+
+    if (result[0] == '_') {
+        result.erase(0, 1);
+    }
+
+    return result;
 }
 }  // namespace ns_ekalibr
