@@ -36,6 +36,7 @@
 #include <opencv2/imgproc.hpp>
 #include "util/utils_tpl.hpp"
 #include <opencv2/flann/flann.hpp>
+#include <util/status.hpp>
 
 namespace ns_ekalibr {
 #define VISUALIZATION_TRACKING 1
@@ -108,11 +109,12 @@ std::set<int> InCmpPatternTracker::Tracking(
                 ExtractedCirclesVec newRawEvsOfGridToTrack(incmpGridPatternIdx.size());
 
                 for (std::size_t j = 0; j < incmpGridPatternIdx.size(); j++) {
-                    if (incmpGridPatternIdx.at(j) >= 0) {
+                    auto cenIdxInOldCenters = incmpGridPatternIdx.at(j);
+                    if (cenIdxInOldCenters >= 0) {
                         // tracked
-                        gridToTrack->centers.at(j) = oldCenters.at(incmpGridPatternIdx.at(j));
+                        gridToTrack->centers.at(j) = oldCenters.at(cenIdxInOldCenters);
                         gridToTrack->cenValidity.at(j) = 1;
-                        newRawEvsOfGridToTrack.at(j) = rawEvsOfGridToTrack.at(j);
+                        newRawEvsOfGridToTrack.at(j) = rawEvsOfGridToTrack.at(cenIdxInOldCenters);
                     } else {
                         // not tracked
                         gridToTrack->centers.at(j) = cv::Point2f(-1.0f, -1.0f);
@@ -124,10 +126,10 @@ std::set<int> InCmpPatternTracker::Tracking(
 
                 trackedGridIdx.insert(gridToTrack->id);
                 newIncmpGridTracked = true;
+                i += 1;
             }
 
             processedIncmpGridIds.insert(gridToTrack->id);
-            std::cin.get();
         }
         ++trackingLoopCount;
         isAscendingOrder = !isAscendingOrder;
@@ -212,7 +214,7 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
         } else {
             DrawTrace(m, grid1->timestamp, grid2->timestamp, grid3->timestamp, dt, c1, c2, c3, 1.0);
         }
-        // DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
+        DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
 #endif
     }
 
