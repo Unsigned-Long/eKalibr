@@ -291,7 +291,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             curPattern,  // the total extracted grid patterns, including cmp and incmp ones
             static_cast<int>(gridSize * 0.4),  // for those tracked incmp grids, their center num
                                                // should be larger than this value
-            avgDist * 0.2,  // only the distance smaller than this val would be considered tracked,
+            avgDist * 0.15,  // only the distance smaller than this val would be considered tracked,
             rawEvsOfPattern);
 
         auto &grid2ds = curPattern->GetGrid2d();

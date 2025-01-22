@@ -96,9 +96,9 @@ std::set<int> InCmpPatternTracker::Tracking(
             const std::size_t trackedCount =
                 std::count_if(incmpGridPatternIdx.cbegin(), incmpGridPatternIdx.cend(),
                               [](int value) { return value >= 0; });
-            const bool trackSuccess = trackedCount >= cenNumThdForEachInCmpPattern;
 
-            if (trackSuccess) {
+            // tracked success
+            if (static_cast<int>(trackedCount) >= cenNumThdForEachInCmpPattern) {
                 // store
                 auto oldCenters = gridToTrack->centers;
                 gridToTrack->centers.resize(incmpGridPatternIdx.size());
@@ -205,14 +205,14 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
         }
 
 #if VISUALIZATION_TRACKING
-        double dt = std::abs(gridToTrack->timestamp - grid3->timestamp);
+        // const double dt = std::abs(gridToTrack->timestamp - grid3->timestamp);
+        const double dt = 0.0;
         if (grid1->timestamp > grid3->timestamp) {
             DrawTrace(m, grid3->timestamp, grid2->timestamp, grid1->timestamp, dt, c3, c2, c1, 1.0);
         } else {
             DrawTrace(m, grid1->timestamp, grid2->timestamp, grid3->timestamp, dt, c1, c2, c3, 1.0);
         }
-        DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
-        DrawLineOnCVMat(m, pPred, gridToTrack->centers.at(indices[0]), cv::Scalar(255, 255, 255));
+        // DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
 #endif
     }
 
@@ -250,6 +250,15 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     }
 
 #if VISUALIZATION_TRACKING
+    for (int i = 0; i < size; i++) {
+        if (incmpGridPatternIdx.at(i) < 0) {
+            continue;
+        }
+        cv::Point2f pTracked = gridToTrack->centers.at(incmpGridPatternIdx.at(i));
+        cv::Point2f p3 = grid3->centers.at(i);
+        DrawLineOnCVMat(m, pTracked, p3, cv::Scalar(255, 0, 0));
+        // spdlog::info("nearest distance: '{:.3f}' (pixels)", nearestPts.at(i)->second);
+    }
     cv::Mat mTmp1, mTmp2;
     cv::hconcat(m1, m2, mTmp1);
     cv::hconcat(m3, m, mTmp2);
