@@ -35,12 +35,36 @@ namespace ns_ekalibr {
 
 struct CircleGridPattern;
 using CircleGridPatternPtr = std::shared_ptr<CircleGridPattern>;
+struct CircleGrid2D;
+using CircleGrid2DPtr = std::shared_ptr<CircleGrid2D>;
+struct TimeVaryingEllipse;
+using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
+struct EventArray;
+using EventArrayPtr = std::shared_ptr<EventArray>;
 
 struct InCmpPatternTracker {
+    // for a tracked 2d grid pattern
+    using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingEllipsePtr, EventArrayPtr>>;
+
 public:
-    static std::set<int> Tracking(const CircleGridPatternPtr& pattern,
+    static std::set<int> Tracking(const std::string& topic,
+                                  const CircleGridPatternPtr& pattern,
                                   int cenNumThdForEachInCmpPattern,
-                                  double distThdToTrackCen);
+                                  double distThdToTrackCen,
+                                  const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
+
+protected:
+    static bool TryToTrackInCmpGridPattern(
+        const std::string& topic,
+        const CircleGrid2DPtr& grid1,
+        const CircleGrid2DPtr& grid2,
+        const CircleGrid2DPtr& grid3,
+        const CircleGrid2DPtr& gridToTrack,
+        double distThdToTrackCen,
+        const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
+
+    static cv::Mat CreateSAE(const std::string& topic,
+                             const ExtractedCirclesVec& tvCirclesWithRawEvs);
 };
 }  // namespace ns_ekalibr
 

@@ -282,15 +282,16 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         }
         avgDist /= count;
 
-        auto gridSize = curPattern->GetGrid3d()->points.size();
+        auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
+        auto gridSize = static_cast<int>(curPattern->GetGrid3d()->points.size());
         auto trackedIncmpGridIds = InCmpPatternTracker::Tracking(
+            topic,
             curPattern,  // the total extracted grid patterns, including cmp and incmp ones
             static_cast<int>(gridSize * 0.4),  // for those tracked incmp grids, their center num
                                                // should be larger than this value
-            avgDist * 0.2  // only the distance smaller than this value would be considered tracked
-        );
+            avgDist * 0.2,  // only the distance smaller than this val would be considered tracked,
+            rawEvsOfPattern);
 
-        auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
         auto &grid2ds = curPattern->GetGrid2d();
         int compNum = 0, inCompTrackedNum = 0, inCompNotTrackedNum = 0;
         for (auto iter = grid2ds.cbegin(); iter != grid2ds.cend();) {
