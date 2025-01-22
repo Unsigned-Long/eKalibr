@@ -43,6 +43,7 @@
 #include <util/status.hpp>
 #include <veta/camera/pinhole.h>
 #include "calib/calib_solver_io.h"
+#include "core/incmp_pattern_tracking.h"
 
 namespace ns_ekalibr {
 void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion) {
@@ -204,30 +205,27 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);
 
-                auto res = circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern,
-                                                               true, _viewer);
-
-                if (res.first != std::nullopt) {
+                auto [isCmp, centers, rawEvs] = circleExtractor->ExtractCirclesGrid(
+                    nfPack, patternSize, circlePattern, true, _viewer);
 #if ENABLE_UNDISTORTION
-                    if (undistortion) {
-                        for (auto &center : res->first) {
-                            Eigen::Vector2d uc(center.x, center.y);
-                            // add distortion to get the origin position
-                            Eigen::Vector2d rc = intri->GetDistoPixel(uc);
-                            center.x = static_cast<float>(rc(0));
-                            center.y = static_cast<float>(rc(1));
-                        }
+                if (undistortion && isCmp) {
+                    for (auto &center : centers) {
+                        Eigen::Vector2d uc(center.x, center.y);
+                        // add distortion to get the origin position
+                        Eigen::Vector2d rc = intri->GetDistoPixel(uc);
+                        center.x = static_cast<float>(rc(0));
+                        center.y = static_cast<float>(rc(1));
                     }
-#endif
-                    auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, *res.first);
-                    curPattern->AddGrid2d(grid2d);
-                    /**
-                     * distortion in 'res->second' is not considered, i.e., they are raw ones from
-                     * input events
-                     */
-                    rawEvsOfPattern.insert({grid2dIdx, res.second});
-                    ++grid2dIdx;
                 }
+#endif
+                auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, centers, isCmp);
+                curPattern->AddGrid2d(grid2d);
+                /**
+                 * distortion in 'res->second' is not considered, i.e., they are raw ones from
+                 * input events
+                 */
+                rawEvsOfPattern.insert({grid2dIdx, rawEvs});
+                ++grid2dIdx;
 
                 CalibSolverIO::SaveSAEMaps(topic, circleExtractor, nfPack->tsImg);
 
@@ -261,6 +259,67 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         _rawEventsOfExtractedPatterns[topic] = rawEvsOfPattern;
         patternLoadFromFile[topic] = false;
     }
+
+    /**
+     * tracking incomplete grid patterns
+     */
+    for (const auto &[topic, curPattern] : _extractedPatterns) {
+        // todo: release these codes
+        // if (patternLoadFromFile.at(topic)) {
+        //     continue;
+        // }
+        spdlog::info("tracking incomplete grid patterns for camera '{}'...", topic);
+
+        // compute the average distance of first two centers of each complete grid pattern
+        double avgDist = 0.0;
+        int count = 0;
+        for (const auto &grid2d : curPattern->GetGrid2d()) {
+            if (!grid2d->isComplete) {
+                continue;
+            }
+            avgDist += cv::norm(grid2d->centers.at(0) - grid2d->centers.at(1));
+            count++;
+        }
+        avgDist /= count;
+
+        auto gridSize = curPattern->GetGrid3d()->points.size();
+        auto trackedIncmpGridIds = InCmpPatternTracker::Tracking(
+            curPattern,  // the total extracted grid patterns, including cmp and incmp ones
+            static_cast<int>(gridSize * 0.4),  // for those tracked incmp grids, their center num
+                                               // should be larger than this value
+            avgDist * 0.2  // only the distance smaller than this value would be considered tracked
+        );
+
+        auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
+        auto &grid2ds = curPattern->GetGrid2d();
+        int compNum = 0, inCompTrackedNum = 0, inCompNotTrackedNum = 0;
+        for (auto iter = grid2ds.cbegin(); iter != grid2ds.cend();) {
+            const auto &grid2d = *iter;
+            if (grid2d->isComplete) {
+                ++compNum;
+                ++iter;
+                continue;
+            }
+            if (trackedIncmpGridIds.count(grid2d->id) == 0) {
+                // incomplete but not tracked, erase
+                rawEvsOfPattern.erase(grid2d->id);
+                iter = grid2ds.erase(iter);
+                ++inCompNotTrackedNum;
+            } else {
+                // todo: incomplete and tracked, refine circle to ellipse
+                // todo: clean 'rawEvsOfPattern', remove not related circles
+                // rawEvsOfPattern.erase(grid2d->id);
+                // iter = grid2ds.erase(iter);
+                ++inCompTrackedNum;
+                ++iter;
+            }
+        }
+        spdlog::info(
+            "complete grids: '{}', incomplete but tracked grids: {}, incomplete and not tracked "
+            "grids: {}",
+            compNum, inCompTrackedNum, inCompNotTrackedNum);
+    }
+    std::cin.get();
 
     /**
      * save circle grid patterns to disk

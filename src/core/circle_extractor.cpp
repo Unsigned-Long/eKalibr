@@ -203,7 +203,7 @@ EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
     return circleWithEvs;
 }
 
-std::pair<std::optional<std::vector<cv::Point2f>>, EventCircleExtractor::ExtractedCirclesVec>
+std::tuple<bool, std::vector<cv::Point2f>, EventCircleExtractor::ExtractedCirclesVec>
 EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                          const cv::Size& gridSize,
                                          CirclePatternType circlePatternType,
@@ -252,7 +252,13 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
     }
 
     if (!res) {
-        return std::pair{std::nullopt /* invalid grid pattern */, circles};
+        std::vector<cv::Point2f> centersIncmp(circles.size());
+        for (int i = 0; i < static_cast<int>(circles.size()); ++i) {
+            auto c = circles.at(i).first->EllipseAt(nfPack->timestamp);
+            centersIncmp.at(i) = cv::Vec2f(c->c(0), c->c(1));
+        }
+
+        return {false, centersIncmp /* incomplete grid pattern */, circles};
     } else {
         ExtractedCirclesVec verifiedCircles(centers.size());
         for (int i = 0; i < static_cast<int>(centers.size()); ++i) {
@@ -278,6 +284,9 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
                     verifiedCircles.at(i).first,   // initialized time-varying circle
                     verifiedCircles.at(i).second,  // events
                     POINT_TO_CIRCLE_AVG_THD);
+                // update the center
+                auto c = verifiedCircles.at(i).first->EllipseAt(nfPack->timestamp);
+                centers.at(i) = cv::Vec2f(c->c(0), c->c(1));
             }
 
             if (visualization) {
@@ -292,7 +301,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
             }
         }
 
-        return std::pair{centers /* valid grid pattern */, verifiedCircles};
+        return {true, centers /* complete grid pattern */, verifiedCircles};
     }
 }
 

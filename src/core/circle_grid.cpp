@@ -33,15 +33,20 @@
 #include "cereal/types/vector.hpp"
 
 namespace ns_ekalibr {
-CircleGrid2D::CircleGrid2D(int id, double timestamp, const std::vector<cv::Point2f>& centers)
+CircleGrid2D::CircleGrid2D(int id,
+                           double timestamp,
+                           const std::vector<cv::Point2f>& centers,
+                           bool isComplete)
     : id(id),
       timestamp(timestamp),
-      centers(centers) {}
+      centers(centers),
+      isComplete(isComplete) {}
 
 CircleGrid2D::Ptr CircleGrid2D::Create(int id,
                                        double timestamp,
-                                       const std::vector<cv::Point2f>& centers) {
-    return std::make_shared<CircleGrid2D>(id, timestamp, centers);
+                                       const std::vector<cv::Point2f>& centers,
+                                       bool isComplete) {
+    return std::make_shared<CircleGrid2D>(id, timestamp, centers, isComplete);
 }
 
 CircleGrid3D::CircleGrid3D(std::size_t rows,
@@ -111,6 +116,8 @@ CircleGridPattern::Ptr CircleGridPattern::Create(const CircleGrid3D::Ptr& grid3d
 void CircleGridPattern::AddGrid2d(const CircleGrid2D::Ptr& grid2d) { _grid2d.push_back(grid2d); }
 
 const std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() const { return _grid2d; }
+
+std::list<CircleGrid2D::Ptr>& CircleGridPattern::GetGrid2d() { return _grid2d; }
 
 std::list<int> CircleGridPattern::RemoveGrid2DOutOfTimeRange(double st, double et) {
     std::list<int> idsOfRemoved;

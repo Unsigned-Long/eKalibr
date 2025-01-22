@@ -55,15 +55,22 @@ struct CircleGrid2D {
     int id;
     double timestamp;
     std::vector<cv::Point2f> centers;
+    bool isComplete;
 
-    CircleGrid2D(int id = -1, double timestamp = 0.0, const std::vector<cv::Point2f>& centers = {});
+    CircleGrid2D(int id = -1,
+                 double timestamp = 0.0,
+                 const std::vector<cv::Point2f>& centers = {},
+                 bool isComplete = false);
 
-    static Ptr Create(int id, double timestamp, const std::vector<cv::Point2f>& centers);
+    static Ptr Create(int id,
+                      double timestamp,
+                      const std::vector<cv::Point2f>& centers,
+                      bool isComplete);
 
 public:
     template <class Archive>
     void serialize(Archive& ar) {
-        ar(CEREAL_NVP(id), CEREAL_NVP(timestamp), CEREAL_NVP(centers));
+        ar(CEREAL_NVP(id), CEREAL_NVP(timestamp), CEREAL_NVP(centers), CEREAL_NVP(isComplete));
     }
 };
 
@@ -119,6 +126,8 @@ public:
     void AddGrid2d(const CircleGrid2D::Ptr& grid2d);
 
     const std::list<CircleGrid2D::Ptr>& GetGrid2d() const;
+
+    std::list<CircleGrid2D::Ptr>& GetGrid2d();
 
     std::list<int> RemoveGrid2DOutOfTimeRange(double st, double et);
 

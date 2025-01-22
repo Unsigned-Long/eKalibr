@@ -108,7 +108,7 @@ public:
     ExtractedCirclesVec ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                        const ViewerPtr& viewer = nullptr);
 
-    std::pair<std::optional<std::vector<cv::Point2f>>, ExtractedCirclesVec> ExtractCirclesGrid(
+    std::tuple<bool, std::vector<cv::Point2f>, ExtractedCirclesVec> ExtractCirclesGrid(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
         const cv::Size& gridSize,
         CirclePatternType circlePatternType,
