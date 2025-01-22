@@ -36,17 +36,20 @@ namespace ns_ekalibr {
 CircleGrid2D::CircleGrid2D(int id,
                            double timestamp,
                            const std::vector<cv::Point2f>& centers,
+                           const std::vector<uint8_t>& cenValidity,
                            bool isComplete)
     : id(id),
       timestamp(timestamp),
       centers(centers),
+      cenValidity(cenValidity),
       isComplete(isComplete) {}
 
 CircleGrid2D::Ptr CircleGrid2D::Create(int id,
                                        double timestamp,
                                        const std::vector<cv::Point2f>& centers,
+                                       const std::vector<uint8_t>& cenValidity,
                                        bool isComplete) {
-    return std::make_shared<CircleGrid2D>(id, timestamp, centers, isComplete);
+    return std::make_shared<CircleGrid2D>(id, timestamp, centers, cenValidity, isComplete);
 }
 
 CircleGrid3D::CircleGrid3D(std::size_t rows,

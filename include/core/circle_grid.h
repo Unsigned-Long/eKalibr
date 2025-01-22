@@ -55,22 +55,26 @@ struct CircleGrid2D {
     int id;
     double timestamp;
     std::vector<cv::Point2f> centers;
+    std::vector<uint8_t> cenValidity;
     bool isComplete;
 
     CircleGrid2D(int id = -1,
                  double timestamp = 0.0,
                  const std::vector<cv::Point2f>& centers = {},
+                 const std::vector<uint8_t>& cenValidity = {},
                  bool isComplete = false);
 
     static Ptr Create(int id,
                       double timestamp,
                       const std::vector<cv::Point2f>& centers,
+                      const std::vector<uint8_t>& cenValidity,
                       bool isComplete);
 
 public:
     template <class Archive>
     void serialize(Archive& ar) {
-        ar(CEREAL_NVP(id), CEREAL_NVP(timestamp), CEREAL_NVP(centers), CEREAL_NVP(isComplete));
+        ar(CEREAL_NVP(id), CEREAL_NVP(timestamp), CEREAL_NVP(centers), CEREAL_NVP(cenValidity),
+           CEREAL_NVP(isComplete));
     }
 };
 

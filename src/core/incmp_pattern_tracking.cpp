@@ -34,15 +34,18 @@
 #include <config/configor.h>
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
+#include "util/utils_tpl.hpp"
+#include <opencv2/flann/flann.hpp>
 
 namespace ns_ekalibr {
+#define VISUALIZATION_TRACKING 1
 
 std::set<int> InCmpPatternTracker::Tracking(
     const std::string& topic,
     const CircleGridPatternPtr& pattern,
     int cenNumThdForEachInCmpPattern,
     double distThdToTrackCen,
-    const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
+    std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
     spdlog::info(
         "InCmpPatternTracker::Tracking: 'cenNumThdForEachInCmpPattern': '{}', 'distThdToTrackCen': "
         "'{:.5f}' (pixels)",
@@ -87,9 +90,38 @@ std::set<int> InCmpPatternTracker::Tracking(
                          static_cast<int>(isAscendingOrder), grid1->id, grid2->id, grid3->id,
                          gridToTrack->id);
 
-            bool trackSuccess = TryToTrackInCmpGridPattern(topic, grid1, grid2, grid3, gridToTrack,
-                                                           distThdToTrackCen, tvCirclesWithRawEvs);
+            auto incmpGridPatternIdx = TryToTrackInCmpGridPattern(
+                topic, grid1, grid2, grid3, gridToTrack, distThdToTrackCen, tvCirclesWithRawEvs);
+            // good count (tracked centers)
+            const std::size_t trackedCount =
+                std::count_if(incmpGridPatternIdx.cbegin(), incmpGridPatternIdx.cend(),
+                              [](int value) { return value >= 0; });
+            const bool trackSuccess = trackedCount >= cenNumThdForEachInCmpPattern;
+
             if (trackSuccess) {
+                // store
+                auto oldCenters = gridToTrack->centers;
+                gridToTrack->centers.resize(incmpGridPatternIdx.size());
+                gridToTrack->cenValidity.resize(incmpGridPatternIdx.size());
+
+                const auto& rawEvsOfGridToTrack = tvCirclesWithRawEvs.at(gridToTrack->id);
+                ExtractedCirclesVec newRawEvsOfGridToTrack(incmpGridPatternIdx.size());
+
+                for (std::size_t j = 0; j < incmpGridPatternIdx.size(); j++) {
+                    if (incmpGridPatternIdx.at(j) >= 0) {
+                        // tracked
+                        gridToTrack->centers.at(j) = oldCenters.at(incmpGridPatternIdx.at(j));
+                        gridToTrack->cenValidity.at(j) = 1;
+                        newRawEvsOfGridToTrack.at(j) = rawEvsOfGridToTrack.at(j);
+                    } else {
+                        // not tracked
+                        gridToTrack->centers.at(j) = cv::Point2f(-1.0f, -1.0f);
+                        gridToTrack->cenValidity.at(j) = 0;
+                        newRawEvsOfGridToTrack.at(j) = {};
+                    }
+                }
+                tvCirclesWithRawEvs.at(gridToTrack->id) = newRawEvsOfGridToTrack;
+
                 trackedGridIdx.insert(gridToTrack->id);
                 newIncmpGridTracked = true;
             }
@@ -107,10 +139,17 @@ std::set<int> InCmpPatternTracker::Tracking(
     std::cin.get();
     std::cin.get();
 
-    return {};
+    std::set<int> tackedIncmpGridIdx;
+    for (const auto& grid2d : grid2ds) {
+        if (!grid2d->isComplete && trackedGridIdx.count(grid2d->id) != 0) {
+            tackedIncmpGridIdx.insert(grid2d->id);
+        }
+    }
+
+    return tackedIncmpGridIdx;
 }
 
-bool InCmpPatternTracker::TryToTrackInCmpGridPattern(
+std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     const std::string& topic,
     const CircleGrid2DPtr& grid1,
     const CircleGrid2DPtr& grid2,
@@ -118,16 +157,107 @@ bool InCmpPatternTracker::TryToTrackInCmpGridPattern(
     const CircleGrid2DPtr& gridToTrack,
     double distThdToTrackCen,
     const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
-    auto m1 = CreateSAE(topic, tvCirclesWithRawEvs.at(grid1->id));
-    auto m2 = CreateSAE(topic, tvCirclesWithRawEvs.at(grid2->id));
-    auto m3 = CreateSAE(topic, tvCirclesWithRawEvs.at(grid3->id));
-    auto m = CreateSAE(topic, tvCirclesWithRawEvs.at(gridToTrack->id));
-    cv::imshow("grid1", m1);
-    cv::imshow("grid2", m2);
-    cv::imshow("grid3", m3);
-    cv::imshow("grid to track", m);
+#if VISUALIZATION_TRACKING
+    auto m1 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs, grid1);
+    auto m2 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs, grid2);
+    auto m3 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs, grid3);
+    auto m = CreateSAEWithCircles(topic, tvCirclesWithRawEvs, gridToTrack);
+#endif
+    auto size = static_cast<int>(grid1->centers.size());
+    assert(size == grid2->centers.size());
+    assert(size == grid3->centers.size());
+
+    const auto& config = Configor::DataStream::EventTopics.at(topic);
+    auto IsPointInImgRange = [&config](const cv::Point2f& p) {
+        return p.x > 0.0 && p.y > 0.0 && p.x < config.Width - 1.0 && p.y < config.Height - 1.0;
+    };
+
+    cv::Mat data(static_cast<int>(gridToTrack->centers.size()), 2, CV_32F);
+    for (int i = 0; i < static_cast<int>(gridToTrack->centers.size()); ++i) {
+        data.at<float>(i, 0) = gridToTrack->centers[i].x;
+        data.at<float>(i, 1) = gridToTrack->centers[i].y;
+    }
+    cv::flann::Index kdtree(data, cv::flann::KDTreeIndexParams(1));
+
+    // the nearest point index, and corresponding distance (pixels)
+    std::vector<std::optional<std::pair<std::size_t, double>>> nearestPts(size, std::nullopt);
+
+    for (int i = 0; i < size; i++) {
+        const auto &c1 = grid1->centers[i], c2 = grid2->centers[i], c3 = grid3->centers[i];
+        if (!IsPointInImgRange(c1) || !IsPointInImgRange(c2) || !IsPointInImgRange(c3)) {
+            continue;
+        }
+
+        std::array<double, 3> tData{grid1->timestamp, grid2->timestamp, grid3->timestamp};
+        std::array<double, 3> xData{c1.x, c2.x, c3.x};
+        std::array<double, 3> yData{c1.y, c2.y, c3.y};
+        double xPred = LagrangePolynomial<double, 3>(gridToTrack->timestamp, tData, xData);
+        double yPred = LagrangePolynomial<double, 3>(gridToTrack->timestamp, tData, yData);
+        auto pPred = cv::Point2f(static_cast<float>(xPred), static_cast<float>(yPred));
+
+        cv::Mat query = (cv::Mat_<float>(1, 2) << pPred.x, pPred.y);
+        std::vector<int> indices(1);
+        std::vector<float> dists(1);
+        kdtree.knnSearch(query, indices, dists, 1);
+        float distance = std::sqrt(dists[0]);
+        if (distance < distThdToTrackCen) {
+            nearestPts.at(i) = {indices[0], distance};
+        }
+
+#if VISUALIZATION_TRACKING
+        double dt = std::abs(gridToTrack->timestamp - grid3->timestamp);
+        if (grid1->timestamp > grid3->timestamp) {
+            DrawTrace(m, grid3->timestamp, grid2->timestamp, grid1->timestamp, dt, c3, c2, c1, 1.0);
+        } else {
+            DrawTrace(m, grid1->timestamp, grid2->timestamp, grid3->timestamp, dt, c1, c2, c3, 1.0);
+        }
+        DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
+        DrawLineOnCVMat(m, pPred, gridToTrack->centers.at(indices[0]), cv::Scalar(255, 255, 255));
+#endif
+    }
+
+    // Map to store the minimum distance and corresponding index position for each unique index
+    std::unordered_map<std::size_t, std::pair<double, std::size_t>> indexToMinDistance;
+
+    // First pass: Identify the minimum distance for each index
+    for (std::size_t i = 0; i < nearestPts.size(); ++i) {
+        if (nearestPts[i].has_value()) {
+            auto [index, distance] = nearestPts[i].value();
+            // Update if the index is new or the current distance is smaller
+            if (indexToMinDistance.find(index) == indexToMinDistance.end() ||
+                distance < indexToMinDistance[index].first) {
+                indexToMinDistance[index] = {distance, i};
+            }
+        }
+    }
+
+    // Second pass: Set all non-minimum distance entries to std::nullopt
+    for (std::size_t i = 0; i < nearestPts.size(); ++i) {
+        if (nearestPts[i].has_value()) {
+            auto [index, distance] = nearestPts[i].value();
+            // Check if the current entry is not the one with the minimum distance
+            if (indexToMinDistance[index].second != i) {
+                nearestPts[i] = std::nullopt;  // Set to nullopt if not the closest
+            }
+        }
+    }
+
+    std::vector<int> incmpGridPatternIdx(size, -1);
+    for (int i = 0; i < size; i++) {
+        if (nearestPts[i].has_value()) {
+            incmpGridPatternIdx.at(i) = static_cast<int>(nearestPts.at(i)->first);
+        }
+    }
+
+#if VISUALIZATION_TRACKING
+    cv::Mat mTmp1, mTmp2;
+    cv::hconcat(m1, m2, mTmp1);
+    cv::hconcat(m3, m, mTmp2);
+    cv::hconcat(mTmp1, mTmp2, mTmp1);
+    cv::imshow("track 2d grid", mTmp1);
     cv::waitKey(0);
-    return false;
+#endif
+    return incmpGridPatternIdx;
 }
 
 cv::Mat InCmpPatternTracker::CreateSAE(const std::string& topic,
@@ -143,4 +273,75 @@ cv::Mat InCmpPatternTracker::CreateSAE(const std::string& topic,
     cv::cvtColor(tsImg, tsImg, cv::COLOR_GRAY2BGR);
     return tsImg;
 }
+
+cv::Mat InCmpPatternTracker::CreateSAEWithCircles(
+    const std::string& topic,
+    const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs,
+    const CircleGrid2DPtr& grid) {
+    auto m = CreateSAE(topic, tvCirclesWithRawEvs.at(grid->id));
+    for (const auto& center : grid->centers) {
+        DrawKeypointOnCVMat(m, center, false, cv::Scalar(0, 0, 255));
+    }
+    return m;
+}
+
+void InCmpPatternTracker::DrawTrace(cv::Mat& img,
+                                    double t1,
+                                    double t2,
+                                    double t3,
+                                    double timePadding,
+                                    const cv::Point2f& p1,
+                                    const cv::Point2f& p2,
+                                    const cv::Point2f& p3,
+                                    const int pixelDist) {
+    assert(t1 < t2);
+    assert(t2 < t3);
+    const double sTime = t1 - timePadding;
+    const double eTime = t3 + timePadding;
+
+    std::array<double, 3> tData{t1, t2, t3};
+    std::array<double, 3> xData{p1.x, p2.x, p3.x};
+    std::array<double, 3> yData{p1.y, p2.y, p3.y};
+    auto vx = LagrangePolynomialTripleMidFOD(tData, xData);
+    auto vy = LagrangePolynomialTripleMidFOD(tData, yData);
+    const double deltaTime = pixelDist / std::sqrt(vx * vx + vy * vy);
+
+    double xLast = LagrangePolynomial<double, 3>(sTime, tData, xData);
+    double yLast = LagrangePolynomial<double, 3>(sTime, tData, yData);
+    for (double t = sTime + deltaTime; t < eTime;) {
+        double x = LagrangePolynomial<double, 3>(t, tData, xData);
+        double y = LagrangePolynomial<double, 3>(t, tData, yData);
+        DrawLineOnCVMat(img, cv::Point2d(xLast, yLast), cv::Point2d(x, y), cv::Scalar(0, 255, 0));
+        t += deltaTime;
+        xLast = x;
+        yLast = y;
+    }
+    for (int i = 0; i < 3; ++i) {
+        DrawKeypointOnCVMat(img, cv::Point2d(xData[i], yData[i]), false, cv::Scalar(0, 255, 0));
+    }
+}
+
+std::pair<int, float> InCmpPatternTracker::FindNearestPointKDTree(
+    const std::vector<cv::Point2f>& points, const cv::Point2f& target) {
+    if (points.empty()) {
+        throw std::invalid_argument("The point vector is empty.");
+    }
+
+    cv::Mat data(points.size(), 2, CV_32F);
+    for (size_t i = 0; i < points.size(); ++i) {
+        data.at<float>(i, 0) = points[i].x;
+        data.at<float>(i, 1) = points[i].y;
+    }
+
+    cv::flann::Index kdtree(data, cv::flann::KDTreeIndexParams(1));
+
+    cv::Mat query = (cv::Mat_<float>(1, 2) << target.x, target.y);
+    std::vector<int> indices(1);
+    std::vector<float> dists(1);
+
+    kdtree.knnSearch(query, indices, dists, 1);
+
+    return {indices[0], std::sqrt(dists[0])};
+}
+#undef VISUALIZATION_TRACKING
 }  // namespace ns_ekalibr

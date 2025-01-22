@@ -218,7 +218,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     }
                 }
 #endif
-                auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, centers, isCmp);
+                auto grid2d = CircleGrid2D::Create(
+                    grid2dIdx, nfPack->timestamp, centers,
+                    std::vector<std::uint8_t>(centers.size(), isCmp ? 1 : 0), isCmp);
                 curPattern->AddGrid2d(grid2d);
                 /**
                  * distortion in 'res->second' is not considered, i.e., they are raw ones from

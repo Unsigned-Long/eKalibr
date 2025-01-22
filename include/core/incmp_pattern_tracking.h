@@ -51,10 +51,10 @@ public:
                                   const CircleGridPatternPtr& pattern,
                                   int cenNumThdForEachInCmpPattern,
                                   double distThdToTrackCen,
-                                  const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
+                                  std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
 
 protected:
-    static bool TryToTrackInCmpGridPattern(
+    static std::vector<int> TryToTrackInCmpGridPattern(
         const std::string& topic,
         const CircleGrid2DPtr& grid1,
         const CircleGrid2DPtr& grid2,
@@ -65,6 +65,24 @@ protected:
 
     static cv::Mat CreateSAE(const std::string& topic,
                              const ExtractedCirclesVec& tvCirclesWithRawEvs);
+
+    static cv::Mat CreateSAEWithCircles(
+        const std::string& topic,
+        const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs,
+        const CircleGrid2DPtr& grid);
+
+    static void DrawTrace(cv::Mat& img,
+                          double t1,
+                          double t2,
+                          double t3,
+                          double timePadding,
+                          const cv::Point2f& p1,
+                          const cv::Point2f& p2,
+                          const cv::Point2f& p3,
+                          const int pixelDist);
+
+    static std::pair<int, float> FindNearestPointKDTree(const std::vector<cv::Point2f>& points,
+                                                        const cv::Point2f& target);
 };
 }  // namespace ns_ekalibr
 
