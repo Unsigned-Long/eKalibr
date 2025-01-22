@@ -203,7 +203,7 @@ EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
     return circleWithEvs;
 }
 
-std::optional<std::pair<std::vector<cv::Point2f>, EventCircleExtractor::ExtractedCirclesVec>>
+std::pair<std::optional<std::vector<cv::Point2f>>, EventCircleExtractor::ExtractedCirclesVec>
 EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                          const cv::Size& gridSize,
                                          CirclePatternType circlePatternType,
@@ -252,7 +252,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
     }
 
     if (!res) {
-        return {};
+        return std::pair{std::nullopt /* invalid grid pattern */, circles};
     } else {
         ExtractedCirclesVec verifiedCircles(centers.size());
         for (int i = 0; i < static_cast<int>(centers.size()); ++i) {
@@ -292,7 +292,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
             }
         }
 
-        return std::pair{centers, verifiedCircles};
+        return std::pair{centers /* valid grid pattern */, verifiedCircles};
     }
 }
 

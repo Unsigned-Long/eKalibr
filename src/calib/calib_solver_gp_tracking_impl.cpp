@@ -207,7 +207,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 auto res = circleExtractor->ExtractCirclesGrid(nfPack, patternSize, circlePattern,
                                                                true, _viewer);
 
-                if (res != std::nullopt) {
+                if (res.first != std::nullopt) {
 #if ENABLE_UNDISTORTION
                     if (undistortion) {
                         for (auto &center : res->first) {
@@ -219,13 +219,13 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                         }
                     }
 #endif
-                    auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, res->first);
+                    auto grid2d = CircleGrid2D::Create(grid2dIdx, nfPack->timestamp, *res.first);
                     curPattern->AddGrid2d(grid2d);
                     /**
                      * distortion in 'res->second' is not considered, i.e., they are raw ones from
                      * input events
                      */
-                    rawEvsOfPattern.insert({grid2dIdx, res->second});
+                    rawEvsOfPattern.insert({grid2dIdx, res.second});
                     ++grid2dIdx;
                 }
 
