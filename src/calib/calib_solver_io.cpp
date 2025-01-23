@@ -165,6 +165,9 @@ std::map<int, CalibSolverIO::ExtractedCirclesVec> CalibSolverIO::LoadRawEventsOf
     }
     for (auto &[id, circles] : rawEvsOfPattern) {
         for (auto &[tvCircles, rawEvs] : circles) {
+            if (rawEvs == nullptr) {
+                continue;
+            }
             tvCircles->st = tvCircles->st + time_bias - newTimeBias;
             tvCircles->et = tvCircles->et + time_bias - newTimeBias;
             /**

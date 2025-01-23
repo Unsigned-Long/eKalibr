@@ -266,10 +266,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
      * tracking incomplete grid patterns
      */
     for (const auto &[topic, curPattern] : _extractedPatterns) {
-        // todo: release these codes
-        // if (patternLoadFromFile.at(topic)) {
-        //     continue;
-        // }
+        if (patternLoadFromFile.at(topic)) {
+            continue;
+        }
         spdlog::info("tracking incomplete grid patterns for camera '{}'...", topic);
 
         // compute the average distance of first two centers of each complete grid pattern
@@ -296,7 +295,11 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 
         auto &grid2ds = curPattern->GetGrid2d();
         int compNum = 0, inCompTrackedNum = 0, inCompNotTrackedNum = 0;
+        spdlog::info("refine tracked incomplete grids, time-varying circles to ellipses...");
+        auto bar = std::make_shared<tqdm>();
+        const int total = static_cast<int>(grid2ds.size());
         for (auto iter = grid2ds.cbegin(); iter != grid2ds.cend();) {
+            bar->progress(compNum + inCompTrackedNum + inCompNotTrackedNum, total);
             const auto &grid2d = *iter;
             if (grid2d->isComplete) {
                 ++compNum;
@@ -341,13 +344,13 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 ++iter;
             }
         }
+        bar->finish();
         spdlog::info(
             "complete grids: {}, incomplete but tracked grids: {}, incomplete and not tracked "
             "grids: {}",
             compNum, inCompTrackedNum, inCompNotTrackedNum);
     }
     cv::destroyAllWindows();
-    std::cin.get();
 
     /**
      * save circle grid patterns to disk
