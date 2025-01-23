@@ -274,7 +274,7 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     cv::hconcat(m1, m2, mTmp1);
     cv::hconcat(m3, m, mTmp2);
     cv::hconcat(mTmp1, mTmp2, mTmp1);
-    cv::imshow("track 2d grid", mTmp1);
+    cv::imshow("Tracking Incomplete 2D Grids", mTmp1);
     cv::waitKey(1);
 #endif
     return incmpGridPatternIdx;
@@ -300,24 +300,30 @@ cv::Mat InCmpPatternTracker::CreateSAEWithCircles(const std::string& topic,
                                                   const ExtractedCirclesVec& tvCirclesWithRawEvs,
                                                   const CircleGrid2DPtr& grid) {
     auto m = CreateSAE(topic, tvCirclesWithRawEvs);
+    DrawTVEllipses(m, tvCirclesWithRawEvs, grid);
+    return m;
+}
+
+void InCmpPatternTracker::DrawTVEllipses(cv::Mat& m,
+                                         const ExtractedCirclesVec& tvCirclesWithRawEvs,
+                                         const CircleGrid2DPtr& grid) {
     for (int i = 0; i < static_cast<int>(grid->centers.size()); i++) {
         auto tvEllipse = tvCirclesWithRawEvs.at(i).first;
         if (tvEllipse == nullptr) {
             continue;
         }
-        if (grid->isComplete) {
+        if (tvEllipse->type == TimeVaryingEllipse::TVType::ELLIPSE) {
             auto e = tvEllipse->EllipseAt(grid->timestamp);
             constexpr double RAD_DEG = 180.0 / M_PI;
             cv::ellipse(m, cv::Point2d(e->c(0), e->c(1)), cv::Size2d(e->r(0), e->r(1)),
                         -e->theta.log() * RAD_DEG, 0.0, 360.0, cv::Scalar(0, 255, 0));
             DrawKeypointOnCVMat(m, e->c, false, cv::Scalar(0, 255, 0));
-        } else {
+        } else if (tvEllipse->type == TimeVaryingEllipse::TVType::CIRCLE) {
             auto c = tvEllipse->EllipseAt(grid->timestamp);
             cv::circle(m, cv::Point2d(c->c(0), c->c(1)), c->AvgRadius(), cv::Scalar(0, 0, 255), 1);
             DrawKeypointOnCVMat(m, c->c, false, cv::Scalar(0, 0, 255));
         }
     }
-    return m;
 }
 
 void InCmpPatternTracker::DrawTrace(cv::Mat& img,

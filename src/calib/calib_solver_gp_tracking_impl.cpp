@@ -311,6 +311,13 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             } else {
                 // incomplete and tracked, refine circle to ellipse
                 auto &verifiedCircles = rawEvsOfPattern.at(grid2d->id);
+
+                cv::Mat incmpTrackMat;
+                if (Configor::Preference::Visualization) {
+                    incmpTrackMat =
+                        InCmpPatternTracker::CreateSAEWithCircles(topic, verifiedCircles, grid2d);
+                }
+#pragma omp parallel for
                 for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
                     if (!grid2d->cenValidity[i]) {
                         continue;
@@ -324,6 +331,11 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     // update the center
                     auto c = verifiedCircles.at(i).first->EllipseAt(grid2d->timestamp);
                     grid2d->centers.at(i) = cv::Vec2f(c->c(0), c->c(1));
+                }
+                if (Configor::Preference::Visualization) {
+                    InCmpPatternTracker::DrawTVEllipses(incmpTrackMat, verifiedCircles, grid2d);
+                    cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
+                    cv::waitKey(1);
                 }
                 ++inCompTrackedNum;
                 ++iter;
