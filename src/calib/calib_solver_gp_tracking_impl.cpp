@@ -318,7 +318,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             }
         }
         spdlog::info(
-            "complete grids: '{}', incomplete but tracked grids: {}, incomplete and not tracked "
+            "complete grids: {}, incomplete but tracked grids: {}, incomplete and not tracked "
             "grids: {}",
             compNum, inCompTrackedNum, inCompNotTrackedNum);
     }

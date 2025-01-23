@@ -80,9 +80,6 @@ protected:
                           const cv::Point2f& p2,
                           const cv::Point2f& p3,
                           const int pixelDist);
-
-    static std::pair<int, float> FindNearestPointKDTree(const std::vector<cv::Point2f>& points,
-                                                        const cv::Point2f& target);
 };
 }  // namespace ns_ekalibr
 

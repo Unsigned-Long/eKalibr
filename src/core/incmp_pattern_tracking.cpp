@@ -64,7 +64,7 @@ std::set<int> InCmpPatternTracker::Tracking(
     }
     int trackingLoopCount = 0;
     while (true) {
-        bool newIncmpGridTracked = false;
+        int newIncmpGridTrackedCount = 0;
         for (int i = 1; i < static_cast<int>(grid2ds.size()) - 3; i++) {
             auto grid1 = grid2ds.at(i), grid2 = grid2ds.at(i + 1), grid3 = grid2ds.at(i + 2);
             if (trackedGridIdx.count(grid1->id) == 0 ||  // 'grid1' is not tracked
@@ -80,6 +80,11 @@ std::set<int> InCmpPatternTracker::Tracking(
             }
             if (processedIncmpGridIds.count(gridToTrack->id) != 0) {
                 // this grid has been processed
+                continue;
+            }
+            if (static_cast<int>(gridToTrack->centers.size()) < cenNumThdForEachInCmpPattern) {
+                // no need to processed
+                processedIncmpGridIds.insert(gridToTrack->id);
                 continue;
             }
             if (!isAscendingOrder) {
@@ -125,21 +130,28 @@ std::set<int> InCmpPatternTracker::Tracking(
                 tvCirclesWithRawEvs.at(gridToTrack->id) = newRawEvsOfGridToTrack;
 
                 trackedGridIdx.insert(gridToTrack->id);
-                newIncmpGridTracked = true;
+
+                newIncmpGridTrackedCount += 1;
+                // break continuous tracking
                 i += 1;
+
+                spdlog::info("grid '{}' is tracked, with valid '{}'>'{}' centers.", gridToTrack->id,
+                             trackedCount, cenNumThdForEachInCmpPattern);
+            } else {
+                spdlog::warn("grid '{}' is not tracked: valid '{}'<'{}' centers.", gridToTrack->id,
+                             trackedCount, cenNumThdForEachInCmpPattern);
             }
 
             processedIncmpGridIds.insert(gridToTrack->id);
         }
         ++trackingLoopCount;
         isAscendingOrder = !isAscendingOrder;
-        if (!newIncmpGridTracked && trackingLoopCount >= 2) {
+        spdlog::info("'newIncmpGridTrackedCount' in this tracking loop: {}",
+                     newIncmpGridTrackedCount);
+        if (newIncmpGridTrackedCount == 0 && trackingLoopCount >= 2) {
             break;
         }
     }
-    spdlog::info("finished...");
-    std::cin.get();
-    std::cin.get();
 
     std::set<int> tackedIncmpGridIdx;
     for (const auto& grid2d : grid2ds) {
@@ -169,11 +181,6 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     assert(size == grid2->centers.size());
     assert(size == grid3->centers.size());
 
-    const auto& config = Configor::DataStream::EventTopics.at(topic);
-    auto IsPointInImgRange = [&config](const cv::Point2f& p) {
-        return p.x > 0.0 && p.y > 0.0 && p.x < config.Width - 1.0 && p.y < config.Height - 1.0;
-    };
-
     cv::Mat data(static_cast<int>(gridToTrack->centers.size()), 2, CV_32F);
     for (int i = 0; i < static_cast<int>(gridToTrack->centers.size()); ++i) {
         data.at<float>(i, 0) = gridToTrack->centers[i].x;
@@ -185,10 +192,10 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     std::vector<std::optional<std::pair<std::size_t, double>>> nearestPts(size, std::nullopt);
 
     for (int i = 0; i < size; i++) {
-        const auto &c1 = grid1->centers[i], c2 = grid2->centers[i], c3 = grid3->centers[i];
-        if (!IsPointInImgRange(c1) || !IsPointInImgRange(c2) || !IsPointInImgRange(c3)) {
+        if (!grid1->cenValidity[i] || !grid2->cenValidity[i] || !grid3->cenValidity[i]) {
             continue;
         }
+        const auto &c1 = grid1->centers[i], c2 = grid2->centers[i], c3 = grid3->centers[i];
 
         std::array<double, 3> tData{grid1->timestamp, grid2->timestamp, grid3->timestamp};
         std::array<double, 3> xData{c1.x, c2.x, c3.x};
@@ -266,7 +273,7 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     cv::hconcat(m3, m, mTmp2);
     cv::hconcat(mTmp1, mTmp2, mTmp1);
     cv::imshow("track 2d grid", mTmp1);
-    cv::waitKey(0);
+    cv::waitKey(1);
 #endif
     return incmpGridPatternIdx;
 }
@@ -276,7 +283,9 @@ cv::Mat InCmpPatternTracker::CreateSAE(const std::string& topic,
     const auto& config = Configor::DataStream::EventTopics.at(topic);
     auto sae = ActiveEventSurface::Create(config.Width, config.Height, 0.01);
     for (const auto& [tvEllipse, evs] : tvCirclesWithRawEvs) {
-        sae->GrabEvent(evs);
+        if (evs != nullptr) {
+            sae->GrabEvent(evs);
+        }
     }
     // CV_8UC1
     auto tsImg = sae->DecayTimeSurface(true, 0, Configor::Prior::DecayTimeOfActiveEvents);
@@ -330,29 +339,6 @@ void InCmpPatternTracker::DrawTrace(cv::Mat& img,
     for (int i = 0; i < 3; ++i) {
         DrawKeypointOnCVMat(img, cv::Point2d(xData[i], yData[i]), false, cv::Scalar(0, 255, 0));
     }
-}
-
-std::pair<int, float> InCmpPatternTracker::FindNearestPointKDTree(
-    const std::vector<cv::Point2f>& points, const cv::Point2f& target) {
-    if (points.empty()) {
-        throw std::invalid_argument("The point vector is empty.");
-    }
-
-    cv::Mat data(points.size(), 2, CV_32F);
-    for (size_t i = 0; i < points.size(); ++i) {
-        data.at<float>(i, 0) = points[i].x;
-        data.at<float>(i, 1) = points[i].y;
-    }
-
-    cv::flann::Index kdtree(data, cv::flann::KDTreeIndexParams(1));
-
-    cv::Mat query = (cv::Mat_<float>(1, 2) << target.x, target.y);
-    std::vector<int> indices(1);
-    std::vector<float> dists(1);
-
-    kdtree.knnSearch(query, indices, dists, 1);
-
-    return {indices[0], std::sqrt(dists[0])};
 }
 #undef VISUALIZATION_TRACKING
 }  // namespace ns_ekalibr
