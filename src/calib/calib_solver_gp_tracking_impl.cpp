@@ -309,10 +309,22 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 iter = grid2ds.erase(iter);
                 ++inCompNotTrackedNum;
             } else {
-                // todo: incomplete and tracked, refine circle to ellipse
-                // todo: clean 'rawEvsOfPattern', remove not related circles
-                // rawEvsOfPattern.erase(grid2d->id);
-                // iter = grid2ds.erase(iter);
+                // incomplete and tracked, refine circle to ellipse
+                auto &verifiedCircles = rawEvsOfPattern.at(grid2d->id);
+                for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                    if (!grid2d->cenValidity[i]) {
+                        continue;
+                    }
+                    // refine time-varying circle to time-varying ellipse
+                    verifiedCircles.at(i).first =
+                        EventCircleExtractor::RefineTimeVaryingCircleToEllipse(
+                            verifiedCircles.at(i).first,   // initialized time-varying circle
+                            verifiedCircles.at(i).second,  // events
+                            Configor::Prior::CircleExtractor.PointToCircleDistThd);
+                    // update the center
+                    auto c = verifiedCircles.at(i).first->EllipseAt(grid2d->timestamp);
+                    grid2d->centers.at(i) = cv::Vec2f(c->c(0), c->c(1));
+                }
                 ++inCompTrackedNum;
                 ++iter;
             }
@@ -322,6 +334,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             "grids: {}",
             compNum, inCompTrackedNum, inCompNotTrackedNum);
     }
+    cv::destroyAllWindows();
     std::cin.get();
 
     /**

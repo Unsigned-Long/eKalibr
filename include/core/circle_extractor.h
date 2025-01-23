@@ -128,6 +128,10 @@ public:
     [[nodiscard]] cv::Mat SAEMapExtractCircles() const { return imgExtractCircles; }
     [[nodiscard]] cv::Mat SAEMapExtractCirclesGrid() const { return imgExtractCirclesGrid; }
 
+    static TimeVaryingEllipsePtr RefineTimeVaryingCircleToEllipse(const TimeVaryingEllipsePtr& c,
+                                                                  const EventArrayPtr& ary,
+                                                                  double avgDistThd);
+
 protected:
     std::vector<std::pair<EventArrayPtr, EventArrayPtr>> ExtractPotentialCircleClusters(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
@@ -137,10 +141,6 @@ protected:
     static TimeVaryingEllipsePtr FitTimeVaryingCircle(const EventArrayPtr& ary1,
                                                       const EventArrayPtr& ary2,
                                                       double avgDistThd);
-
-    static TimeVaryingEllipsePtr RefineTimeVaryingCircleToEllipse(const TimeVaryingEllipsePtr& c,
-                                                                  const EventArrayPtr& ary,
-                                                                  double avgDistThd);
 
     template <typename Type>
     static void RemoveElemBasedOnIndices(std::vector<Type>& vec,

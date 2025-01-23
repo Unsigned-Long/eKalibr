@@ -66,10 +66,9 @@ protected:
     static cv::Mat CreateSAE(const std::string& topic,
                              const ExtractedCirclesVec& tvCirclesWithRawEvs);
 
-    static cv::Mat CreateSAEWithCircles(
-        const std::string& topic,
-        const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs,
-        const CircleGrid2DPtr& grid);
+    static cv::Mat CreateSAEWithCircles(const std::string& topic,
+                                        const ExtractedCirclesVec& tvCirclesWithRawEvs,
+                                        const CircleGrid2DPtr& grid);
 
     static void DrawTrace(cv::Mat& img,
                           double t1,

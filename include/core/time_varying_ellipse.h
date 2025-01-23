@@ -151,7 +151,7 @@ public:
     template <class Archive>
     void serialize(Archive& ar) {
         ar(CEREAL_NVP(st), CEREAL_NVP(et), CEREAL_NVP(cx), CEREAL_NVP(cy), CEREAL_NVP(mx),
-           CEREAL_NVP(my), CEREAL_NVP(theta));
+           CEREAL_NVP(my), CEREAL_NVP(theta), CEREAL_NVP(type));
     }
 };
 

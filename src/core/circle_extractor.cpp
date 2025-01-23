@@ -480,6 +480,7 @@ TimeVaryingEllipse::Ptr EventCircleExtractor::FitTimeVaryingCircle(const EventAr
 
 TimeVaryingEllipse::Ptr EventCircleExtractor::RefineTimeVaryingCircleToEllipse(
     const TimeVaryingEllipse::Ptr& c, const EventArrayPtr& ary, double avgDistThd) {
+    assert(c->type == TimeVaryingEllipse::TVType::CIRCLE);
     auto e = TimeVaryingEllipse::CreateTvEllipse(c->st, c->et, c->cx, c->cy, c->mx, c->mx,
                                                  Sophus::SO2d());
     e->FittingTimeVaryingEllipse(ary, avgDistThd);
