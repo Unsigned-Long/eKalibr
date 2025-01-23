@@ -52,7 +52,6 @@ void CalibSolver::Process() {
      */
     this->GridPatternTracking(true, false);
     _evMes.clear();  // "we don't talk anymore...", I mean the '_evMes'.
-    std::cin.get();
 
     /**
      * we want to keep al added entities in the viewer, and do not just keep a const count of them

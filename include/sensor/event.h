@@ -33,6 +33,7 @@
 #include "Eigen/Dense"
 #include "tiny-viewer/core/utils.hpp"
 #include "cereal/cereal.hpp"
+#include "ctraj/utils/eigen_utils.hpp"
 
 namespace ns_ekalibr {
 class Event {

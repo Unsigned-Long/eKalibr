@@ -288,8 +288,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         auto trackedIncmpGridIds = InCmpPatternTracker::Tracking(
             topic,
             curPattern,  // the total extracted grid patterns, including cmp and incmp ones
-            static_cast<int>(gridSize * 0.4),  // for those tracked incmp grids, their center num
-                                               // should be larger than this value
+            // for those tracked incmp grids, their center num should be larger than this value
+            std::max(static_cast<int>(gridSize * 0.4), 4),
             avgDist * 0.15,  // only the distance smaller than this val would be considered tracked,
             rawEvsOfPattern);
 

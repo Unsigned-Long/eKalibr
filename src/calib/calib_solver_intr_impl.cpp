@@ -106,7 +106,9 @@ std::pair<cv::Mat, cv::Mat> CalibSolver::EstimateCameraIntrinsicsInitials(
     std::vector<std::vector<cv::Point2f>> gridPoints2DVec;
     gridPoints2DVec.reserve(patterns->GetGrid2d().size());
     for (const auto &grid2d : patterns->GetGrid2d()) {
-        gridPoints2DVec.push_back(grid2d->centers);
+        if (grid2d->isComplete) {
+            gridPoints2DVec.push_back(grid2d->centers);
+        }
     }
     const std::size_t GRID3D_COUNT_PER_ATTEMPT =
         std::min(FRAME_COUNT_PER_ATTEMPT, static_cast<int>(patterns->GetGrid2d().size()));
@@ -277,15 +279,32 @@ std::pair<std::vector<ns_ctraj::Posed>, std::map<int, int>> CalibSolver::Estimat
     int idx = 0;
     for (const auto &grid2d : patterns->GetGrid2d()) {
         bar->progress(idx++, static_cast<int>(patterns->GetGrid2d().size()));
+        // 3D-2D correspondences
+        std::vector<cv::Point3f> pt3d;
+        std::vector<cv::Point2f> cen2d;
+        if (grid2d->isComplete) {
+            pt3d = patterns->GetGrid3d()->points;
+            cen2d = grid2d->centers;
+        } else {
+            pt3d.reserve(grid2d->centers.size());
+            cen2d.reserve(grid2d->centers.size());
+            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); i++) {
+                if (grid2d->cenValidity.at(i)) {
+                    cen2d.push_back(grid2d->centers.at(i));
+                    pt3d.push_back(patterns->GetGrid3d()->points.at(i));
+                }
+            }
+        }
+
         // The estimated pose is thus the rotation (rvec) and the translation (tvec) vectors
         // that allow transforming a 3D point expressed in the world frame into the camera
         // frame.
         cv::Mat rVecs, tVecs;
         bool res = cv::solvePnP(
             // Array of object points in the object coordinate space
-            patterns->GetGrid3d()->points,
+            pt3d,
             // Array of corresponding image points
-            grid2d->centers,
+            cen2d,
             // camera intrinsics
             cameraMatrix,
             // Input vector of distortion coefficients
@@ -361,6 +380,9 @@ void CalibSolver::RefineCameraIntrinsicsInitials(const std::string &topic, bool 
 
     for (const auto &grid2d : grid2dVec) {
         for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+            if (!grid2d->cenValidity.at(i)) {
+                continue;
+            }
             const auto &center = grid2d->centers.at(i);
             const Eigen::Vector2d pixel(center.x, center.y);
 
