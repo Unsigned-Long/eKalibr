@@ -367,8 +367,10 @@ void CalibSolver::RefineCameraIntrinsicsInitials(const std::string &topic, bool 
                  OptOption::OPT_CAM_DIST_COEFFS;
     }
 
-    spdlog::info("refine intrinsics using non-linear least-squares optimization for camera '{}'...",
-                 topic);
+    spdlog::info(
+        "refine intrinsics and poses using non-linear least-squares optimization for camera "
+        "'{}'...",
+        topic);
     auto estimator = Estimator::Create(_parMgr);
 
     const auto &gridIdToPoseIdxMap = _gridIdToPoseIdxMap.at(topic);

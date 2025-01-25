@@ -297,6 +297,9 @@ void CalibSolver::CreateVisualProjPairsSyncPointBased() {
 
         for (const auto &grid2d : grid2dVec) {
             for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                if (!grid2d->cenValidity.at(i)) {
+                    continue;
+                }
                 const auto &center = grid2d->centers.at(i);
                 const Eigen::Vector2d pixel(center.x, center.y);
 
@@ -319,6 +322,9 @@ void CalibSolver::CreateVisualProjPairsAsyncPointBased(double dt) {
             // correspondences of each grid
             for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
                 const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
+                if (tvCircle == nullptr) {
+                    continue;
+                }
                 for (double t = tvCircle->st; t < tvCircle->et; t += dt) {
                     const auto &point3d = _grid3d->points.at(i);
                     const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
@@ -351,6 +357,9 @@ void CalibSolver::CreateVisualProjPairsAsyncCircleBased(std::size_t pairCountPer
             // correspondences of each grid
             for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
                 const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
+                if (tvCircle == nullptr) {
+                    continue;
+                }
                 const auto &evs = evAry->GetEvents();
                 const std::size_t sampleCount = std::min(pairCountPerTvCircle, evs.size());
                 auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
