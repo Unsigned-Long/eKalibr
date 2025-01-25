@@ -94,9 +94,9 @@ std::set<int> InCmpPatternTracker::Tracking(
                 grid1 = grid3;
                 grid3 = gridTmp;
             }
-            spdlog::info("'isAscendingOrder': {}, try to track 2d grid: [{}, {}, {}]->[{}]",
-                         static_cast<int>(isAscendingOrder), grid1->id, grid2->id, grid3->id,
-                         gridToTrack->id);
+            // spdlog::info("'isAscendingOrder': {}, try to track 2d grid: [{}, {}, {}]->[{}]",
+            //              static_cast<int>(isAscendingOrder), grid1->id, grid2->id, grid3->id,
+            //              gridToTrack->id);
 
             auto incmpGridPatternIdx = TryToTrackInCmpGridPattern(
                 topic, grid1, grid2, grid3, gridToTrack, distThdToTrackCen, tvCirclesWithRawEvs);
@@ -137,19 +137,19 @@ std::set<int> InCmpPatternTracker::Tracking(
                 // break continuous tracking
                 i += 1;
 
-                spdlog::info("grid '{}' is tracked, with valid '{}'>'{}' centers.", gridToTrack->id,
-                             trackedCount, cenNumThdForEachInCmpPattern);
+                // spdlog::info("grid '{}' is tracked, with valid '{}'>'{}' centers.",
+                // gridToTrack->id, trackedCount, cenNumThdForEachInCmpPattern);
             } else {
-                spdlog::warn("grid '{}' is not tracked: valid '{}'<'{}' centers.", gridToTrack->id,
-                             trackedCount, cenNumThdForEachInCmpPattern);
+                // spdlog::warn("grid '{}' is not tracked: valid '{}'<'{}' centers.",
+                // gridToTrack->id, trackedCount, cenNumThdForEachInCmpPattern);
             }
 
             processedIncmpGridIds.insert(gridToTrack->id);
         }
         ++trackingLoopCount;
         isAscendingOrder = !isAscendingOrder;
-        spdlog::info("'newIncmpGridTrackedCount' in this tracking loop: {}",
-                     newIncmpGridTrackedCount);
+        // spdlog::info("'newIncmpGridTrackedCount' in this tracking loop: {}",
+        //              newIncmpGridTrackedCount);
         if (newIncmpGridTrackedCount == 0 && trackingLoopCount >= 2) {
             break;
         }
