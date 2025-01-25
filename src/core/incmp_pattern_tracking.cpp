@@ -35,7 +35,7 @@
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include "util/utils_tpl.hpp"
-
+#include "core/circle_extractor.h"
 #include <core/time_varying_ellipse.h>
 #include <opencv2/flann/flann.hpp>
 #include <util/status.hpp>
@@ -300,30 +300,8 @@ cv::Mat InCmpPatternTracker::CreateSAEWithCircles(const std::string& topic,
                                                   const ExtractedCirclesVec& tvCirclesWithRawEvs,
                                                   const CircleGrid2DPtr& grid) {
     auto m = CreateSAE(topic, tvCirclesWithRawEvs);
-    DrawTVEllipses(m, tvCirclesWithRawEvs, grid);
+    EventCircleExtractor::DrawTimeVaryingEllipses(m, grid->timestamp, tvCirclesWithRawEvs);
     return m;
-}
-
-void InCmpPatternTracker::DrawTVEllipses(cv::Mat& m,
-                                         const ExtractedCirclesVec& tvCirclesWithRawEvs,
-                                         const CircleGrid2DPtr& grid) {
-    for (int i = 0; i < static_cast<int>(grid->centers.size()); i++) {
-        auto tvEllipse = tvCirclesWithRawEvs.at(i).first;
-        if (tvEllipse == nullptr) {
-            continue;
-        }
-        if (tvEllipse->type == TimeVaryingEllipse::TVType::ELLIPSE) {
-            auto e = tvEllipse->EllipseAt(grid->timestamp);
-            constexpr double RAD_DEG = 180.0 / M_PI;
-            cv::ellipse(m, cv::Point2d(e->c(0), e->c(1)), cv::Size2d(e->r(0), e->r(1)),
-                        -e->theta.log() * RAD_DEG, 0.0, 360.0, cv::Scalar(0, 255, 0));
-            DrawKeypointOnCVMat(m, e->c, false, cv::Scalar(0, 255, 0));
-        } else if (tvEllipse->type == TimeVaryingEllipse::TVType::CIRCLE) {
-            auto c = tvEllipse->EllipseAt(grid->timestamp);
-            cv::circle(m, cv::Point2d(c->c(0), c->c(1)), c->AvgRadius(), cv::Scalar(0, 0, 255), 1);
-            DrawKeypointOnCVMat(m, c->c, false, cv::Scalar(0, 0, 255));
-        }
-    }
 }
 
 void InCmpPatternTracker::DrawTrace(cv::Mat& img,

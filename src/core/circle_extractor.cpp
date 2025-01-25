@@ -177,9 +177,7 @@ EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
 
     if (visualization) {
         for (const auto& c : circles) {
-            cv::circle(imgExtractCircles, cv::Point2d(c->c(0), c->c(1)), c->AvgRadius(),
-                       cv::Scalar(0, 0, 255), 1);
-            DrawKeypointOnCVMat(imgExtractCircles, c->c, false, cv::Scalar(0, 0, 255));
+            TimeVaryingEllipse::Draw(imgExtractCircles, c, TimeVaryingEllipse::TVType::CIRCLE);
         }
     }
 
@@ -290,14 +288,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
             }
 
             if (visualization) {
-                for (const auto& [tvEllipse, evs] : verifiedCircles) {
-                    auto e = tvEllipse->EllipseAt(nfPack->timestamp);
-                    constexpr double RAD_DEG = 180.0 / M_PI;
-                    cv::ellipse(imgExtractCircles, cv::Point2d(e->c(0), e->c(1)),
-                                cv::Size2d(e->r(0), e->r(1)), -e->theta.log() * RAD_DEG, 0.0, 360.0,
-                                cv::Scalar(0, 255, 0));
-                    DrawKeypointOnCVMat(imgExtractCircles, e->c, false, cv::Scalar(0, 255, 0));
-                }
+                DrawTimeVaryingEllipses(imgExtractCircles, nfPack->timestamp, verifiedCircles);
             }
         }
 
@@ -343,6 +334,17 @@ void EventCircleExtractor::Visualization(bool save) const {
                         std::to_string(count) + ".png",
                     imgExtractCirclesGrid);
         ++count;
+    }
+}
+
+void EventCircleExtractor::DrawTimeVaryingEllipses(cv::Mat& mat,
+                                                   double timestamp,
+                                                   const ExtractedCirclesVec& circles) {
+    for (const auto& [tvEllipse, evs] : circles) {
+        if (tvEllipse == nullptr || tvEllipse->type == TimeVaryingEllipse::TVType::NONE) {
+            continue;
+        }
+        tvEllipse->Draw(mat, timestamp);
     }
 }
 

@@ -117,6 +117,9 @@ public:
 
     void Visualization(bool save = false) const;
 
+    static void DrawTimeVaryingEllipses(cv::Mat& mat,
+                                       double timestamp, const ExtractedCirclesVec& circles);
+
     void InitMatsForVisualization(const EventNormFlow::NormFlowPack::Ptr& nfPack);
 
 public:

@@ -34,6 +34,8 @@
 #include "ceres/ceres.h"
 #include "sophus/ceres_manifold.hpp"
 
+#include <opencv2/imgproc.hpp>
+
 namespace ns_ekalibr {
 
 Ellipse::Ellipse(const Eigen::Vector2d& c, const Eigen::Vector2d& r, const Sophus::SO2d& theta)
@@ -147,6 +149,54 @@ Ellipse::Ptr TimeVaryingEllipse::EllipseAt(double t) const {
         } break;
     }
     return {};
+}
+
+void TimeVaryingEllipse::Draw(cv::Mat& mat,
+                              double timestamp,
+                              const std::optional<cv::Scalar>& color) const {
+    assert(type != TVType::NONE);
+    assert(mat.type() == CV_8UC3);
+
+    Draw(mat, this->EllipseAt(timestamp), this->type, color);
+}
+
+void TimeVaryingEllipse::Draw(cv::Mat& mat,
+                              const Ellipse::Ptr& e,
+                              TVType type,
+                              const std::optional<cv::Scalar>& color) {
+    assert(type != TVType::NONE);
+    assert(mat.type() == CV_8UC3);
+
+    cv::Scalar colorVal;
+    if (color.has_value()) {
+        colorVal = *color;
+    } else {
+        switch (type) {
+            case TVType::ELLIPSE: {
+                colorVal = cv::Scalar(0, 255, 0);
+            } break;
+            case TVType::CIRCLE: {
+                colorVal = cv::Scalar(0, 0, 255);
+            } break;
+            default: {
+                colorVal = cv::Scalar(255, 255, 255);
+            }
+        }
+    }
+    switch (type) {
+        case TVType::ELLIPSE: {
+            constexpr double RAD_DEG = 180.0 / M_PI;
+            cv::ellipse(mat, cv::Point2d(e->c(0), e->c(1)), cv::Size2d(e->r(0), e->r(1)),
+                        -e->theta.log() * RAD_DEG, 0.0, 360.0, colorVal);
+            DrawKeypointOnCVMat(mat, e->c, false, colorVal);
+        } break;
+        case TVType::CIRCLE: {
+            cv::circle(mat, cv::Point2d(e->c(0), e->c(1)), e->AvgRadius(), colorVal, 1);
+            DrawKeypointOnCVMat(mat, e->c, false, colorVal);
+        } break;
+        default: {
+        }
+    }
 }
 
 void TimeVaryingEllipse::FitTimeVaryingCircle(const EventArrayPtr& ary1,

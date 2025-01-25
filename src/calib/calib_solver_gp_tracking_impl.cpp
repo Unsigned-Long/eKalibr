@@ -336,8 +336,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                     grid2d->centers.at(i) = cv::Vec2f(c->c(0), c->c(1));
                 }
                 if (Configor::Preference::Visualization) {
-                    InCmpPatternTracker::DrawTVEllipses(incmpTrackMat, verifiedCircles, grid2d);
-                    cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
+                    EventCircleExtractor::DrawTimeVaryingEllipses(incmpTrackMat, grid2d->timestamp,
+                                                                  verifiedCircles);
+                        cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
                     cv::waitKey(1);
                 }
                 ++inCompTrackedNum;

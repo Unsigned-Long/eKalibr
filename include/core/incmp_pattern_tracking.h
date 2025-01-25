@@ -57,10 +57,6 @@ public:
                                         const ExtractedCirclesVec& tvCirclesWithRawEvs,
                                         const CircleGrid2DPtr& grid);
 
-    static void DrawTVEllipses(cv::Mat& m,
-                            const ExtractedCirclesVec& tvCirclesWithRawEvs,
-                            const CircleGrid2DPtr& grid);
-
 protected:
     static std::vector<int> TryToTrackInCmpGridPattern(
         const std::string& topic,

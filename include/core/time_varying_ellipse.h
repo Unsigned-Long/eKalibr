@@ -119,6 +119,15 @@ public:
 
     Ellipse::Ptr EllipseAt(double t) const;
 
+    void Draw(cv::Mat& mat,
+              double timestamp,
+              const std::optional<cv::Scalar>& color = std::nullopt) const;
+
+    static void Draw(cv::Mat& mat,
+                     const Ellipse::Ptr& e,
+                     TVType type,
+                     const std::optional<cv::Scalar>& color = std::nullopt);
+
 public:
     void FitTimeVaryingCircle(const EventArrayPtr& ary1,
                               const EventArrayPtr& ary2,
