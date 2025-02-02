@@ -40,11 +40,12 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
                                                          double SEG_NEIGHBOR,
                                                          double SEG_LENGTH) {
     if (onlyRefCam) {
-        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic, false);
     } else {
-        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {});
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {}, false);
     }
-    const double dtRoughSpline = Configor::Prior::DecayTimeOfActiveEvents * 10.0;
+    // SEG_NEIGHBOR[Configor::Prior::DecayTimeOfActiveEvents * 5.0] * 2.0
+    const double dtRoughSpline = SEG_NEIGHBOR * 2.0;
     this->CreateSplineSegments(dtRoughSpline, dtRoughSpline);
     const auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
 
@@ -60,16 +61,15 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
         for (const auto &pose : camPoseVec) {
             double time = pose.timeStamp + TO_CjToCr;
             auto idx = this->IsTimeInValidSegment(time);
-            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            if (idx == std::nullopt) {
                 continue;
             }
             // from {Cr} to {W}
             auto SE3_CrToW = pose.se3() * SE3_CrToCj;
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, time, SE3_CrToW.so3(),
-                                        OptOption::OPT_SO3_SPLINE, 10.0);
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, time,
-                                             SE3_CrToW.translation(), OptOption::OPT_SCALE_SPLINE,
-                                             10.0);
+            estimator->AddSo3Constraint(_splineSegments.at(*idx).first, time, SE3_CrToW.so3(), opt,
+                                        10.0);
+            estimator->AddPositionConstraint(_splineSegments.at(*idx).second, time,
+                                             SE3_CrToW.translation(), opt, 10.0);
         }
     }
     for (auto &[so3Spline, posSpline] : _splineSegments) {
@@ -82,12 +82,13 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
     // fitting small-knot-distance segments
     auto roughSplineSegments = _splineSegments;
     if (onlyRefCam) {
-        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic, false);
     } else {
-        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {});
+        this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {}, false);
     }
-    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
-                               Configor::Prior::KnotTimeDist.ScaleSpline);
+    // Configor::Prior::DecayTimeOfActiveEvents * 5.0
+    const double dtDelicateSpline = Configor::Prior::DecayTimeOfActiveEvents * 5.0;
+    this->CreateSplineSegments(dtDelicateSpline, dtDelicateSpline);
 
     spdlog::info(
         "fitting small-knot-distance spline segments using initialized rough spline "
@@ -96,18 +97,18 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
     for (const auto &[so3Spline, posSpline] : roughSplineSegments) {
         auto st = std::min(so3Spline.MinTime(), posSpline.MinTime());
         auto et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
-        for (double t = st; t < et; t += 0.005) {
+        for (double t = st; t < et; t += Configor::Prior::DecayTimeOfActiveEvents * 0.5) {
             if (!so3Spline.TimeStampInRange(t) || !posSpline.TimeStampInRange(t)) {
                 continue;
             }
             auto idx = this->IsTimeInValidSegment(t);
-            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+            if (idx == std::nullopt) {
                 continue;
             }
             const auto so3 = so3Spline.Evaluate(t);
             const Eigen::Vector3d pos = posSpline.Evaluate(t);
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, t, so3, opt, 1.0);
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, t, pos, opt, 1.0);
+            estimator->AddSo3Constraint(_splineSegments.at(*idx).first, t, so3, opt, 1.0);
+            estimator->AddPositionConstraint(_splineSegments.at(*idx).second, t, pos, opt, 1.0);
         }
     }
     for (auto &[so3Spline, posSpline] : _splineSegments) {
@@ -130,8 +131,8 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
         return;
     }
 
-    const double SEG_NEIGHBOR = Configor::Prior::DecayTimeOfActiveEvents * 2.5; /*neighbor*/
-    const double SEG_LENGTH = Configor::Prior::DecayTimeOfActiveEvents * 5;     /*length*/
+    const double SEG_NEIGHBOR = Configor::Prior::DecayTimeOfActiveEvents * 5; /*neighbor*/
+    const double SEG_LENGTH = Configor::Prior::DecayTimeOfActiveEvents * 50;  /*length*/
 
     /**
      * Here, we choose the event camera with the longest total duration as the reference camera
@@ -139,27 +140,28 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
      */
     {
         _refEvTopic = Configor::DataStream::EventTopics.cbegin()->first;
-        double timeSum = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
-        if (Configor::DataStream::EventTopics.size() > 1) {
-            for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-                if (topic == _refEvTopic) {
-                    continue;
-                }
-                double ts = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, topic);
-                if (ts > timeSum) {
-                    _refEvTopic = topic;
-                    timeSum = ts;
-                }
+        double timeSum =
+            this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic, false);
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            if (topic == _refEvTopic) {
+                continue;
             }
-            // update the '_validTimeSegments' as those of the '_refEvTopic'
-            this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic);
+            double ts = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, topic, false);
+            if (ts > timeSum) {
+                _refEvTopic = topic;
+                timeSum = ts;
+            }
         }
+        // update the '_validTimeSegments' as those of the '_refEvTopic'
+        timeSum = this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, _refEvTopic, true);
         spdlog::info("choose camera '{}' as the reference camera, tracked age: {:.3f}", _refEvTopic,
                      timeSum);
     }
 
     // initialize the spline segments using poses from the reference camera
     this->InitSplineSegmentsOfRefCamUsingCamPose(true, SEG_NEIGHBOR, SEG_LENGTH);
+
+    std::cin.get();
 
     // create visual projection pairs
     this->CreateVisualProjPairsAsyncPointBased();
@@ -212,13 +214,12 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
 
                 auto sIdx = IsTimeInValidSegment(sPose.timeStamp + TO_CjToBr);
                 auto eIdx = IsTimeInValidSegment(ePose.timeStamp + TO_CjToBr);
-                if (sIdx < 0 || sIdx >= static_cast<int>(_splineSegments.size()) || eIdx < 0 ||
-                    eIdx >= static_cast<int>(_splineSegments.size()) || sIdx != eIdx) {
+                if (sIdx == std::nullopt || eIdx == std::nullopt || *sIdx != *eIdx) {
                     continue;
                 }
 
                 estimator->AddHandEyeTransformAlignment(
-                    _splineSegments.at(sIdx).first, _splineSegments.at(sIdx).second,
+                    _splineSegments.at(*sIdx).first, _splineSegments.at(*sIdx).second,
                     topic,            // the ros topic
                     sPose.timeStamp,  // the time of start rotation stamped by the camera
                     ePose.timeStamp,  // the time of end rotation stamped by the camera

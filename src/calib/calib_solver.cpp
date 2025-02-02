@@ -267,18 +267,24 @@ CalibSolver::So3SplineType CalibSolver::CreateSo3Spline(double st, double et, do
     auto so3SplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SO3_SPLINE,
                                               ns_ctraj::SplineType::So3Spline, st, et, so3Dt);
     auto bundle = SplineBundleType::Create({so3SplineInfo});
-    spdlog::info("create so3 spline: start time: '{:07.3f}', end time: '{:07.3f}', dt : '{:07.3f}'",
-                 st, et, so3Dt);
-    return bundle->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    const auto &so3Spline = bundle->GetSo3Spline(Configor::Preference::SO3_SPLINE);
+    spdlog::info(
+        "create so3 spline: start time: '{:07.3f}:[{:07.3f}]', end time: '{:07.3f}:[{:07.3f}]', dt "
+        ": '{:07.3f}'",
+        so3Spline.MinTime(), st, so3Spline.MaxTime(), et, so3Dt);
+    return so3Spline;
 }
 
 CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st, double et, double posDt) {
     auto posSplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SCALE_SPLINE,
                                               ns_ctraj::SplineType::RdSpline, st, et, posDt);
     auto bundle = SplineBundleType::Create({posSplineInfo});
-    spdlog::info("create pos spline: start time: '{:07.3f}', end time: '{:07.3f}', dt : '{:07.3f}'",
-                 st, et, posDt);
-    return bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+    const auto &posSpline = bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
+    spdlog::info(
+        "create pos spline: start time: '{:07.3f}:[{:07.3f}]', end time: '{:07.3f}:[{:07.3f}]', dt "
+        ": '{:07.3f}'",
+        posSpline.MinTime(), st, posSpline.MaxTime(), et, posDt);
+    return posSpline;
 }
 
 std::optional<int> CalibSolver::IsTimeInValidSegment(double timeByBr) const {
@@ -431,8 +437,11 @@ void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {
     _splineSegments.clear();
     _splineSegments.reserve(_validTimeSegments.size());
     for (auto &[st, et] : _validTimeSegments) {
-        auto so3Spline = CreateSo3Spline(st, et, dtSo3);
-        auto posSpline = CreatePosSpline(st, et, dtPos);
+        // add padding
+        assert(st + dtSo3 < et - dtSo3);
+        assert(st + dtPos < et - dtPos);
+        auto so3Spline = CreateSo3Spline(st + dtSo3, et - dtSo3, dtSo3);
+        auto posSpline = CreatePosSpline(st + dtPos, et - dtPos, dtPos);
         _splineSegments.emplace_back(so3Spline, posSpline);
 
         st = std::min(so3Spline.MinTime(), posSpline.MinTime());
