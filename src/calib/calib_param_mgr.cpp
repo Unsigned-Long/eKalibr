@@ -130,7 +130,7 @@ void CalibParamManager::ShowParamStatus() {
     STREAM_PACK(ITEM("calibration parameters") << " --")
     STREAM_PACK(std::string(n, '-'))
 
-    if (!Configor::DataStream::IMUTopics.empty()) {
+    if (!Configor::DataStream::IMUTopics.empty() || Configor::DataStream::EventTopics.size() > 1) {
         // -------------------------
         STREAM_PACK(ITEM("EXTRI"))
         // -------------------------

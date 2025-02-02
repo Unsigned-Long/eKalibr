@@ -161,30 +161,31 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
     // initialize the spline segments using poses from the reference camera
     this->InitSplineSegmentsOfRefCamUsingCamPose(true, SEG_NEIGHBOR, SEG_LENGTH);
 
-    std::cin.get();
-
-    // create visual projection pairs
-    this->CreateVisualProjPairsAsyncPointBased();
-
     /**
      * We use batch optimization to refine the spline of the reference event camera.
      * Modify: '_splineSegments'
      */
     {
+        // create visual projection pairs
+        this->CreateVisualProjPairsAsyncPointBased();
+
         auto estimator = Estimator::Create(_parMgr);
         spdlog::info(
-            "use circle-based batch optimization to refine the spline segments of of the reference "
-            "event camera...");
+            "use 'AsyncPointBased' batch optimization to refine the spline segments of the "
+            "reference event camera...");
         auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
-        // add circle-based visual projection pairs
+        // add visual projection pairs
         this->AddVisualProjPairsAsyncPointBasedToSplineSegments(estimator, _refEvTopic, opt, 1.0);
+
         for (auto &[so3Spline, posSpline] : _splineSegments) {
-            estimator->AddSo3LinearConstraint(so3Spline, OptOption::OPT_SO3_SPLINE, 50.0);
-            estimator->AddPosLinearConstraint(posSpline, OptOption::OPT_SCALE_SPLINE, 50.0);
+            estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
+            estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
         }
+
         auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
+    std::cin.get();
 
     /**
      * initialize extrinsics and time offsets of other event cameras
@@ -221,10 +222,10 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
                 estimator->AddHandEyeTransformAlignment(
                     _splineSegments.at(*sIdx).first, _splineSegments.at(*sIdx).second,
                     topic,            // the ros topic
-                    sPose.timeStamp,  // the time of start rotation stamped by the camera
-                    ePose.timeStamp,  // the time of end rotation stamped by the camera
-                    sPose.se3(),      // the start rotation
-                    ePose.se3(),      // the end rotation
+                    sPose.timeStamp,  // the time of start transformation stamped by the camera
+                    ePose.timeStamp,  // the time of end transformation stamped by the camera
+                    sPose.se3(),      // the start transformation
+                    ePose.se3(),      // the end transformation
                     opt,              // the optimization option
                     weight            // the weight
                 );
@@ -239,12 +240,17 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
     /**
      * extend the spline segments from all cameras
      */
-    std::array<OptOption, 1> optionAry = {
+    // initialize the spline segments using poses from all cameras
+    // this->InitSplineSegmentsOfRefCamUsingCamPose(false, SEG_NEIGHBOR, SEG_LENGTH);
+
+    // create visual projection pairs
+    this->CreateVisualProjPairsAsyncPointBased();
+
+    std::array<OptOption, 2> optionAry = {
         // the first one
-        OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr
+        OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr,
         // the second one (append to last)
-        // OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE
-    };
+        OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE};
 
     std::vector options(optionAry.size(), OptOption::NONE);
     for (int i = 0; i < static_cast<int>(optionAry.size()); ++i) {
@@ -266,6 +272,10 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
             auto s = this->AddVisualProjPairsAsyncPointBasedToSplineSegments(estimator, topic,
                                                                              option, {});
             spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
+        }
+        for (auto &[so3Spline, posSpline] : _splineSegments) {
+            estimator->AddRegularizationL2Constraint(so3Spline, option, 1E-3);
+            estimator->AddRegularizationL2Constraint(posSpline, option, 1E-3);
         }
         // make this problem full rank
         estimator->SetEvCamParamsConstant(_refEvTopic);
