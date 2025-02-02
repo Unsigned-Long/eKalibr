@@ -102,10 +102,13 @@ void CalibSolverIO::SaveVisualReprojError() const {
         for (const auto &grid2d : patterns->GetGrid2d()) {
             auto SE3_WtoCam = curCamPoses.at(curGridIdToPoseIdxMap.at(grid2d->id)).se3().inverse();
             auto &errorVec = residuals[grid2d->id];
-            errorVec.resize(grid2d->centers.size());
+            errorVec.reserve(grid2d->centers.size());
 
             for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
                 const auto &center = grid2d->centers.at(i);
+                if (!grid2d->cenValidity.at(i)) {
+                    continue;
+                }
                 const Eigen::Vector2d pixel(center.x, center.y);
 
                 const auto &point3d = patterns->GetGrid3d()->points.at(i);
