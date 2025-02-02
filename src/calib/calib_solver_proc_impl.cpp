@@ -73,8 +73,6 @@ void CalibSolver::Process() {
      * calibration, such as spatiotemporal calibration for multi-camera systems and event-inertial
      * systems, please stay tuned.
      */
-    _solveFinished = true;
-    return;
 
     /**
      * calibrate spatiotemporal parameters of events camera
@@ -84,6 +82,9 @@ void CalibSolver::Process() {
         this->EvCamSpatialTemporalCalib();
         _parMgr->ShowParamStatus();
     }
+
+    _solveFinished = true;
+    return;
 
     if (Configor::DataStream::IMUTopics.empty()) {
         _solveFinished = true;

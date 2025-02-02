@@ -185,7 +185,6 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
         auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
-    std::cin.get();
 
     /**
      * initialize extrinsics and time offsets of other event cameras
