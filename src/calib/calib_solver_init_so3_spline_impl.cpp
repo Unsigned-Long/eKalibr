@@ -29,6 +29,7 @@
 #include "calib/calib_solver.h"
 #include "calib/estimator.h"
 #include "spdlog/spdlog.h"
+#include "calib/calib_param_mgr.h"
 
 namespace ns_ekalibr {
 
@@ -84,4 +85,31 @@ void CalibSolver::InitSo3Spline() const {
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 }
+
+void CalibSolver::InitSo3SplineSegments() {
+    // fitting so3 segments
+    spdlog::info("fitting so3 part of spline segments...");
+    auto estimator = Estimator::Create(_parMgr);
+    for (const auto &[topic, poseVec] : _camPoses) {
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto &SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
+
+        for (const auto &pose : poseVec) {
+            auto idx = this->IsTimeInValidSegment(pose.timeStamp + TO_CjToBr);
+            if (idx == std::nullopt) {
+                continue;
+            }
+            Sophus::SO3d SO3_BrToW = pose.so3 /*from camera to world*/ * SO3_CjToBr.inverse();
+            estimator->AddSo3Constraint(_splineSegments.at(*idx).first, pose.timeStamp + TO_CjToBr,
+                                        SO3_BrToW, OptOption::OPT_SO3_SPLINE, 10.0);
+        }
+    }
+    AddGyroFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic,
+                                  OptOption::OPT_SO3_SPLINE, 0.1, /*weight*/
+                                  100 /*down sampling rate*/);
+
+    auto sum = estimator->Solve(_ceresOption, _priori);
+    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+}
+
 }  // namespace ns_ekalibr

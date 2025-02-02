@@ -199,7 +199,8 @@ protected:
 
     double BreakTimelineToSegments(double maxNeighborThd,
                                    double maxLengthThd,
-                                   const std::optional<std::string> &evTopic = {});
+                                   const std::optional<std::string> &evTopic = {},
+                                   bool optInfo = true);
 
     void CreateSplineSegments(double dtSo3, double dtPos);
 
@@ -207,7 +208,7 @@ protected:
 
     void InitPosSpline() const;
 
-    int IsTimeInValidSegment(double timeByBr) const;
+    std::optional<int> IsTimeInValidSegment(double timeByBr) const;
 
     void CreateVisualProjPairsSyncPointBased();
 

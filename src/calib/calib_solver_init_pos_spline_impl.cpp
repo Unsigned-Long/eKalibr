@@ -52,12 +52,12 @@ void CalibSolver::InitPosSpline() const {
             const double timeByBr = pose.timeStamp + TO_CjToBr;
 
             auto idx = IsTimeInValidSegment(timeByBr);
-            if (idx < 0 || idx >= static_cast<int>(_validTimeSegments.size())) {
+            if (idx == std::nullopt) {
                 continue;
             }
 
             const Sophus::SE3d SE3_BrToW = pose.se3() * SE3_BrToCj;
-            estimator->AddPositionConstraint(_splineSegments.at(idx).second, timeByBr,
+            estimator->AddPositionConstraint(_splineSegments.at(*idx).second, timeByBr,
                                              SE3_BrToW.translation(), optOption, 10.0);
         }
     }

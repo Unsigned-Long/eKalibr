@@ -77,10 +77,10 @@ std::size_t CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estim
         }
 
         auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        if (idx == std::nullopt) {
             continue;
         }
-        estimator->AddIMUGyroMeasurement(_splineSegments.at(idx).first, frame, imuTopic, option,
+        estimator->AddIMUGyroMeasurement(_splineSegments.at(*idx).first, frame, imuTopic, option,
                                          weight);
         ++count;
     }
@@ -107,11 +107,11 @@ std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estim
         }
 
         auto idx = this->IsTimeInValidSegment(frame->GetTimestamp() + To_BiToBr);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        if (idx == std::nullopt) {
             continue;
         }
-        estimator->AddIMUAcceMeasurement(_splineSegments.at(idx).first,
-                                         _splineSegments.at(idx).second, frame, imuTopic, option,
+        estimator->AddIMUAcceMeasurement(_splineSegments.at(*idx).first,
+                                         _splineSegments.at(*idx).second, frame, imuTopic, option,
                                          weight);
         ++count;
     }
@@ -129,12 +129,12 @@ std::size_t CalibSolver::AddVisualProjPairsSyncPointBasedToSplineSegments(
 
     for (const auto &pair : _evSyncPointProjPairs.at(camTopic)) {
         auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        if (idx == std::nullopt) {
             continue;
         }
-        estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
-                                             _splineSegments.at(idx).second, camTopic, pair, option,
-                                             weight);
+        estimator->AddVisualProjectionFactor(_splineSegments.at(*idx).first,
+                                             _splineSegments.at(*idx).second, camTopic, pair,
+                                             option, weight);
         ++count;
     }
     return count;
@@ -151,12 +151,12 @@ std::size_t CalibSolver::AddVisualProjPairsAsyncPointBasedToSplineSegments(
 
     for (const auto &pair : _evAsyncPointProjPairs.at(camTopic)) {
         auto idx = this->IsTimeInValidSegment(pair->timestamp + TO_CjToBr);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        if (idx == std::nullopt) {
             continue;
         }
-        estimator->AddVisualProjectionFactor(_splineSegments.at(idx).first,
-                                             _splineSegments.at(idx).second, camTopic, pair, option,
-                                             weight);
+        estimator->AddVisualProjectionFactor(_splineSegments.at(*idx).first,
+                                             _splineSegments.at(*idx).second, camTopic, pair,
+                                             option, weight);
         ++count;
     }
     return count;
@@ -173,11 +173,11 @@ std::size_t CalibSolver::AddVisualProjPairsAsyncCircleBasedToSplineSegments(
 
     for (const auto &pair : _evAsyncCircleProjPairs.at(camTopic)) {
         auto idx = this->IsTimeInValidSegment(pair->ev->GetTimestamp() + TO_CjToBr);
-        if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        if (idx == std::nullopt) {
             continue;
         }
-        estimator->AddVisualProjectionCircleBasedFactor(_splineSegments.at(idx).first,
-                                                        _splineSegments.at(idx).second, camTopic,
+        estimator->AddVisualProjectionCircleBasedFactor(_splineSegments.at(*idx).first,
+                                                        _splineSegments.at(*idx).second, camTopic,
                                                         pair, option, weight);
         ++count;
     }

@@ -281,8 +281,13 @@ CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st, double et, do
     return bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
 }
 
-int CalibSolver::IsTimeInValidSegment(double timeByBr) const {
-    return IsTimeInSegment(timeByBr, _validTimeSegments);
+std::optional<int> CalibSolver::IsTimeInValidSegment(double timeByBr) const {
+    auto idx = IsTimeInSegment(timeByBr, _validTimeSegments);
+    if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
+        return {};
+    } else {
+        return idx;
+    }
 }
 
 void CalibSolver::CreateVisualProjPairsSyncPointBased() {
@@ -378,8 +383,9 @@ void CalibSolver::CreateVisualProjPairsAsyncCircleBased(std::size_t pairCountPer
 }
 
 double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
-                                            double maxLengthThd,
-                                            const std::optional<std::string> &evTopic) {
+                                            double minLengthThd,
+                                            const std::optional<std::string> &evTopic,
+                                            bool optInfo) {
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
      * to insufficient stimulation leading to an inadequate number of events, or the checkerboard
@@ -393,7 +399,7 @@ double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
         }
         const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         auto segments = this->ContinuousGridTrackingSegments(topic, maxNeighborThd /*neighbor*/,
-                                                             maxLengthThd /*len*/);
+                                                             minLengthThd /*len*/);
         for (const auto &segment : segments) {
             segBoundary.emplace_back(segment.front() + TO_CjToBr, segment.back() + TO_CjToBr);
         }
@@ -403,13 +409,21 @@ double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
     double sumTime = 0.0;
     for (const auto &[sTime, eTime] : _validTimeSegments) {
         sumTime += eTime - sTime;
-        ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
+        if (optInfo) {
+            ss << fmt::format("({:.3f}, {:.3f}) ", sTime, eTime);
+        }
     }
-    const double percent = sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
-    spdlog::info(
-        "finding valid time segment count: {}, percent in total data piece: {:.2f}%, "
-        "details:\n{}",
-        _validTimeSegments.size(), std::min(percent, 1.0) * 100.0, ss.str());
+    if (optInfo) {
+        const double percent =
+            sumTime / (_dataAlignedTimestamp.second - _dataAlignedTimestamp.first);
+        spdlog::info(
+            "'maxNeighborThd': {}, 'minLengthThd': {}, finding valid time segment count: {}, "
+            "percent "
+            "in total data piece: {:.2f}%, details:\n{}",
+            maxNeighborThd, minLengthThd, _validTimeSegments.size(), std::min(percent, 1.0) * 100.0,
+            ss.str());
+    }
+
     return sumTime;
 }
 
@@ -424,32 +438,6 @@ void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {
         st = std::min(so3Spline.MinTime(), posSpline.MinTime());
         et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
     }
-}
-
-void CalibSolver::InitSo3SplineSegments() {
-    // fitting so3 segments
-    spdlog::info("fitting so3 part of spline segments...");
-    auto estimator = Estimator::Create(_parMgr);
-    for (const auto &[topic, poseVec] : _camPoses) {
-        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-        const auto &SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
-
-        for (const auto &pose : poseVec) {
-            auto idx = this->IsTimeInValidSegment(pose.timeStamp + TO_CjToBr);
-            if (idx < 0 || idx >= static_cast<int>(_splineSegments.size())) {
-                continue;
-            }
-            Sophus::SO3d SO3_BrToW = pose.so3 /*from camera to world*/ * SO3_CjToBr.inverse();
-            estimator->AddSo3Constraint(_splineSegments.at(idx).first, pose.timeStamp + TO_CjToBr,
-                                        SO3_BrToW, OptOption::OPT_SO3_SPLINE, 10.0);
-        }
-    }
-    AddGyroFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic,
-                                  OptOption::OPT_SO3_SPLINE, 0.1, /*weight*/
-                                  100 /*down sampling rate*/);
-
-    auto sum = estimator->Solve(_ceresOption, _priori);
-    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
 
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
