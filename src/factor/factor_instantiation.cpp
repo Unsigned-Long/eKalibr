@@ -36,6 +36,7 @@
 #include "factor/visual_projection_factor.hpp"
 #include "factor/visual_projection_circle_based_factor.hpp"
 #include "factor/hand_eye_transform_align_factor.hpp"
+#include "factor/regularization_l2_factor.hpp"
 
 namespace ns_ekalibr {
 template struct IMUGyroFactor<Configor ::Prior::SplineOrder>;
@@ -51,4 +52,5 @@ template struct So3Factor<Configor::Prior::SplineOrder>;
 template struct VisualProjectionFactor<Configor::Prior::SplineOrder>;
 template struct VisualProjectionCircleBasedFactor<Configor::Prior::SplineOrder>;
 template struct HandEyeTransformAlignFactor<Configor::Prior::SplineOrder>;
+template struct RegularizationL2Factor<3>;
 }  // namespace ns_ekalibr

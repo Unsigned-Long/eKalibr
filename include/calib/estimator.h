@@ -281,6 +281,10 @@ public:
                                       double *TO_Sen1ToRef,
                                       double *TO_Sen2ToRef,
                                       double weight);
+
+    void AddRegularizationL2Constraint(PosSplineType &posSpline, Opt option, double weight);
+
+    void AddRegularizationL2Constraint(So3SplineType &so3Spline, Opt option, double weight);
 };
 }  // namespace ns_ekalibr
 

@@ -49,6 +49,7 @@
 #include "factor/prior_time_offset_factor.hpp"
 #include "calib/spat_temp_priori.h"
 #include <factor/hand_eye_transform_align_factor.hpp>
+#include "factor/regularization_l2_factor.hpp"
 
 namespace ns_ekalibr {
 std::shared_ptr<ceres::EigenQuaternionManifold> Estimator::QUATER_MANIFOLD(
@@ -1509,5 +1510,30 @@ void Estimator::AddPriorTimeOffsetConstraint(const double &TO_Sen1ToSen2,
 
     // pass to problem
     this->AddResidualBlock(costFunc, nullptr, paramBlockVec);
+}
+
+void Estimator::AddRegularizationL2Constraint(PosSplineType &posSpline, Opt option, double weight) {
+    if (!IsOptionWith(Opt::OPT_SCALE_SPLINE, option)) {
+        return;
+    }
+    for (int i = 0; i < static_cast<int>(posSpline.GetKnots().size()); ++i) {
+        if (!this->HasParameterBlock(posSpline.GetKnot(i).data())) {
+            continue;
+        }
+        RegularizationL2Factor<3>::AddToSolver(this, &posSpline.GetKnot(i), weight);
+    }
+}
+
+void Estimator::AddRegularizationL2Constraint(So3SplineType &so3Spline, Opt option, double weight) {
+    if (!IsOptionWith(Opt::OPT_SO3_SPLINE, option)) {
+        return;
+    }
+    for (int i = 0; i < static_cast<int>(so3Spline.GetKnots().size()); ++i) {
+        if (!this->HasParameterBlock(so3Spline.GetKnot(i).data())) {
+            continue;
+        }
+        So3RegularizationL2Factor::AddToSolver(this, &so3Spline.GetKnot(i), QUATER_MANIFOLD.get(),
+                                               weight);
+    }
 }
 }  // namespace ns_ekalibr
