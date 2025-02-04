@@ -66,7 +66,7 @@ std::size_t CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estim
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
-    if (dsRate == std::nullopt) {
+    if (dsRate != std::nullopt) {
         const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
         const double freq = static_cast<double>(_imuMes.at(imuTopic).size()) / dt;
         pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));
@@ -96,7 +96,7 @@ std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estim
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
-    if (dsRate == std::nullopt) {
+    if (dsRate != std::nullopt) {
         const double dt = _dataAlignedTimestamp.second - _dataAlignedTimestamp.first;
         const double freq = static_cast<double>(_imuMes.at(imuTopic).size()) / dt;
         pick = std::max(pick, static_cast<std::size_t>(freq / *dsRate));

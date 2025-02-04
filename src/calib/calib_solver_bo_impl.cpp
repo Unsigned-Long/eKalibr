@@ -55,7 +55,7 @@ void CalibSolver::BatchOptimizations() {
     }
 
     enum class VisualProjType { SYNC_POINT_BASED, ASYNC_POINT_BASED, ASYNC_CIRCLE_BASED };
-    constexpr VisualProjType vpType = VisualProjType::ASYNC_POINT_BASED;
+    constexpr VisualProjType vpType = VisualProjType::SYNC_POINT_BASED;
 
     switch (vpType) {
         case VisualProjType::SYNC_POINT_BASED: {
