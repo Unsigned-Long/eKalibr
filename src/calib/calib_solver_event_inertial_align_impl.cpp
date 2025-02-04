@@ -108,41 +108,42 @@ void CalibSolver::EventInertialAlignment() {
      * extrinsic rotations are considered, but here we use a continuous-time rotation-only
      * hand-eye alignment where both extrinsic rotations and temporal parameters are considered.
      */
-    if (Configor::Prior::OptTemporalParams) {
-        for (const auto& [topic, poseVec] : _camPoses) {
-            spdlog::info(
-                "refine event-inertial extrinsic rotation and time offsets between '{}' and '{}' "
-                "based on continuous-time rotation-only hand-eye alignment...",
-                topic, Configor::DataStream::RefIMUTopic);
+    for (const auto& [topic, poseVec] : _camPoses) {
+        spdlog::info(
+            "refine event-inertial extrinsic rotation and time offsets between '{}' and '{}' "
+            "based on continuous-time rotation-only hand-eye alignment...",
+            topic, Configor::DataStream::RefIMUTopic);
 
-            const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
 
-            auto estimator = Estimator::Create(_parMgr);
-            const auto optOption = OptOption::OPT_SO3_CjToBr | OptOption::OPT_TO_CjToBr;
-            const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
-
-            for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
-                const auto& sPose = poseVec.at(i);
-                const auto& ePose = poseVec.at(i + ALIGN_STEP);
-
-                if (sPose.timeStamp + TO_CjToBr < st || ePose.timeStamp + TO_CjToBr > et) {
-                    continue;
-                }
-
-                estimator->AddHandEyeRotAlignment(
-                    _fullSo3Spline,
-                    topic,            // the ros topic
-                    sPose.timeStamp,  // the time of start rotation stamped by the camera
-                    ePose.timeStamp,  // the time of end rotation stamped by the camera
-                    sPose.so3,        // the start rotation
-                    ePose.so3,        // the end rotation
-                    optOption,        // the optimization option
-                    weight            // the weight
-                );
-            }
-            auto sum = estimator->Solve(_ceresOption, _priori);
-            spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+        auto estimator = Estimator::Create(_parMgr);
+        auto optOption = OptOption::OPT_SO3_CjToBr;
+        if (Configor::Prior::OptTemporalParams) {
+            optOption |= OptOption::OPT_TO_CjToBr;
         }
+        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
+
+        for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
+            const auto& sPose = poseVec.at(i);
+            const auto& ePose = poseVec.at(i + ALIGN_STEP);
+
+            if (sPose.timeStamp + TO_CjToBr < st || ePose.timeStamp + TO_CjToBr > et) {
+                continue;
+            }
+
+            estimator->AddHandEyeRotAlignment(
+                _fullSo3Spline,
+                topic,            // the ros topic
+                sPose.timeStamp,  // the time of start rotation stamped by the camera
+                ePose.timeStamp,  // the time of end rotation stamped by the camera
+                sPose.so3,        // the start rotation
+                ePose.so3,        // the end rotation
+                optOption,        // the optimization option
+                weight            // the weight
+            );
+        }
+        auto sum = estimator->Solve(_ceresOption, _priori);
+        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
 
     /**

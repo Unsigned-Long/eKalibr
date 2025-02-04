@@ -32,6 +32,7 @@
 #include <calib/estimator.h>
 #include <factor/visual_projection_factor.hpp>
 #include <spdlog/spdlog.h>
+#include "util/utils_tpl.hpp"
 
 namespace ns_ekalibr {
 void CalibSolver::BatchOptimizations() {
@@ -52,10 +53,19 @@ void CalibSolver::BatchOptimizations() {
         if (i != 0) {
             options.at(i) |= options.at(i - 1);
         }
+
+        if (!Configor::Prior::OptTemporalParams) {
+            if (IsOptionWith(OptOption::OPT_TO_CjToBr, options.at(i))) {
+                options.at(i) ^= OptOption::OPT_TO_CjToBr;
+            }
+            if (IsOptionWith(OptOption::OPT_TO_BiToBr, options.at(i))) {
+                options.at(i) ^= OptOption::OPT_TO_BiToBr;
+            }
+        }
     }
 
     enum class VisualProjType { SYNC_POINT_BASED, ASYNC_POINT_BASED, ASYNC_CIRCLE_BASED };
-    constexpr VisualProjType vpType = VisualProjType::SYNC_POINT_BASED;
+    constexpr VisualProjType vpType = VisualProjType::ASYNC_POINT_BASED;
 
     switch (vpType) {
         case VisualProjType::SYNC_POINT_BASED: {

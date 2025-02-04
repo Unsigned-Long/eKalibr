@@ -112,13 +112,13 @@ void CalibSolver::Process() {
      * offsets would be also recovered
      */
     this->InitSo3Spline();
-    _parMgr->ShowParamStatus();
+    // _parMgr->ShowParamStatus();
 
     /**
      * perform sensor-inertial alignment to recover the gravity vector and extrinsic translations.
      */
     this->EventInertialAlignment();
-    _parMgr->ShowParamStatus();
+    // _parMgr->ShowParamStatus();
 
     _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
 
@@ -128,6 +128,9 @@ void CalibSolver::Process() {
      * moving out of the field of view), it is necessary to identify the continuous segments for
      * subsequent calibration.
      */
+    // const double SEG_NEIGHBOR = Configor::Prior::DecayTimeOfActiveEvents * 5; /*neighbor*/
+    // const double SEG_LENGTH = Configor::Prior::DecayTimeOfActiveEvents * 50;  /*length*/
+    // this->BreakTimelineToSegments(SEG_NEIGHBOR /*neighbor*/, SEG_LENGTH /*len*/);
     this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
     this->CreateSplineSegments(Configor::Prior::DecayTimeOfActiveEvents * 2.5,
                                Configor::Prior::DecayTimeOfActiveEvents * 2.5);
