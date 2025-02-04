@@ -165,7 +165,10 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
      * initialize extrinsics and time offsets of other event cameras
      */
     {
-        auto opt = OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_BiInBr | OptOption::OPT_TO_CjToBr;
+        auto opt = OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_BiInBr;
+        if (Configor::Prior::OptTemporalParams) {
+            opt |= OptOption::OPT_TO_CjToBr;
+        }
         static constexpr double DESIRED_TIME_INTERVAL = 0.1 /* 0.1 sed */;
         const int ALIGN_STEP = std::max(
             1, static_cast<int>(DESIRED_TIME_INTERVAL / Configor::Prior::DecayTimeOfActiveEvents));
@@ -232,6 +235,11 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
         // append
         if (i != 0) {
             options.at(i) |= options.at(i - 1);
+        }
+
+        if (!Configor::Prior::OptTemporalParams &&
+            IsOptionWith(OptOption::OPT_TO_CjToBr, options.at(i))) {
+            options.at(i) ^= OptOption::OPT_TO_CjToBr;
         }
     }
     for (int i = 0; i < static_cast<int>(options.size()); ++i) {
