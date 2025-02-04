@@ -73,8 +73,8 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
         }
     }
     for (auto &[so3Spline, posSpline] : _splineSegments) {
-        estimator->AddSo3LinearConstraint(so3Spline, opt, 1.0);
-        estimator->AddPosLinearConstraint(posSpline, opt, 1.0);
+        estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
+        estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
     }
     auto sum = estimator->Solve(_ceresOption, nullptr);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
@@ -86,8 +86,8 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
     } else {
         this->BreakTimelineToSegments(SEG_NEIGHBOR, SEG_LENGTH, {}, false);
     }
-    // Configor::Prior::DecayTimeOfActiveEvents * 5.0
-    const double dtDelicateSpline = Configor::Prior::DecayTimeOfActiveEvents * 5.0;
+    // Configor::Prior::DecayTimeOfActiveEvents * 2.5
+    const double dtDelicateSpline = Configor::Prior::DecayTimeOfActiveEvents * 2.5;
     this->CreateSplineSegments(dtDelicateSpline, dtDelicateSpline);
 
     spdlog::info(
@@ -112,8 +112,8 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
         }
     }
     for (auto &[so3Spline, posSpline] : _splineSegments) {
-        estimator->AddSo3LinearConstraint(so3Spline, opt, 1.0);
-        estimator->AddPosLinearConstraint(posSpline, opt, 1.0);
+        estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
+        estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
     }
     sum = estimator->Solve(_ceresOption, nullptr);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
@@ -160,31 +160,6 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
 
     // initialize the spline segments using poses from the reference camera
     this->InitSplineSegmentsOfRefCamUsingCamPose(true, SEG_NEIGHBOR, SEG_LENGTH);
-
-    /**
-     * We use batch optimization to refine the spline of the reference event camera.
-     * Modify: '_splineSegments'
-     */
-    {
-        // create visual projection pairs
-        this->CreateVisualProjPairsAsyncPointBased();
-
-        auto estimator = Estimator::Create(_parMgr);
-        spdlog::info(
-            "use 'AsyncPointBased' batch optimization to refine the spline segments of the "
-            "reference event camera...");
-        auto opt = OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE;
-        // add visual projection pairs
-        this->AddVisualProjPairsAsyncPointBasedToSplineSegments(estimator, _refEvTopic, opt, 1.0);
-
-        for (auto &[so3Spline, posSpline] : _splineSegments) {
-            estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
-            estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
-        }
-
-        auto sum = estimator->Solve(_ceresOption, nullptr);
-        spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-    }
 
     /**
      * initialize extrinsics and time offsets of other event cameras
@@ -240,7 +215,7 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
      * extend the spline segments from all cameras
      */
     // initialize the spline segments using poses from all cameras
-    // this->InitSplineSegmentsOfRefCamUsingCamPose(false, SEG_NEIGHBOR, SEG_LENGTH);
+    this->InitSplineSegmentsOfRefCamUsingCamPose(false, SEG_NEIGHBOR, SEG_LENGTH);
 
     // create visual projection pairs
     this->CreateVisualProjPairsAsyncPointBased();
