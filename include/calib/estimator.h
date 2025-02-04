@@ -255,10 +255,6 @@ public:
                                            Opt option,
                                            double weight);
 
-    void AddPosLinearConstraint(PosSplineType &posSpline, Opt option, double weight);
-
-    void AddSo3LinearConstraint(So3SplineType &so3Spline, Opt option, double weight);
-
     void AddVisualProjectionCircleBasedFactor(const So3SplineType &so3Spline,
                                               const PosSplineType &posSpline,
                                               const std::string &camTopic,
