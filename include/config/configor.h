@@ -197,7 +197,7 @@ public:
             }
         };
 
-        static KnotTimeDistConfig KnotTimeDist;
+        // static KnotTimeDistConfig KnotTimeDist;
 
     public:
         template <class Archive>
@@ -205,8 +205,7 @@ public:
             ar(CEREAL_NVP(SpatTempPrioriPath), CEREAL_NVP(GravityNorm),
                CEREAL_NVP(TimeOffsetPadding), CEREAL_NVP(OptTemporalParams),
                CEREAL_NVP(CirclePattern), CEREAL_NVP(DecayTimeOfActiveEvents),
-               CEREAL_NVP(CircleExtractor), CEREAL_NVP(NormFlowEstimator),
-               CEREAL_NVP(KnotTimeDist));
+               CEREAL_NVP(CircleExtractor), CEREAL_NVP(NormFlowEstimator));
         }
     } prior;
 

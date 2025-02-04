@@ -103,7 +103,7 @@ void CalibSolver::Process() {
 
     // create so3 spline given start and end times, knot distances
     _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
-                                     Configor::Prior::KnotTimeDist.So3Spline);
+                                     Configor::Prior::DecayTimeOfActiveEvents * 2.5);
 
     _viewer->SetStates(nullptr, _parMgr, nullptr);
 
@@ -129,8 +129,8 @@ void CalibSolver::Process() {
      * subsequent calibration.
      */
     this->BreakTimelineToSegments(0.5 /*neighbor*/, 1.0 /*len*/);
-    this->CreateSplineSegments(Configor::Prior::KnotTimeDist.So3Spline,
-                               Configor::Prior::KnotTimeDist.ScaleSpline);
+    this->CreateSplineSegments(Configor::Prior::DecayTimeOfActiveEvents * 2.5,
+                               Configor::Prior::DecayTimeOfActiveEvents * 2.5);
     this->InitSo3SplineSegments();
 
     /**

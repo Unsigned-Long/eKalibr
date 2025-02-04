@@ -72,7 +72,6 @@ Configor::Prior::CirclePatternConfig Configor::Prior::CirclePattern = {};
 double Configor::Prior::DecayTimeOfActiveEvents = 0.0;
 Configor::Prior::CircleExtractorConfig Configor::Prior::CircleExtractor = {};
 Configor::Prior::NormFlowEstimatorConfig Configor::Prior::NormFlowEstimator = {};
-Configor::Prior::KnotTimeDistConfig Configor::Prior::KnotTimeDist = {};
 std::string Configor::Prior::SpatTempPrioriPath = {};
 
 OutputOption Configor::Preference::Outputs = OutputOption::NONE;
@@ -121,7 +120,7 @@ void Configor::PrintMainFields() {
             DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                 DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
                     DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT
-                        DESC_FORMAT DESC_FORMAT DESC_FORMAT DESC_FORMAT,
+                        DESC_FORMAT DESC_FORMAT,
         DESC_FIELD(EventTopics), DESC_FIELD(IMUTopics), DESC_FIELD(DataStream::RefIMUTopic),
         DESC_FIELD(DataStream::BagPath), DESC_FIELD(DataStream::BeginTime),
         DESC_FIELD(DataStream::Duration), DESC_FIELD(DataStream::OutputPath),
@@ -145,9 +144,6 @@ void Configor::PrintMainFields() {
         "NormFlowEstimator::RansacInlierRatioThd", Prior::NormFlowEstimator.RansacInlierRatioThd,
         "NormFlowEstimator::EventToPlaneTimeDistThd",
         Prior::NormFlowEstimator.EventToPlaneTimeDistThd,
-        // fields for KnotTimeDist
-        "KnotTimeDist::So3Spline", Prior::KnotTimeDist.So3Spline, "KnotTimeDist::ScaleSpline",
-        Prior::KnotTimeDist.ScaleSpline,
         // Preference
         "Preference::Outputs", GetOptString(Preference::Outputs), "Preference::OutputDataFormat",
         Preference::OutputDataFormatStr, DESC_FIELD(Preference::Visualization),
@@ -230,16 +226,6 @@ void Configor::CheckConfigure() {
         throw Status(
             Status::ERROR,
             "the time offset padding (i.e., Prior::TimeOffsetPadding) should be positive!");
-    }
-    if (Prior::KnotTimeDist.So3Spline <= 0.0) {
-        throw Status(Status::ERROR,
-                     "the knot time distance of so3 spline (i.e., Prior::KnotTimeDist::So3Spline) "
-                     "should be positive!");
-    }
-    if (Prior::KnotTimeDist.ScaleSpline <= 0.0) {
-        throw Status(Status::ERROR,
-                     "the knot time distance of scale spline (i.e., "
-                     "Prior::KnotTimeDist::ScaleSpline) should be positive!");
     }
     if (Prior::DecayTimeOfActiveEvents < 1E-6) {
         throw Status(Status::ERROR,
