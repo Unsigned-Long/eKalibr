@@ -437,11 +437,8 @@ void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {
     _splineSegments.clear();
     _splineSegments.reserve(_validTimeSegments.size());
     for (auto &[st, et] : _validTimeSegments) {
-        // add padding
-        assert(st + dtSo3 < et - dtSo3);
-        assert(st + dtPos < et - dtPos);
-        auto so3Spline = CreateSo3Spline(st + dtSo3, et - dtSo3, dtSo3);
-        auto posSpline = CreatePosSpline(st + dtPos, et - dtPos, dtPos);
+        auto so3Spline = CreateSo3Spline(st, et, dtSo3);
+        auto posSpline = CreatePosSpline(st, et, dtPos);
         _splineSegments.emplace_back(so3Spline, posSpline);
 
         st = std::min(so3Spline.MinTime(), posSpline.MinTime());
