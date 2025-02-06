@@ -38,6 +38,8 @@
 #include "config/configor.h"
 #include <util/status.hpp>
 #include "core/time_varying_ellipse.h"
+#include "core/sae.h"
+#include "core/circle_grid.h"
 
 namespace ns_ekalibr {
 /**
@@ -357,6 +359,31 @@ void EventCircleExtractor::InitMatsForVisualization(
     imgSearchMatches3 = nfPack->tsImg.clone();
     imgExtractCircles = nfPack->tsImg.clone();
     imgExtractCirclesGrid = nfPack->tsImg.clone();
+}
+
+cv::Mat EventCircleExtractor::CreateSAE(const std::string& topic,
+                                        const ExtractedCirclesVec& tvCirclesWithRawEvs) {
+    const auto& config = Configor::DataStream::EventTopics.at(topic);
+    auto sae = ActiveEventSurface::Create(config.Width, config.Height, 0.01);
+    for (const auto& [tvEllipse, evs] : tvCirclesWithRawEvs) {
+        if (evs != nullptr) {
+            sae->GrabEvent(evs);
+        }
+    }
+    // CV_8UC1
+    auto tsImg = sae->DecayTimeSurface(true, 0, Configor::Prior::DecayTimeOfActiveEvents);
+    // CV_8UC3
+    cv::cvtColor(tsImg, tsImg, cv::COLOR_GRAY2BGR);
+    return tsImg;
+}
+
+cv::Mat EventCircleExtractor::CreateSAEWithTVEllipses(
+    const std::string& topic,
+    const ExtractedCirclesVec& tvCirclesWithRawEvs,
+    const CircleGrid2DPtr& grid) {
+    auto m = CreateSAE(topic, tvCirclesWithRawEvs);
+    DrawTimeVaryingEllipses(m, grid->timestamp, tvCirclesWithRawEvs);
+    return m;
 }
 
 std::vector<std::pair<EventArray::Ptr, EventArray::Ptr>>

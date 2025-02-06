@@ -53,10 +53,6 @@ public:
                                   double distThdToTrackCen,
                                   std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
 
-    static cv::Mat CreateSAEWithCircles(const std::string& topic,
-                                        const ExtractedCirclesVec& tvCirclesWithRawEvs,
-                                        const CircleGrid2DPtr& grid);
-
 protected:
     static std::vector<int> TryToTrackInCmpGridPattern(
         const std::string& topic,
@@ -66,9 +62,6 @@ protected:
         const CircleGrid2DPtr& gridToTrack,
         double distThdToTrackCen,
         const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
-
-    static cv::Mat CreateSAE(const std::string& topic,
-                             const ExtractedCirclesVec& tvCirclesWithRawEvs);
 
     static void DrawTrace(cv::Mat& img,
                           double t1,

@@ -51,6 +51,8 @@ struct Ellipse;
 using EllipsePtr = std::shared_ptr<Ellipse>;
 struct TimeVaryingEllipse;
 using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
+struct CircleGrid2D;
+using CircleGrid2DPtr = std::shared_ptr<CircleGrid2D>;
 
 class EventCircleExtractor {
 public:
@@ -118,9 +120,17 @@ public:
     void Visualization(bool save = false) const;
 
     static void DrawTimeVaryingEllipses(cv::Mat& mat,
-                                       double timestamp, const ExtractedCirclesVec& circles);
+                                        double timestamp,
+                                        const ExtractedCirclesVec& circles);
 
     void InitMatsForVisualization(const EventNormFlow::NormFlowPack::Ptr& nfPack);
+
+    static cv::Mat CreateSAE(const std::string& topic,
+                             const ExtractedCirclesVec& tvCirclesWithRawEvs);
+
+    static cv::Mat CreateSAEWithTVEllipses(const std::string& topic,
+                                           const ExtractedCirclesVec& tvCirclesWithRawEvs,
+                                           const CircleGrid2DPtr& grid);
 
 public:
     [[nodiscard]] cv::Mat SAEMapClusterNormFlowEvents() const { return imgClusterNormFlowEvents; }

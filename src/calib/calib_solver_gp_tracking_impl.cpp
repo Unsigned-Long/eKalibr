@@ -317,8 +317,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 
                 cv::Mat incmpTrackMat;
                 if (Configor::Preference::Visualization) {
-                    incmpTrackMat =
-                        InCmpPatternTracker::CreateSAEWithCircles(topic, verifiedCircles, grid2d);
+                    incmpTrackMat = EventCircleExtractor::CreateSAEWithTVEllipses(
+                        topic, verifiedCircles, grid2d);
                 }
 #pragma omp parallel for
                 for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
@@ -338,7 +338,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 if (Configor::Preference::Visualization) {
                     EventCircleExtractor::DrawTimeVaryingEllipses(incmpTrackMat, grid2d->timestamp,
                                                                   verifiedCircles);
-                        cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
+                    cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
                     cv::waitKey(1);
                 }
                 ++inCompTrackedNum;
@@ -388,7 +388,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 
     return;
 
-    for (const auto &[topic, rawEvsOfCircle] : _rawEventsOfExtractedPatterns) {
+    for (const auto &[topic, rawEvsOfEllipses] : _rawEventsOfExtractedPatterns) {
         if (!tryLoadAndSaveRes || !Configor::Preference::Visualization) {
             continue;
         }
@@ -401,11 +401,12 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         for (const auto &grid2d : _extractedPatterns.at(topic)->GetGrid2d()) {
             grid2dMap.insert({grid2d->id, grid2d});
         }
+        const auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
 
         auto bar = std::make_shared<tqdm>();
         int idx = 0;
-        for (const auto &[grid2dIdx, circles] : rawEvsOfCircle) {
-            bar->progress(idx++, static_cast<int>(rawEvsOfCircle.size()));
+        for (const auto &[grid2dIdx, ellipse] : rawEvsOfEllipses) {
+            bar->progress(idx++, static_cast<int>(rawEvsOfEllipses.size()));
             // for each grid 2d pattern
             // spdlog::info("grid2d id: {}", grid2dIdx);
             const auto &grid2d = grid2dMap.at(grid2dIdx);
@@ -419,18 +420,31 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
             curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
             _viewer->SetCamView(curViewCamPose);
 
-            for (std::size_t i = 0; i < circles.size(); ++i) {
+            for (std::size_t i = 0; i < ellipse.size(); ++i) {
                 // for each circle
-                const auto &[tvCircle, rawEvs] = circles.at(i);
+                const auto &[tvEllipse, rawEvs] = ellipse.at(i);
+                if (tvEllipse == nullptr) {
+                    continue;
+                }
                 _viewer->AddEventData(rawEvs, ptScale, {}, 4.0f);
-                _viewer->AddSpatioTemporalTrace(tvCircle->PosVecAt(1E-3), 2.0f,
+                _viewer->AddSpatioTemporalTrace(tvEllipse->PosVecAt(1E-3), 2.0f,
                                                 ns_viewer::Colour::Green(), ptScale);
             }
-            _viewer->AddGridPattern(grid2d->centers, grid2d->timestamp, ptScale,
-                                    ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
+
+            if (grid2d->isComplete) {
+                _viewer->AddGridPattern(grid2d->centers, grid2d->timestamp, ptScale,
+                                        ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
+            }
+
+            // sea
+            const auto &verifiedCircles = rawEvsOfPattern.at(grid2d->id);
+            cv::Mat mat =
+                EventCircleExtractor::CreateSAEWithTVEllipses(topic, verifiedCircles, grid2d);
+            EventCircleExtractor::DrawTimeVaryingEllipses(mat, grid2d->timestamp, verifiedCircles);
+            cv::imshow("Tracked Complete/Incomplete Grid", mat);
 
             const auto ms = static_cast<int>(Configor::Prior::DecayTimeOfActiveEvents * 1000.0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+            cv::waitKey(ms);
         }
         bar->finish();
         _viewer->ClearViewer();

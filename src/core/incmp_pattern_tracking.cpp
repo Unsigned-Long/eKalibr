@@ -29,7 +29,6 @@
 #include "core/incmp_pattern_tracking.h"
 #include "spdlog/spdlog.h"
 #include "core/circle_grid.h"
-#include "core/sae.h"
 #include "sensor/event.h"
 #include <config/configor.h>
 #include <opencv2/highgui.hpp>
@@ -174,10 +173,14 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     double distThdToTrackCen,
     const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
 #if VISUALIZATION_TRACKING
-    auto m1 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs.at(grid1->id), grid1);
-    auto m2 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs.at(grid2->id), grid2);
-    auto m3 = CreateSAEWithCircles(topic, tvCirclesWithRawEvs.at(grid3->id), grid3);
-    auto m = CreateSAEWithCircles(topic, tvCirclesWithRawEvs.at(gridToTrack->id), gridToTrack);
+    auto m1 = EventCircleExtractor::CreateSAEWithTVEllipses(
+        topic, tvCirclesWithRawEvs.at(grid1->id), grid1);
+    auto m2 = EventCircleExtractor::CreateSAEWithTVEllipses(
+        topic, tvCirclesWithRawEvs.at(grid2->id), grid2);
+    auto m3 = EventCircleExtractor::CreateSAEWithTVEllipses(
+        topic, tvCirclesWithRawEvs.at(grid3->id), grid3);
+    auto m = EventCircleExtractor::CreateSAEWithTVEllipses(
+        topic, tvCirclesWithRawEvs.at(gridToTrack->id), gridToTrack);
 #endif
     auto size = static_cast<int>(grid1->centers.size());
     assert(size == grid2->centers.size());
@@ -278,30 +281,6 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     cv::waitKey(1);
 #endif
     return incmpGridPatternIdx;
-}
-
-cv::Mat InCmpPatternTracker::CreateSAE(const std::string& topic,
-                                       const ExtractedCirclesVec& tvCirclesWithRawEvs) {
-    const auto& config = Configor::DataStream::EventTopics.at(topic);
-    auto sae = ActiveEventSurface::Create(config.Width, config.Height, 0.01);
-    for (const auto& [tvEllipse, evs] : tvCirclesWithRawEvs) {
-        if (evs != nullptr) {
-            sae->GrabEvent(evs);
-        }
-    }
-    // CV_8UC1
-    auto tsImg = sae->DecayTimeSurface(true, 0, Configor::Prior::DecayTimeOfActiveEvents);
-    // CV_8UC3
-    cv::cvtColor(tsImg, tsImg, cv::COLOR_GRAY2BGR);
-    return tsImg;
-}
-
-cv::Mat InCmpPatternTracker::CreateSAEWithCircles(const std::string& topic,
-                                                  const ExtractedCirclesVec& tvCirclesWithRawEvs,
-                                                  const CircleGrid2DPtr& grid) {
-    auto m = CreateSAE(topic, tvCirclesWithRawEvs);
-    EventCircleExtractor::DrawTimeVaryingEllipses(m, grid->timestamp, tvCirclesWithRawEvs);
-    return m;
 }
 
 void InCmpPatternTracker::DrawTrace(cv::Mat& img,
