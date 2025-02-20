@@ -126,8 +126,9 @@ void CalibParamManager::ShowParamStatus() {
 
     constexpr std::size_t n = 71;
 
-    STREAM_PACK(std::string(25, '-'))
-    STREAM_PACK(ITEM("calibration parameters") << " --")
+    STREAM_PACK(std::string(n, '-'))
+    STREAM_PACK(ITEM("calibration Parameters")
+                << ", Attention: " << PARAM("Br") << ": Ref. IMU / Ref. Cam. If No IMU")
     STREAM_PACK(std::string(n, '-'))
 
     if (!Configor::DataStream::IMUTopics.empty() || Configor::DataStream::EventTopics.size() > 1) {
@@ -138,11 +139,13 @@ void CalibParamManager::ShowParamStatus() {
 
 #define OUTPUT_EXTRINSICS(SENSOR1, IDX1, SENSOR2, IDX2)                                           \
     const auto EULER = EXTRI.EULER_##SENSOR1##IDX1##To##SENSOR2##IDX2##_DEG(topic);               \
-    STREAM_PACK(PARAM("EULER_" #SENSOR1 #IDX1 "To" #SENSOR2 #IDX2 ": ")                           \
+    STREAM_PACK(PARAM("EULER_" #SENSOR1 #IDX1 "To" #SENSOR2 #IDX2)                                \
+                << ": "                                                                           \
                 << FormatValueVector<double>({"Xr", "Yp", "Zy"}, {EULER(0), EULER(1), EULER(2)})) \
                                                                                                   \
     const auto POS = EXTRI.POS_##SENSOR1##IDX1##In##SENSOR2##IDX2.at(topic);                      \
-    STREAM_PACK(PARAM("  POS_" #SENSOR1 #IDX1 "In" #SENSOR2 #IDX2 ": ")                           \
+    STREAM_PACK(PARAM("  POS_" #SENSOR1 #IDX1 "In" #SENSOR2 #IDX2)                                \
+                << ": "                                                                           \
                 << FormatValueVector<double>({"Px", "Py", "Pz"}, {POS(0), POS(1), POS(2)}))
 
         // imus
@@ -198,22 +201,30 @@ void CalibParamManager::ShowParamStatus() {
         const auto &ACCE = INTRI.IMU.at(topic)->ACCE;
         const auto &GYRO = INTRI.IMU.at(topic)->GYRO;
         // imu
-        STREAM_PACK(PARAM("ACCE      BIAS: ") << FormatValueVector<double>(
-                        {"Bx", "By", "Bz"}, {ACCE.BIAS(0), ACCE.BIAS(1), ACCE.BIAS(2)}))
+        STREAM_PACK(PARAM("ACCE      BIAS")
+                    << ": "
+                    << FormatValueVector<double>({"Bx", "By", "Bz"},
+                                                 {ACCE.BIAS(0), ACCE.BIAS(1), ACCE.BIAS(2)}))
         STREAM_PACK(
-            PARAM("ACCE MAP COEFF: ") << FormatValueVector<double>(
-                {"00", "11", "22"}, {ACCE.MAP_COEFF(0), ACCE.MAP_COEFF(1), ACCE.MAP_COEFF(2)}))
+            PARAM("ACCE MAP COEFF")
+            << ": "
+            << FormatValueVector<double>({"00", "11", "22"},
+                                         {ACCE.MAP_COEFF(0), ACCE.MAP_COEFF(1), ACCE.MAP_COEFF(2)}))
         STREAM_PACK(
             PARAM("                ") << FormatValueVector<double>(
                 {"01", "02", "12"}, {ACCE.MAP_COEFF(3), ACCE.MAP_COEFF(4), ACCE.MAP_COEFF(5)}))
 
         STREAM_PACK("")
 
-        STREAM_PACK(PARAM("GYRO      BIAS: ") << FormatValueVector<double>(
-                        {"Bx", "By", "Bz"}, {GYRO.BIAS(0), GYRO.BIAS(1), GYRO.BIAS(2)}))
+        STREAM_PACK(PARAM("GYRO      BIAS")
+                    << ": "
+                    << FormatValueVector<double>({"Bx", "By", "Bz"},
+                                                 {GYRO.BIAS(0), GYRO.BIAS(1), GYRO.BIAS(2)}))
         STREAM_PACK(
-            PARAM("GYRO MAP COEFF: ") << FormatValueVector<double>(
-                {"00", "11", "22"}, {GYRO.MAP_COEFF(0), GYRO.MAP_COEFF(1), GYRO.MAP_COEFF(2)}))
+            PARAM("GYRO MAP COEFF")
+            << ": "
+            << FormatValueVector<double>({"00", "11", "22"},
+                                         {GYRO.MAP_COEFF(0), GYRO.MAP_COEFF(1), GYRO.MAP_COEFF(2)}))
         STREAM_PACK(
             PARAM("                ") << FormatValueVector<double>(
                 {"01", "02", "12"}, {GYRO.MAP_COEFF(3), GYRO.MAP_COEFF(4), GYRO.MAP_COEFF(5)}))
@@ -221,8 +232,10 @@ void CalibParamManager::ShowParamStatus() {
         STREAM_PACK("")
 
         const auto EULER_AtoG = INTRI.IMU.at(topic)->EULER_AtoG_DEG();
-        STREAM_PACK(PARAM("EULER AtoG DEG: ") << FormatValueVector<double>(
-                        {"Xr", "Yp", "Zy"}, {EULER_AtoG(0), EULER_AtoG(1), EULER_AtoG(2)}))
+        STREAM_PACK(PARAM("EULER AtoG DEG")
+                    << ": "
+                    << FormatValueVector<double>({"Xr", "Yp", "Zy"},
+                                                 {EULER_AtoG(0), EULER_AtoG(1), EULER_AtoG(2)}))
         STREAM_PACK("")
     }
 
@@ -232,18 +245,22 @@ void CalibParamManager::ShowParamStatus() {
         const auto &pars = intri->GetParams();
 
         STREAM_PACK(
-            PARAM("IMAGE     SIZE: ") << FormatValueVector<double>(
-                {" w", " h"}, {(double)intri->imgWidth, (double)intri->imgHeight}, "{:+011.6f}"))
+            PARAM("IMAGE     SIZE")
+            << ": "
+            << FormatValueVector<double>(
+                   {" w", " h"}, {(double)intri->imgWidth, (double)intri->imgHeight}, "{:+011.6f}"))
 
-        STREAM_PACK(PARAM("FOCAL   LENGTH: ")
-                    << FormatValueVector<double>({"fx", "fy"}, {pars.at(0), pars.at(1)}))
+        STREAM_PACK(PARAM("FOCAL   LENGTH")
+                    << ": " << FormatValueVector<double>({"fx", "fy"}, {pars.at(0), pars.at(1)}))
 
-        STREAM_PACK(PARAM("PRINCIP  POINT: ")
-                    << FormatValueVector<double>({"cx", "cy"}, {pars.at(2), pars.at(3)}))
+        STREAM_PACK(PARAM("PRINCIP  POINT")
+                    << ": " << FormatValueVector<double>({"cx", "cy"}, {pars.at(2), pars.at(3)}))
 
         STREAM_PACK("")
-        STREAM_PACK(PARAM("DISTO   PARAMS: ") << FormatValueVector<double>(
-                        {"k1", "k2", "k3"}, {pars.at(4), pars.at(5), pars.at(6)}))
+        STREAM_PACK(
+            PARAM("DISTO   PARAMS")
+            << ": "
+            << FormatValueVector<double>({"k1", "k2", "k3"}, {pars.at(4), pars.at(5), pars.at(6)}))
         STREAM_PACK(PARAM("                ")
                     << FormatValueVector<double>({"p1", "p2"}, {pars.at(7), pars.at(8)}))
 
