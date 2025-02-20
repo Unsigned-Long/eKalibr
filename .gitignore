@@ -29,3 +29,4 @@
 !/script/svgfig.py
 !/script/example.sh
 !script/davis_data_recoder.sh
+!script/davis_stereo_data_recoder.sh

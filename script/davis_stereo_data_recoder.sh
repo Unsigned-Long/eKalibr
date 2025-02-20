@@ -28,7 +28,6 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-#roslaunch dvs_renderer davis_mono_events_only.launch
 if [ $# -ne 1 ]; then
     echo -e "please provide a number (0, 1, or 2) to specify the folder:\n(0): acircle-7x3-50mm\n(1): acircle-9x4-50mm\n(2): acircle-11x4-50mm"
     exit 1
@@ -51,18 +50,18 @@ case $1 in
 esac
 
 # launch driver first
-# roslaunch dvs_renderer davis_mono_events_only.launch
+# roslaunch dvs_renderer stereo_davis.launch
 
 # EKALIBR_ROOT_PATH=$(rospack find ekalibr)
 EKALIBR_ROOT_PATH=/media/csl/samsung/eKalibr
 
-# output path for intrinsic calibration experiments
- OutputPath=$EKALIBR_ROOT_PATH/dataset/intrinsics/$Category
+# output path for multi-camera spatiotemporal calibration experiments
+OutputPath=$EKALIBR_ROOT_PATH/dataset/multi-camera/$Category
 
 # create directory and organize path to save the rosbag
 mkdir -p ${OutputPath}
 BagPath=$OutputPath/eKalibr-data-$(date +%Y-%m-%d-%H-%M-%S).bag
 echo "record davis data [/dvs/events;/dvs/imu] as ros bag [$BagPath]..."
 
-# record davis data (single event camera)
-rosbag record --duration=30 -O $BagPath /dvs/events /dvs/imu /dvs/image_raw
+# record davis data (stereo event camera)
+rosbag record --duration=30 -O $BagPath /davis_left/events /davis_left/imu /davis_left/image_raw /davis_right/events /davis_right/imu /davis_right/image_raw
