@@ -103,7 +103,7 @@ void CalibSolver::Process() {
 
     // create so3 spline given start and end times, knot distances
     _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
-                                     Configor::Prior::DecayTimeOfActiveEvents * 2.5);
+                                     Configor::Prior::DecayTimeOfActiveEvents * 2.5, true);
 
     _viewer->SetStates(nullptr, _parMgr, nullptr);
 

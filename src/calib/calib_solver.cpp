@@ -263,28 +263,52 @@ void CalibSolver::OutputDataStatus() const {
     }
 }
 
-CalibSolver::So3SplineType CalibSolver::CreateSo3Spline(double st, double et, double so3Dt) {
+CalibSolver::So3SplineType CalibSolver::CreateSo3Spline(double st,
+                                                        double et,
+                                                        double so3Dt,
+                                                        bool printInfo) {
     auto so3SplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SO3_SPLINE,
                                               ns_ctraj::SplineType::So3Spline, st, et, so3Dt);
     auto bundle = SplineBundleType::Create({so3SplineInfo});
     const auto &so3Spline = bundle->GetSo3Spline(Configor::Preference::SO3_SPLINE);
-    spdlog::info(
-        "create so3 spline: start time: '{:07.3f}:[{:07.3f}]', end time: '{:07.3f}:[{:07.3f}]', dt "
-        ": '{:07.3f}'",
-        so3Spline.MinTime(), st, so3Spline.MaxTime(), et, so3Dt);
+    if (printInfo) {
+        spdlog::info(
+            "create so3 spline: start time: '{:07.3f}:[{:07.3f}]', end time: "
+            "'{:07.3f}:[{:07.3f}]', dt: '{:07.3f}'",
+            so3Spline.MinTime(), st, so3Spline.MaxTime(), et, so3Dt);
+    }
+
     return so3Spline;
 }
 
-CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st, double et, double posDt) {
+CalibSolver::PosSplineType CalibSolver::CreatePosSpline(double st,
+                                                        double et,
+                                                        double posDt,
+                                                        bool printInfo) {
     auto posSplineInfo = ns_ctraj::SplineInfo(Configor::Preference::SCALE_SPLINE,
                                               ns_ctraj::SplineType::RdSpline, st, et, posDt);
     auto bundle = SplineBundleType::Create({posSplineInfo});
     const auto &posSpline = bundle->GetRdSpline(Configor::Preference::SCALE_SPLINE);
-    spdlog::info(
-        "create pos spline: start time: '{:07.3f}:[{:07.3f}]', end time: '{:07.3f}:[{:07.3f}]', dt "
-        ": '{:07.3f}'",
-        posSpline.MinTime(), st, posSpline.MaxTime(), et, posDt);
+    if (printInfo) {
+        spdlog::info(
+            "create pos spline: start time: '{:07.3f}:[{:07.3f}]', end time: "
+            "'{:07.3f}:[{:07.3f}]', dt: '{:07.3f}'",
+            posSpline.MinTime(), st, posSpline.MaxTime(), et, posDt);
+    }
     return posSpline;
+}
+
+void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos, bool printInfo) {
+    _splineSegments.clear();
+    _splineSegments.reserve(_validTimeSegments.size());
+    for (auto &[st, et] : _validTimeSegments) {
+        auto so3Spline = CreateSo3Spline(st, et, dtSo3, printInfo);
+        auto posSpline = CreatePosSpline(st, et, dtPos, printInfo);
+        _splineSegments.emplace_back(so3Spline, posSpline);
+
+        st = std::min(so3Spline.MinTime(), posSpline.MinTime());
+        et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
+    }
 }
 
 std::optional<int> CalibSolver::IsTimeInValidSegment(double timeByBr) const {
@@ -431,19 +455,6 @@ double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
     }
 
     return sumTime;
-}
-
-void CalibSolver::CreateSplineSegments(double dtSo3, double dtPos) {
-    _splineSegments.clear();
-    _splineSegments.reserve(_validTimeSegments.size());
-    for (auto &[st, et] : _validTimeSegments) {
-        auto so3Spline = CreateSo3Spline(st, et, dtSo3);
-        auto posSpline = CreatePosSpline(st, et, dtPos);
-        _splineSegments.emplace_back(so3Spline, posSpline);
-
-        st = std::min(so3Spline.MinTime(), posSpline.MinTime());
-        et = std::max(so3Spline.MaxTime(), posSpline.MaxTime());
-    }
 }
 
 void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,

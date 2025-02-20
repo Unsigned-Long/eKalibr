@@ -156,9 +156,11 @@ protected:
 
     void OutputDataStatus() const;
 
-    static So3SplineType CreateSo3Spline(double st, double et, double so3Dt);
+    static So3SplineType CreateSo3Spline(double st, double et, double so3Dt, bool printInfo);
 
-    static PosSplineType CreatePosSpline(double st, double et, double posDt);
+    static PosSplineType CreatePosSpline(double st, double et, double posDt, bool printInfo);
+
+    void CreateSplineSegments(double dtSo3, double dtPos, bool printInfo = false);
 
     void EstimateCameraIntrinsics();
 
@@ -201,8 +203,6 @@ protected:
                                    double maxLengthThd,
                                    const std::optional<std::string> &evTopic = {},
                                    bool optInfo = true);
-
-    void CreateSplineSegments(double dtSo3, double dtPos);
 
     void InitSo3SplineSegments();
 

@@ -76,7 +76,8 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
         estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
         estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
     }
-    auto sum = estimator->Solve(_ceresOption, nullptr);
+    // we don't want to output the solving information
+    auto sum = estimator->Solve(Estimator::DefaultSolverOptions(-1, false, false), nullptr);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     // fitting small-knot-distance segments
@@ -115,7 +116,7 @@ void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
         estimator->AddRegularizationL2Constraint(so3Spline, opt, 1E-3);
         estimator->AddRegularizationL2Constraint(posSpline, opt, 1E-3);
     }
-    sum = estimator->Solve(_ceresOption, nullptr);
+    sum = estimator->Solve(Estimator::DefaultSolverOptions(-1, false, false), nullptr);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
 
@@ -210,7 +211,6 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
             estimator->SetEvCamParamsConstant(_refEvTopic);
             auto sum = estimator->Solve(_ceresOption, nullptr);
             spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-            _parMgr->ShowParamStatus();
         }
     }
 
@@ -223,11 +223,16 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
     // create visual projection pairs
     this->CreateVisualProjPairsAsyncPointBased();
 
-    std::array<OptOption, 2> optionAry = {
-        // the first one
-        OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr,
-        // the second one (append to last)
-        OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE};
+    std::array<OptOption, 1> optionAry = {OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr |
+                                          OptOption::OPT_TO_CjToBr | OptOption::OPT_SO3_SPLINE |
+                                          OptOption::OPT_SCALE_SPLINE};
+    /**
+     *std::array<OptOption, 2> optionAry = {
+     *   // the first one
+     *   OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr,
+     *   // the second one (append to last)
+     *   OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE};
+     */
 
     std::vector options(optionAry.size(), OptOption::NONE);
     for (int i = 0; i < static_cast<int>(optionAry.size()); ++i) {
