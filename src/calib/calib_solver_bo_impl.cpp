@@ -33,6 +33,7 @@
 #include <factor/visual_projection_factor.hpp>
 #include <spdlog/spdlog.h>
 #include "util/utils_tpl.hpp"
+#include "calib/calib_solver_io.h"
 
 namespace ns_ekalibr {
 void CalibSolver::BatchOptimizations() {
@@ -126,6 +127,8 @@ void CalibSolver::BatchOptimizations() {
         estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
         auto sum = estimator->Solve(_ceresOption, _priori);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
+        CalibSolverIO::SaveStageCalibParam(_parMgr,
+                                           "visual_inertial_calib_3_bo_" + std::to_string(i));
     }
 }
 

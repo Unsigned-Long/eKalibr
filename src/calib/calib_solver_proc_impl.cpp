@@ -33,6 +33,7 @@
 #include "viewer/viewer.h"
 #include "core/norm_flow.h"
 #include "calib/calib_param_mgr.h"
+#include "calib/calib_solver_io.h"
 
 namespace ns_ekalibr {
 
@@ -67,6 +68,7 @@ void CalibSolver::Process() {
      */
     this->EstimateCameraIntrinsics();
     _parMgr->ShowParamStatus();
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "camera_intrinsics_calib");
 
     /**
      * Currently, we only support intrinsic calibration for event cameras. For other types of
@@ -81,6 +83,7 @@ void CalibSolver::Process() {
         _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
         this->EvCamSpatialTemporalCalib();
         _parMgr->ShowParamStatus();
+        CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib");
     }
 
     _solveFinished = true;
@@ -113,12 +116,14 @@ void CalibSolver::Process() {
      */
     this->InitSo3Spline();
     // _parMgr->ShowParamStatus();
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "visual_inertial_calib_0_so3_spline_init");
 
     /**
      * perform sensor-inertial alignment to recover the gravity vector and extrinsic translations.
      */
     this->EventInertialAlignment();
     // _parMgr->ShowParamStatus();
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "visual_inertial_calib_1_visual_inertial_align");
 
     _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
 
@@ -141,12 +146,14 @@ void CalibSolver::Process() {
      */
     this->InitPosSpline();
     _parMgr->ShowParamStatus();
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "visual_inertial_calib_2_pos_spline_init");
 
     /**
      * perform several batch optimizaitons to refine all initialized states to global optimal ones
      */
     this->BatchOptimizations();
     _parMgr->ShowParamStatus();
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "visual_inertial_calib");
 
     _solveFinished = true;
 }

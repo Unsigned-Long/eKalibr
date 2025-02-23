@@ -34,6 +34,7 @@
 #include "factor/visual_projection_circle_based_factor.hpp"
 #include "util/utils_tpl.hpp"
 #include <magic_enum_flags.hpp>
+#include "calib/calib_solver_io.h"
 
 namespace ns_ekalibr {
 void CalibSolver::InitSplineSegmentsOfRefCamUsingCamPose(bool onlyRefCam,
@@ -161,6 +162,7 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
 
     // initialize the spline segments using poses from the reference camera
     this->InitSplineSegmentsOfRefCamUsingCamPose(true, SEG_NEIGHBOR, SEG_LENGTH);
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib_0_spline_init");
 
     /**
      * initialize extrinsics and time offsets of other event cameras
@@ -213,6 +215,7 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
             spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
         }
     }
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib_1_st_init");
 
     /**
      * extend the spline segments from all cameras
@@ -269,6 +272,8 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
         auto sum = estimator->Solve(_ceresOption, nullptr);
         spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
     }
+
+    CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib_2_ba");
 }
 
 }  // namespace ns_ekalibr

@@ -42,6 +42,8 @@ struct EventArray;
 using EventArrayPtr = std::shared_ptr<EventArray>;
 struct EventCircleExtractor;
 using EventCircleExtractorPtr = std::shared_ptr<EventCircleExtractor>;
+struct CalibParamManager;
+using CalibParamManagerPtr = std::shared_ptr<CalibParamManager>;
 
 class CalibSolverIO {
 public:
@@ -83,6 +85,8 @@ public:
                             const cv::Mat &sae = cv::Mat());
 
     static void SaveTinyViewerOnRender(const std::string &topic);
+
+    static void SaveStageCalibParam(const CalibParamManagerPtr &par, const std::string &desc);
 
 protected:
     static std::string TopicConvertToFilename(const std::string &topic);

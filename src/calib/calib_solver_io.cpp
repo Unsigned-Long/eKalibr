@@ -286,6 +286,19 @@ void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic) {
     pangolin::SaveWindowOnRender(filename);
 }
 
+void CalibSolverIO::SaveStageCalibParam(const CalibParamManagerPtr &par, const std::string &desc) {
+    if (!IsOptionWith(OutputOption::ParamInEachIter, Configor::Preference::Outputs)) {
+        return;
+    }
+    const static std::string paramDir = Configor::DataStream::OutputPath + "/iteration/stage";
+    if (!std::filesystem::exists(paramDir) && !std::filesystem::create_directories(paramDir)) {
+        spdlog::warn("create directory failed: '{}'", paramDir);
+    } else {
+        const std::string paramFilename = paramDir + "/" + desc + Configor::GetFormatExtension();
+        par->Save(paramFilename, Configor::Preference::OutputDataFormat);
+    }
+}
+
 std::string CalibSolverIO::TopicConvertToFilename(const std::string &topic) {
     std::string result = topic;
 
