@@ -10,8 +10,9 @@
 </p>
 <p align="center"><i>"The naming of <strong>eKalibr</strong> is inspired by <a href="https://github.com/ethz-asl/kalibr.git">Kalibr</a>, but not an extension of it."</i></p>
 <p align="center">
-    :tada: <a href="https://github.com/Unsigned-Long/eKalibr/blob/master/docs/details/news.md"><i><strong>News »</strong> eKalibr Version 1.0.0 Is Released!</i></a>
+    :tada: <a href="https://github.com/Unsigned-Long/eKalibr/blob/master/docs/details/news.md"><i><strong>News »</strong> eKalibr Version 2.0.0 Is Released! Support Intrinsic, Extrinsic, Time Offset Calibration!</i></a>
 </p>
+
 
 
 
@@ -21,7 +22,7 @@
 
 + Calibration using a circular grid pattern. `eKalibr` includes a precise circular grid pattern recognition pipeline, capable of directly extracting patterns from raw event streams.
 + It is open-source and free of charge. Any organization, as long as it complies with the `eKalibr` open-source license, can freely use `eKalibr` for secondary development without restrictions.
-+ Currently, `eKalibr` supports intrinsic calibration of event cameras. In the future, I will extend `eKalibr` to support multi-event-camera and event-IMU (event-inertial) spatiotemporal calibration. Stay tuned!
++ Currently, `eKalibr` supports intrinsic calibration and spatiotemporal (extrinsic and time offset) calibration for event cameras. In the future, I will extend `eKalibr` to support event-IMU (event-inertial) spatiotemporal calibration. Stay tuned!
 
 For more details, please refer to our article :point_down::
 
