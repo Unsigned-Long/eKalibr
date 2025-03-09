@@ -14,6 +14,8 @@ Configor:
           Height: 260
           # It is not particularly critical in intrinsic calibration.
           Weight: 10.0
+          # if you want to estimate intrinsics, please keep this field empty, i.e., ""
+          Intrinsics: ""
       - key: "/dvs2/events"
         value:
           Type: "DVS_EVENT"
@@ -21,6 +23,8 @@ Configor:
           Height: 260
           # It is not particularly critical in intrinsic calibration.
           Weight: 10.0
+          # if you want to estimate intrinsics, please keep this field empty, i.e., ""
+          Intrinsics: ""
       - key: "/dvs3/events"
         value:
           Type: "DVS_EVENT"
@@ -28,8 +32,11 @@ Configor:
           Height: 260
           # It is not particularly critical in intrinsic calibration.
           Weight: 10.0
+          # if you want to estimate intrinsics, please keep this field empty, i.e., ""
+          Intrinsics: ""
+
     # ------------------------------------------------------------------------------------ #
-    # Ignore these fields; they are not used in the intrinsic calibration of event cameras #                                   #
+    # Ignore these fields; they are not used in the intrinsic/multi-camera calibration     #
     # ------------------------------------------------------------------------------------ #
     # key: IMU topic, value: IMU type. Supported IMU types are:                            #
     # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git          #
@@ -40,8 +47,9 @@ Configor:
     # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)                           #
     # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)                          #
     IMUTopics:
-    RefIMUTopic: ""                                                                        #
+    RefIMUTopic: ""
     # ------------------------------------------------------------------------------------ #
+
     BagPath: "/the_absolute_path_of_the_ROS_bag_file.bag"
     # the time piece: [BegTime, BegTime + Duration], unit: second(s)
     # if you want to use all time data for calibration, please set them to negative numbers
@@ -65,8 +73,8 @@ Configor:
     # on a row or column. For the asymmetric circle grid pattern, the square size is half the distance
     # between circle centers on a row or column.
     #---------------------------------------------------------------------------------------------#
-    # Attention: symmetric circle grid pattern cannot be used to calibrate inertial-visual suites #
-    # due to 180-degree ambiguity!!!!!!!!!!!!!!!!!!!!!                                            #
+    # Attention: symmetric circle grid pattern cannot be used to calibrate multi-camera or        #
+    # inertial-visual suites due to 180-degree ambiguity. Do not use them in such cases!!!!!!!!!  #                       #
     #---------------------------------------------------------------------------------------------#
     CirclePattern:
       # symmetric and asymmetric circle grids are supported
@@ -117,26 +125,22 @@ Configor:
       EventToPlaneTimeDistThd: 2E-3
 
     # ------------------------------------------------------------------------------------ #
-    # Ignore these fields; they are not used in the intrinsic calibration of event cameras #                                   #
+    # Ignore these fields; they are not used in the intrinsic/multi-camera calibration     #                                   #
     # ------------------------------------------------------------------------------------ #
     # priori about spatiotemporal parameters, given by corresponding config file path      #
     SpatTempPrioriPath: ""                                                                 #
     # unit: m/s^2                                                                          #
     GravityNorm: 9.8                                                                       #
+    # ------------------------------------------------------------------------------------ #
+
     # the range where the time offsets would be optimized.                                 #
     # make sure this range contains the ground truth of time offsets                       #
     # If you're not sure, make this field large, but this could lead to longer time        #
     TimeOffsetPadding: 0.10                                                                #
     # if sensor are hardware-synchronized, you could choose to fix temporal parameters     #
     # by setting this field to 'false'                                                     #
-    OptTemporalParams: true                                                                #
-    # the time distance of two neighbor control points, which determines the accuracy      #
-    # of the representation of the B-splines. Smaller distance would lead to longer time   #
-    # common choices: from '0.02' to '0.10'                                                #
-    KnotTimeDist:
-      So3Spline: 0.05                                                                      #
-      ScaleSpline: 0.05                                                                    #
-    # ------------------------------------------------------------------------------------ #
+    OptTemporalParams: true
+
   Preference:
     # currently available output content:
     # ParamInEachIter, VisualReprojError, SAEMapClusterNormFlowEvents, SAEMapIdentifyCategory,

@@ -26,6 +26,7 @@
 For more details, please refer to our article :point_down::
 
 + **S. Chen**, X. Li*, L. Yuan, and Z. Liu. eKalibr: Dynamic Intrinsic Calibration for Event Cameras From First Principles of Events[J]. arXiv preprint arXiv:2501.05688, 2025. [[paper-arXiv](https://arxiv.org/abs/2501.05688)] [[video](https://www.bilibili.com/video/BV1yKc1e8Edc)]
++ **S. Chen**, X. Li*, and L. Yuan. eKalibr-Stereo: Continuous-Time Spatiotemporal Calibration for  Event-Based Stereo Visual Systems[J]. arXiv preprint arXiv:250x.xxxxx, 2025. [[paper-arXiv]()]
 
 
 
@@ -48,7 +49,6 @@ For more details, please refer to our article :point_down::
 
 <p align="left"><strong>Tutorial: Prepare eKalibr for Calibration »</strong></a>
 </p> 
-
 `eKalibr` has been tested only on Ubuntu 20.04. Generally, the key dependencies are `ROS1` and `CPP17`. If both of these requirements are met, there should be no issues. To use `eKalibr`, please first follow [Tutorial](docs/details/build_ekalibr.md) to configure the necessary environment and compile `eKalibr`, and then proceed with [Tutorial](docs/details/use_ekalibr.md) for specific data collection and sensor calibration.
 
 
@@ -59,6 +59,7 @@ For more details, please refer to our article :point_down::
 To facilitate the learning of those interested in eKalibr, we have made the datasets used for testing and evaluating eKalibr publicly available:
 
 + Intrinsic calibration datasets of event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1-tTVQmLRH07sNR3R9nA_jT8dswKElUk_?usp=sharing).
++ multi-camera (e.g., stereo camera) calibration datasets for event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1KY9-Gom8WSHp2-oOdN21phY6l54NQgWf?usp=sharing).
 + Stay tuned...
 
 
