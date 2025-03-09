@@ -40,7 +40,7 @@ For more details, please refer to our article :point_down::
 
 ---
 
-<div align=center><img src="docs/img/ekalibr.jpg" width =100%></div>
+<div align=center><img src="docs/img/ekalibr.jpg" width =60%><img src="docs/img/ekalibr-stereo.jpg" width =39%></div>
 
 ---
 
@@ -50,14 +50,14 @@ For more details, please refer to our article :point_down::
 
 <p align="left"><strong>Tutorial: Prepare eKalibr for Calibration »</strong></a>
 </p> 
-`eKalibr` has been tested only on Ubuntu 20.04. Generally, the key dependencies are `ROS1` and `CPP17`. If both of these requirements are met, there should be no issues. To use `eKalibr`, please first follow [Tutorial](docs/details/build_ekalibr.md) to configure the necessary environment and compile `eKalibr`, and then proceed with [Tutorial](docs/details/use_ekalibr.md) for specific data collection and sensor calibration.
+`eKalibr` has been tested only on `Ubuntu 20.04`. Generally, the key dependencies are `ROS1` and `CPP17`. If both of these requirements are met, there should be no issues. To use `eKalibr`, please first follow [Tutorial](docs/details/build_ekalibr.md) to configure the necessary environment and compile `eKalibr`, and then proceed with [Tutorial](docs/details/use_ekalibr.md) for specific data collection and sensor calibration.
 
 
 
 <p align="left"><strong>Access Public Datasets of eKalibr »</strong></a>
 </p> 
 
-To facilitate the learning of those interested in eKalibr, we have made the datasets used for testing and evaluating eKalibr publicly available:
+To facilitate the learning of those interested in `eKalibr`, we have made the datasets used for testing and evaluating `eKalibr` publicly available:
 
 + Intrinsic calibration datasets of event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1-tTVQmLRH07sNR3R9nA_jT8dswKElUk_?usp=sharing).
 + multi-camera (e.g., stereo camera) calibration datasets for event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1KY9-Gom8WSHp2-oOdN21phY6l54NQgWf?usp=sharing).
