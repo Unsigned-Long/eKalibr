@@ -1,0 +1,150 @@
+Configor:
+  DataStream:
+    # key: event camera topic, value: event type. Supported event types:
+    # (1) PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
+    # (2)       DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
+    # (3) ...
+    # If support for other types of event camera messages is required,
+    # please feel free to contact us through a GitHub issue.
+    EventTopics:
+      - key: "/davis_left/events"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
+          # It is not particularly critical in intrinsic calibration.
+          Weight: 10.0
+          # if you want to estimate intrinsics, please keep this field empty, i.e., ""
+          Intrinsics: ""
+      - key: "/davis_right/events"
+        value:
+          Type: "DVS_EVENT"
+          Width: 346
+          Height: 260
+          # It is not particularly critical in intrinsic calibration.
+          Weight: 10.0
+          # if you want to estimate intrinsics, please keep this field empty, i.e., ""
+          Intrinsics: ""
+
+    # ------------------------------------------------------------------------------------ #
+    # Ignore these fields; they are not used in the intrinsic/multi-camera calibration     #
+    # ------------------------------------------------------------------------------------ #
+    # key: IMU topic, value: IMU type. Supported IMU types are:                            #
+    # (1)              SBG_IMU: https://github.com/SBG-Systems/sbg_ros_driver.git          #
+    # (2)           SENSOR_IMU: gyro unit (rad/s), acce unit (m/s^2)                       #
+    # (3)         SENSOR_IMU_G: gyro unit (rad/s), acce unit (G)                           #
+    # (4)     SENSOR_IMU_G_NEG: gyro unit (rad/s), acce unit (-G)                          #
+    # (5)       SENSOR_IMU_DEG: gyro unit (deg/s), acce unit (m/s^2)                       #
+    # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)                           #
+    # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)                          #
+    IMUTopics:
+    RefIMUTopic: ""
+    # ------------------------------------------------------------------------------------ #
+
+    BagPath: "/media/csl/samsung/eKalibr/dataset/multi-camera/acircle-11x4-50mm/eKalibr-data-2025-02-20-19-27-10.bag"
+    # the time piece: [BegTime, BegTime + Duration], unit: second(s)
+    # if you want to use all time data for calibration, please set them to negative numbers
+    # Note that the 'BegTime' here is measured from the start time of bag
+    # and is not related to the timestamp of the data recorded in the package.
+    BeginTime: -1
+    Duration: -1
+  Prior:
+    # +---------------+----------------+        +---------------+----------------+
+    # |SYMMETRIC_GRID | ASYMMETRIC_GRID|        |SYMMETRIC_GRID | ASYMMETRIC_GRID|
+    # +---------------+----------------+        +---------------+----------------+
+    # |  (O) (O) (O)  |  (O) (O) (O)   |        |  (O)     (O)  |   (O)   (O)    |
+    # |  (O) (O) (O)  |    (O) (O) (O) |        |   |-------|   |    |--|        |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |  -->   | SpacingMeters |  SpacingMeters |
+    # |  (O) (O) (O)  |    (O) (O) (O) |        |   |-------|   |       |--|     |
+    # |  (O) (O) (O)  |  (O) (O) (O)   |        |  (O)     (O)  |      (O)   (O) |
+    # +---------------+----------------+        +---------------+----------------+
+    # |   C=3, R=5    | C=3, R=5 (odd) |        |   C=3, R=5    | C=3, R=5 (odd) |
+    # +---------------+----------------+        +---------------+----------------+
+    # For the symmetric circle grid pattern, the square size is the distance between circle centers
+    # on a row or column. For the asymmetric circle grid pattern, the square size is half the distance
+    # between circle centers on a row or column.
+    #---------------------------------------------------------------------------------------------#
+    # Attention: symmetric circle grid pattern cannot be used to calibrate multi-camera or        #
+    # inertial-visual suites due to 180-degree ambiguity. Do not use them in such cases!!!!!!!!!  #                       #
+    #---------------------------------------------------------------------------------------------#
+    CirclePattern:
+      # symmetric and asymmetric circle grids are supported
+      # (1)  SYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
+      # (2) ASYMMETRIC_GRID: https://www.mathworks.com/help/vision/ug/calibration-patterns.html
+      Type: ASYMMETRIC_GRID
+      # number of circles (cols)
+      Cols: 4
+      # number of circles (rows)
+      Rows: 11
+      # distance between circles [m]
+      SpacingMeters: 0.05
+      # radius of circles: SpacingMeters / RadiusRate, in this example, it's 0.02 [m]
+      RadiusRate: 2.5
+
+    # -------------------------------------------------------------------#
+    # The following settings generally do not need to be adjusted unless #
+    # the chessboard extraction performance is poor. The main reasons for#
+    # poor chessboard extraction include:                                #
+    # (1) small circular patterns on the chessboard. In this case, it is #
+    # recommended to reprint the chessboard with larger circular holes;  #
+    # (2) insufficient motion leading to sparse norm flow estimates.     #
+    # (3) ...                                                            #
+    # -------------------------------------------------------------------#
+
+    # decay of the surface of active events, unit: sec
+    DecayTimeOfActiveEvents: 0.02
+    # extraction of circular shapes based on raw events
+    CircleExtractor:
+      # clusters with an area greater than the following threshold value are considered valid clusters, unit: pixels.
+      ValidClusterAreaThd: 10
+      # two matched circular clusters whose average directional difference of norm flows,
+      # should be less than the following threshold value, unit: degrees.
+      CircleClusterPairDirThd: 30
+      # When fitting a time-varying circular in the spatiotemporal domain,
+      # the distance from the event to the circle should be less than the following threshold value, unit: pixels.
+      PointToCircleDistThd: 2.0
+    NormFlowEstimator:
+      # The window radius used for solving the norm flow with the local plane, typically set to [1, 3].
+      WinSizeInPlaneFit: 1
+      # The number of iterations for fitting a plane using the RANSAC method.
+      RansacMaxIterations: 2
+      # The threshold for the required ratio of inliers when fitting a plane using the RANSAC method.
+      RansacInlierRatioThd: 0.8
+      # When fitting a plane using the RANSAC method, the distance from a point to the plane
+      # is computed in the time domain. The following value represents the distance threshold
+      # for classifying a point as an inlier.
+      EventToPlaneTimeDistThd: 2E-3
+
+    # ------------------------------------------------------------------------------------ #
+    # Ignore these fields; they are not used in the intrinsic/multi-camera calibration     #                                   #
+    # ------------------------------------------------------------------------------------ #
+    # priori about spatiotemporal parameters, given by corresponding config file path      #
+    SpatTempPrioriPath: ""                                                                 #
+    # unit: m/s^2                                                                          #
+    GravityNorm: 9.8                                                                       #
+    # ------------------------------------------------------------------------------------ #
+
+    # the range where the time offsets would be optimized.                                 #
+    # make sure this range contains the ground truth of time offsets                       #
+    # If you're not sure, make this field large, but this could lead to longer time        #
+    TimeOffsetPadding: 0.10                                                                #
+    # if sensor are hardware-synchronized, you could choose to fix temporal parameters     #
+    # by setting this field to 'false'                                                     #
+    OptTemporalParams: true
+
+  Preference:
+    # currently available output content:
+    # ParamInEachIter, VisualReprojError, SAEMapClusterNormFlowEvents, SAEMapIdentifyCategory,
+    # SAEMapSearchMatches, SAEMapExtractCircles, SAEMapExtractCirclesGrid, SAEMap, ALL, NONE
+    Outputs:
+      - NONE
+    # supported data output format:
+    # (1) JSON
+    # (2) XML
+    # (3) YAML
+    # (4) BINARY
+    OutputDataFormat: "YAML"
+    Visualization: true
+    # the max count of entities to visualize in the viewer, If the visualizer is lagging,
+    # please consider reducing this value appropriately.
+    MaxEntityCountInViewer: 2000

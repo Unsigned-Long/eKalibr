@@ -15,7 +15,8 @@
 *.mp4
 
 /dataset/*
-#!/dataset/intrinsics
+!/dataset/intrinsics
+!/dataset/multi-camera
 
 /thirdparty/ctraj-build
 /thirdparty/ctraj-install
