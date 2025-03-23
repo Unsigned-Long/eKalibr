@@ -43,7 +43,7 @@ namespace ns_ekalibr {
 // config the 'spdlog' log pattern
 void ConfigSpdlog();
 
-void PrintIKalibrLibInfo();
+void PrintEKalibrLibInfo();
 
 bool TryCreatePath(const std::string &path);
 

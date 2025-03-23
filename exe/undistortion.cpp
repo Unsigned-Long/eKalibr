@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     try {
         ns_ekalibr::ConfigSpdlog();
 
-        ns_ekalibr::PrintIKalibrLibInfo();
+        ns_ekalibr::PrintEKalibrLibInfo();
 
         // load settings
         auto valid_name_regex =

@@ -43,7 +43,7 @@ void ConfigSpdlog() {
     spdlog::set_level(spdlog::level::debug);
 }
 
-void PrintIKalibrLibInfo() {
+void PrintEKalibrLibInfo() {
     std::cout << "+----------------------------------------------------------+\n"
                  "|   ▓█████  ██ ▄█▀▄▄▄       ██▓     ██▓ ▄▄▄▄    ██▀███     |\n"
                  "|   ▓█   ▀  ██▄█▒▒████▄    ▓██▒    ▓██▒▓█████▄ ▓██ ▒ ██▒   |\n"
