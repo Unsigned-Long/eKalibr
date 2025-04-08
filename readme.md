@@ -28,7 +28,7 @@
 For more details, please refer to our article :point_down::
 
 + **S. Chen**, X. Li*, L. Yuan, and Z. Liu. eKalibr: Dynamic Intrinsic Calibration for Event Cameras From First Principles of Events[J]. arXiv preprint arXiv:2501.05688, 2025. [[paper-arXiv](https://arxiv.org/abs/2501.05688)] [[video](https://www.bilibili.com/video/BV1yKc1e8Edc)]
-+ **S. Chen**, X. Li*, and L. Yuan. eKalibr-Stereo: Continuous-Time Spatiotemporal Calibration for  Event-Based Stereo Visual Systems[J]. arXiv preprint arXiv:2504.04451, 2025. [[paper-arXiv]()]
++ **S. Chen**, X. Li*, and L. Yuan. eKalibr-Stereo: Continuous-Time Spatiotemporal Calibration for  Event-Based Stereo Visual Systems[J]. arXiv preprint arXiv:2504.04451, 2025. [[paper-arXiv](https://arxiv.org/abs/2504.04451)]
 
 
 
