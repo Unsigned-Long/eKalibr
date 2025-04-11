@@ -53,7 +53,7 @@ For more details, please refer to our article :point_down::
 </p> 
 
 
-`eKalibr` has been tested only on `Ubuntu 20.04`. Generally, the key dependencies are `ROS1` and `CPP17`. If both of these requirements are met, there should be no issues. To use `eKalibr`, please first follow [tutorial](docs/details/build_ekalibr.md) (*install from **source***) or [tutrial](docs/details/build_ekalibr_docker.md) (*install using **docker***) to configure the necessary environment and compile `eKalibr`, and then proceed with [tutorial](docs/details/use_ekalibr.md) for specific data collection and sensor calibration.
+`eKalibr` has been tested only on `Ubuntu 20.04`. Generally, the key dependencies are `ROS1` and `CPP17`. If both of these requirements are met, there should be no issues. To use `eKalibr`, please first follow [tutorial](docs/details/build_ekalibr.md) (*install from **source***) or [tutorial](docs/details/build_ekalibr_docker.md) (*install using **docker***) to configure the necessary environment and compile `eKalibr`, and then proceed with [tutorial](docs/details/use_ekalibr.md) for specific data collection and sensor calibration.
 
 
 
@@ -81,9 +81,8 @@ MIT License
 Copyright 2025, the School of Geodesy and Geomatics (SGG), Wuhan University, China
 
 eKalibr: Event-Based Visual Calibration Framework
- GitHub: https://github.com/Unsigned-Long/eKalibr.
+ GitHub: https://github.com/Unsigned-Long/eKalibr.git
  Author: Shuolong Chen (shlchen@whu.edu.cn)
- GitHub: https://github.com/Unsigned-Long
   ORCID: 0000-0002-5283-9057
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
