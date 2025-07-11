@@ -86,12 +86,6 @@ std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
         if (eventDataLoaders.cend() != eventDataLoaders.find(topic)) {
             // an event array
             auto mes = eventDataLoaders.at(topic)->UnpackData(item);
-            if (topic == "/davis_right/events") {
-                mes->SetTimestamp(mes->GetTimestamp() - 0.02 /*sec*/);
-                for (const auto &ev : mes->GetEvents()) {
-                    ev->SetTimestamp(ev->GetTimestamp() - 0.02 /*sec*/);
-                }
-            }
             if (mes != nullptr) {
                 eventMes.at(topic).push_back(mes);
             }
