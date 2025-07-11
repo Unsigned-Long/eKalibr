@@ -29,8 +29,8 @@ import os.path
 import subprocess
 import yaml
 import concurrent.futures
-
-from sympy import false
+import numpy as np
+from quaternions import Quaternion
 
 
 def is_roscore_running():
@@ -166,6 +166,7 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
         output_path = bag_path.split('.')[:-1][0]
         write_yaml_file(config_data, config_path)
         info = {
+            "id": bag_path.split('/')[-1].split('.')[0],
             "config_file_path": config_path,
             "output_dir_path": output_path,
             "param_file_path": os.path.join(output_path, "ekalibr_param.all.yaml")
@@ -201,6 +202,74 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
     return solve_info_succuss
 
 
+def extract_values_by_key_path_and_event(data, path_list, target_key):
+    result = []
+
+    for entry in data.values():
+        current = entry
+        try:
+            for key in path_list:
+                current = current[key]
+            for item in current:
+                if item.get("key") == target_key:
+                    result.append(item["value"])
+        except (KeyError, TypeError):
+            continue
+
+    return result
+
+
+def save_solve_results(solve_info_succuss, output_path):
+    # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
+    all_params = {}
+    for item in solve_info_succuss:
+        param_file_path = item["param_file_path"]
+        if not os.path.exists(param_file_path):
+            print(f"\033[93mWarning: Parameter file {param_file_path} does not exist, "
+                  f"its evaluation is not performed!!!\033[0m")
+            continue
+        params = load_yaml_file(param_file_path)
+        if params is None:
+            print(f"\033[93mWarning: Failed to load parameters from {param_file_path}, "
+                  f"its evaluation is not performed!!!\033[0m")
+            continue
+        all_params[item["id"]] = params
+
+    write_yaml_file(all_params, output_path)
+    print(f"eKalibr solving results saved to {output_path}")
+
+
+def evaluate(ekalibr_results_path):
+    # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
+    all_params = load_yaml_file(ekalibr_results_path)
+    SO3_CjToBr = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "EXTRI", "SO3_CjToBr"], "/davis_right/events"
+    )
+    SO3_CjToBr = [Quaternion(elem["qw"], elem["qx"], elem["qy"], elem["qz"]).get_euler() for elem in SO3_CjToBr]
+    SO3_CjToBr = [[elem * 180.0 / np.pi for elem in euler] for euler in SO3_CjToBr]
+
+    POS_CjInBr = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "EXTRI", "POS_CjInBr"], "/davis_right/events"
+    )
+    POS_CjInBr = [[elem["r0c0"] * 100.0, elem["r1c0"] * 100.0, elem["r2c0"] * 100.0] for elem in POS_CjInBr]
+
+    TO_CjToBr = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "TEMPORAL", "TO_CjToBr"], "/davis_right/events"
+    )
+    TO_CjToBr = [[elem * 1000.0] for elem in TO_CjToBr]
+
+    np.set_printoptions(precision=3, suppress=True)
+    print(f"'SO3_CjToBr'-> "
+          f"mean: {np.mean(np.array(SO3_CjToBr), axis=0)} deg, "
+          f"std: {np.std(np.array(SO3_CjToBr), axis=0)} deg")
+    print(f"'POS_CjInBr'-> "
+          f"mean: {np.mean(np.array(POS_CjInBr), axis=0)} cm, "
+          f"std: {np.std(np.array(POS_CjInBr), axis=0)} cm")
+    print(f" 'TO_CjToBr'-> "
+          f"mean: {np.mean(np.array(TO_CjToBr), axis=0)} ms, "
+          f"std: {np.std(np.array(TO_CjToBr), axis=0)} ms")
+
+
 if __name__ == "__main__":
     dataset_folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
     bag_path_list = []
@@ -216,3 +285,6 @@ if __name__ == "__main__":
 
     print(f"There are {len(bag_path_list)} bags to process")
     solve_info_succuss = run_ekalibr_calibration(bag_path_list, 1, False)
+    ekalibr_results_path = os.path.join(dataset_folder, "ekalibr_results.yaml")
+    save_solve_results(solve_info_succuss, ekalibr_results_path)
+    evaluate(ekalibr_results_path)
