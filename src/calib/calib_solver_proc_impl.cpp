@@ -80,7 +80,9 @@ void CalibSolver::Process() {
      * calibrate spatiotemporal parameters of events camera
      */
     if (Configor::DataStream::EventTopics.size() > 1) {
-        _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+        if (Configor::Preference::Visualization) {
+            _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+        }
         this->EvCamSpatialTemporalCalib();
         _parMgr->ShowParamStatus();
         CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib");
