@@ -151,8 +151,7 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
     ]
     config_data["Configor"]["Preference"]["Visualization"] = False
 
-    config_path_list = []
-    output_path_list = []
+    solve_info = []
     for bag_path in bag_path_list:
         config_data['Configor']['DataStream']['BagPath'] = bag_path
         board_size = bag_path.split('/')[-2].split('-')[1].split('x')
@@ -164,29 +163,42 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
         config_data["Configor"]["Prior"]["CirclePattern"]["SpacingMeters"] = 0.05
         config_data["Configor"]["Prior"]["CirclePattern"]["Type"] = "ASYMMETRIC_GRID"
         config_path = bag_path.split('.')[:-1][0] + ".yaml"
-        write_yaml_file(config_data, config_path)
-        config_path_list.append(config_path)
         output_path = bag_path.split('.')[:-1][0]
-        output_path_list.append(output_path)
-        if delete_existing_output and os.path.exists(output_path):
-            print(f"Output path {output_path} already exists, remove it...")
-            os.system(f"rm -r {output_path}")
+        write_yaml_file(config_data, config_path)
+        info = {
+            "config_file_path": config_path,
+            "output_dir_path": output_path,
+            "param_file_path": os.path.join(output_path, "ekalibr_param.all.yaml")
+        }
+        if os.path.exists(output_path):
+            if delete_existing_output:
+                print(f"Output path {output_path} already exists, remove it...")
+                os.system(f"rm -r {output_path}")
+                info["need_to_solve"] = True
+            else:
+                print(f"Output path {output_path} already exists, skip it...")
+                info["need_to_solve"] = False
+        else:
+            info["need_to_solve"] = True
+        solve_info.append(info)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = [executor.submit(run_ekalibr_calibration_task, config_path)
-                   for config_path in config_path_list]
+        futures = [executor.submit(run_ekalibr_calibration_task, info["config_file_path"])
+                   for info in solve_info if info["need_to_solve"]]
 
         concurrent.futures.wait(futures)
 
     # remove output_path in 'output_path_list' that not exists in disk
-    for output_path in reversed(output_path_list):
-        if not os.path.exists(output_path):
-            print(f"\033[93mWarning: Output path {output_path} does not exist, "
+    solve_info_succuss = []
+    for item in solve_info:
+        if not os.path.exists(item["param_file_path"]):
+            print(f"\033[93mWarning: Parameter file {item['param_file_path']} does not exist, "
                   f"its solving is not performed or failed!!!\033[0m")
+        else:
+            solve_info_succuss.append(item)
 
-    output_path_list_success = [path for path in output_path_list if os.path.exists(path)]
-    print(f"There are total {len(output_path_list_success)}/{len(output_path_list)} cases are solved successfully!!!")
-    return output_path_list_success
+    print(f"There are total {len(solve_info_succuss)}/{len(solve_info)} cases are solved successfully!!!")
+    return solve_info_succuss
 
 
 if __name__ == "__main__":
@@ -203,4 +215,4 @@ if __name__ == "__main__":
             bag_path_list.append(rosbag_path)
 
     print(f"There are {len(bag_path_list)} bags to process")
-    run_ekalibr_calibration(bag_path_list, 1, True)
+    solve_info_succuss = run_ekalibr_calibration(bag_path_list, 1, False)
