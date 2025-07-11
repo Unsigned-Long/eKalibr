@@ -40,7 +40,7 @@
 #include <util/status.hpp>
 
 namespace ns_ekalibr {
-#define VISUALIZATION_TRACKING 1
+#define VISUALIZATION_TRACKING 0
 
 std::set<int> InCmpPatternTracker::Tracking(
     const std::string& topic,
