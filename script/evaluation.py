@@ -270,8 +270,10 @@ def evaluate(ekalibr_results_path):
           f"std: {np.std(np.array(TO_CjToBr), axis=0)} ms")
 
 
-if __name__ == "__main__":
-    dataset_folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
+def full_pipeline_evaluation(dataset_folder, max_workers=1, delete_existing_output=True):
+    if not os.path.exists(dataset_folder):
+        print(f"Error: Dataset folder {dataset_folder} does not exist.")
+        exit(1)
     bag_path_list = []
     for board_type_folder in os.listdir(dataset_folder):
         board_type_path = os.path.join(dataset_folder, board_type_folder)
@@ -284,7 +286,13 @@ if __name__ == "__main__":
             bag_path_list.append(rosbag_path)
 
     print(f"There are {len(bag_path_list)} bags to process")
-    solve_info_succuss = run_ekalibr_calibration(bag_path_list, 1, False)
+    solve_info_succuss = run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output)
     ekalibr_results_path = os.path.join(dataset_folder, "ekalibr_results.yaml")
     save_solve_results(solve_info_succuss, ekalibr_results_path)
     evaluate(ekalibr_results_path)
+
+
+if __name__ == "__main__":
+    dataset_folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
+    full_pipeline_evaluation(dataset_folder=dataset_folder, max_workers=1, delete_existing_output=True)
+    # evaluate(os.path.join(dataset_folder, "ekalibr_results_no_time_offset.yaml"))
