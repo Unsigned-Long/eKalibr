@@ -105,15 +105,21 @@ def get_ekalibr_template_config_path():
     return template_config_path
 
 
-def run_ekalibr_calibration_task(config_path):
+def run_ekalibr_calibration_task(config_path, output=True):
     cmd = (f"roslaunch ekalibr ekalibr-prog.launch "
            f"config_path:={config_path} "
            f"node_name:={config_path.split('/')[-1].split('.')[0].replace('-', '_')}")
     print(f"Running ekalibr calibration with command: {cmd}")
-    subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    if not output:
+        subprocess.run(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        subprocess.run(cmd, shell=True)
 
 
 def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
+    if not is_roscore_running():
+        print("\033[93mWarning: roscore is not running. Please start roscore before running this script.\033[0m")
+        return []
     template_config_path = get_ekalibr_template_config_path()
     if template_config_path is None or not os.path.exists(template_config_path):
         print("\033[93mWarning: ekalibr config template not found. Please ensure it is installed.\033[0m")
@@ -197,4 +203,4 @@ if __name__ == "__main__":
             bag_path_list.append(rosbag_path)
 
     print(f"There are {len(bag_path_list)} bags to process")
-    run_ekalibr_calibration(bag_path_list, 2, False)
+    run_ekalibr_calibration(bag_path_list, 1, True)
