@@ -47,7 +47,11 @@ int main(int argc, char **argv) {
         ns_ekalibr::PrintEKalibrLibInfo();
 
         // load settings
-        auto configPath = ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_prog/config_path");
+        std::string configPath;
+        if (!ros::NodeHandle("~").getParam("config_path", configPath)) {
+            throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,
+                                     "config_path parameter not set in the ROS parameter server");
+        }
         spdlog::info("loading configure from yaml file '{}'...", configPath);
         if (!std::filesystem::exists(configPath)) {
             throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,

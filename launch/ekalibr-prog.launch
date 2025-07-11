@@ -3,7 +3,9 @@
 
     <arg name="config_path" default="$(find ekalibr)/config/ekalibr-config.yaml"/>
 
-    <node pkg="ekalibr" type="ekalibr_prog" name="ekalibr_prog" output="screen">
+    <arg name="node_name" default="ekalibr_prog"/>
+
+    <node pkg="ekalibr" type="ekalibr_prog" name="$(arg node_name)" output="screen">
         <!-- change the value of this field to the path of your self-defined config file -->
         <param name="config_path" value="$(arg config_path)" type="string"/>
     </node>
