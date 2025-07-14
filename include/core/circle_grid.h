@@ -70,6 +70,8 @@ struct CircleGrid2D {
                       const std::vector<uint8_t>& cenValidity,
                       bool isComplete);
 
+    void DrawCenters(cv::Mat& img, cv::Size patternSize) const;
+
 public:
     template <class Archive>
     void serialize(Archive& ar) {

@@ -219,17 +219,15 @@ std::string CalibSolverIO::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::strin
 
 void CalibSolverIO::SaveSAEMaps(const std::string &topic,
                                 const EventCircleExtractorPtr &extractor,
+                                int grid2dId,
                                 const cv::Mat &sae) {
-    static std::map<std::string, int> idxMap;
-    const auto count = idxMap[topic]++;
-
     if (IsOptionWith(OutputOption::SAEMapClusterNormFlowEvents, Configor::Preference::Outputs)) {
         std::string saveDir =
             Configor::DataStream::OutputPath + "/sae/cluster_norm_flow_events" + topic;
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/SAEMapClusterNormFlowEvents-" + std::to_string(count) + ".png",
+        cv::imwrite(saveDir + "/SAEMapClusterNormFlowEvents-" + std::to_string(grid2dId) + ".png",
                     extractor->SAEMapClusterNormFlowEvents());
     }
     if (IsOptionWith(OutputOption::SAEMapExtractCircles, Configor::Preference::Outputs)) {
@@ -237,7 +235,7 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/SAEMapExtractCircles-" + std::to_string(count) + ".png",
+        cv::imwrite(saveDir + "/SAEMapExtractCircles-" + std::to_string(grid2dId) + ".png",
                     extractor->SAEMapExtractCircles());
     }
     if (IsOptionWith(OutputOption::SAEMapExtractCirclesGrid, Configor::Preference::Outputs)) {
@@ -246,7 +244,7 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/SAEMapExtractCirclesGrid-" + std::to_string(count) + ".png",
+        cv::imwrite(saveDir + "/SAEMapExtractCirclesGrid-" + std::to_string(grid2dId) + ".png",
                     extractor->SAEMapExtractCirclesGrid());
     }
     if (IsOptionWith(OutputOption::SAEMapIdentifyCategory, Configor::Preference::Outputs)) {
@@ -254,7 +252,7 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/SAEMapIdentifyCategory-" + std::to_string(count) + ".png",
+        cv::imwrite(saveDir + "/SAEMapIdentifyCategory-" + std::to_string(grid2dId) + ".png",
                     extractor->SAEMapIdentifyCategory());
     }
     if (IsOptionWith(OutputOption::SAEMapSearchMatches, Configor::Preference::Outputs)) {
@@ -262,7 +260,7 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/SAEMapSearchMatches-" + std::to_string(count) + ".png",
+        cv::imwrite(saveDir + "/SAEMapSearchMatches-" + std::to_string(grid2dId) + ".png",
                     extractor->SAEMapSearchMatches3());
     }
     if (!sae.empty() && IsOptionWith(OutputOption::SAEMap, Configor::Preference::Outputs)) {
@@ -270,7 +268,22 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
         if (!TryCreatePath(saveDir)) {
             return;
         }
-        cv::imwrite(saveDir + "/sae-" + std::to_string(count) + ".png", sae);
+        cv::imwrite(saveDir + "/sae-" + std::to_string(grid2dId) + ".png", sae);
+    }
+}
+
+void CalibSolverIO::SaveSAEMaps(const std::string &topic,
+                                const std::unordered_map<int, cv::Mat> &SAEMapTrackedCirclesGrid) {
+    if (IsOptionWith(OutputOption::SAEMapTrackedCirclesGrid, Configor::Preference::Outputs)) {
+        std::string saveDir =
+            Configor::DataStream::OutputPath + "/sae/tracked_circles_grid" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        for (const auto &[grid2dId, sae] : SAEMapTrackedCirclesGrid) {
+            cv::imwrite(saveDir + "/SAEMapTrackedCirclesGrid-" + std::to_string(grid2dId) + ".png",
+                        sae);
+        }
     }
 }
 

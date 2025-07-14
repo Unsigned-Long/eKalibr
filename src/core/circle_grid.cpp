@@ -31,6 +31,7 @@
 #include "cereal/types/polymorphic.hpp"
 #include "cereal/types/list.hpp"
 #include "cereal/types/vector.hpp"
+#include <opencv2/imgproc.hpp>
 
 namespace ns_ekalibr {
 CircleGrid2D::CircleGrid2D(int id,
@@ -50,6 +51,79 @@ CircleGrid2D::Ptr CircleGrid2D::Create(int id,
                                        const std::vector<uint8_t>& cenValidity,
                                        bool isComplete) {
     return std::make_shared<CircleGrid2D>(id, timestamp, centers, cenValidity, isComplete);
+}
+
+void CircleGrid2D::DrawCenters(cv::Mat& image, cv::Size patternSize) const {
+    int type = image.type();
+    int cn = CV_MAT_CN(type);
+    CV_CheckType(type, cn == 1 || cn == 3 || cn == 4, "Number of channels must be 1, 3 or 4");
+
+    int depth = CV_MAT_DEPTH(type);
+    CV_CheckType(type, depth == CV_8U || depth == CV_16U || depth == CV_32F,
+                 "Only 8-bit, 16-bit or floating-point 32-bit images are supported");
+    cv::InputArray _corners = centers;
+    if (_corners.empty()) return;
+    cv::Mat corners = _corners.getMat();
+    const cv::Point2f* corners_data = corners.ptr<cv::Point2f>(0);
+    CV_DbgAssert(corners_data);
+    int nelems = corners.checkVector(2, CV_32F, true);
+    CV_Assert(nelems >= 0);
+
+    const int shift = 0;
+    const int radius = 4;
+    const int r = radius * (1 << shift);
+
+    double scale = 1;
+    switch (depth) {
+        case CV_8U:
+            scale = 1;
+            break;
+        case CV_16U:
+            scale = 256;
+            break;
+        case CV_32F:
+            scale = 1. / 255;
+            break;
+        default: {
+        }
+    }
+
+    int line_type = (type == CV_8UC1 || type == CV_8UC3) ? cv::LINE_AA : cv::LINE_8;
+
+    const int line_max = 7;
+    static const int line_colors[line_max][4] = {
+        {0, 0, 255, 0},   {0, 128, 255, 0}, {0, 200, 200, 0}, {0, 255, 0, 0},
+        {200, 200, 0, 0}, {255, 0, 0, 0},   {255, 0, 255, 0}};
+
+    cv::Point2i prev_pt;
+    bool prev_valid = false;
+    for (int row = 0, i = 0; row < patternSize.height; row++) {
+        const int* line_color = &line_colors[row % line_max][0];
+        cv::Scalar color(line_color[0], line_color[1], line_color[2], line_color[3]);
+        if (cn == 1) color = cv::Scalar::all(200);
+        color *= scale;
+
+        for (int col = 0; col < patternSize.width; col++, i++) {
+            if (!cenValidity[i]) {
+                prev_valid = false;
+                continue;
+            }
+            cv::Point2i pt(cvRound(corners_data[i].x * (1 << shift)),
+                           cvRound(corners_data[i].y * (1 << shift)));
+
+            if (i != 0 && prev_valid) {
+                line(image, prev_pt, pt, color, 1, line_type, shift);
+            }
+
+            line(image, cv::Point(pt.x - r, pt.y - r), cv::Point(pt.x + r, pt.y + r), color, 1,
+                 line_type, shift);
+            line(image, cv::Point(pt.x - r, pt.y + r), cv::Point(pt.x + r, pt.y - r), color, 1,
+                 line_type, shift);
+            circle(image, pt, r + (1 << shift), color, 1, line_type, shift);
+            prev_pt = pt;
+            prev_valid = true;
+        }
+    }
 }
 
 CircleGrid3D::CircleGrid3D(std::size_t rows,

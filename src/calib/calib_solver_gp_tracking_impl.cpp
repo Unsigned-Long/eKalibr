@@ -68,6 +68,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
     /**
      * tracking complete grid patterns
      */
+    std::unordered_map<std::string, std::unordered_map<int, cv::Mat>>
+        SAEMapTrackedCirclesGridBackUp;
+
     for (const auto &[topic, eventMes] : _evMes) {
         if (tryLoadAndSaveRes) {
             // try load
@@ -170,7 +173,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                 /**
                  * extract circle grid pattern
                  */
-
                 auto circleExtractor = EventCircleExtractor::Create(
                     Configor::Preference::Visualization,
                     Configor::Prior::CircleExtractor.ValidClusterAreaThd,
@@ -189,9 +191,19 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                  * input events
                  */
                 rawEvsOfPattern.insert({grid2dIdx, rawEvs});
-                ++grid2dIdx;
 
-                CalibSolverIO::SaveSAEMaps(topic, circleExtractor, nfPack->tsImg);
+                CalibSolverIO::SaveSAEMaps(topic, circleExtractor, grid2dIdx, nfPack->tsImg);
+
+                /**
+                 * for incomplete grid patterns, we will try to track it. we save the time
+                 * 'SAEMapExtractCirclesGrid' for subsequent drawing:
+                 *  (1) for complete grid pattern, 'SAEMapExtractCirclesGrid' has been drawn using
+                 * opencv api: 'cv::drawChessboardCorners'.
+                 *  (2) for incomplete grid pattern, 'SAEMapExtractCirclesGrid' is the clean, just a
+                 * clean time-surface map
+                 */
+                SAEMapTrackedCirclesGridBackUp[topic][grid2dIdx] =
+                    circleExtractor->SAEMapExtractCirclesGrid();
 
                 if (Configor::Preference::Visualization) {
                     circleExtractor->Visualization();
@@ -206,6 +218,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                     // CalibSolverIO::SaveTinyViewerOnRender(topic);
                     cv::waitKey(1);
                 }
+                ++grid2dIdx;
             }
         }
 
@@ -303,6 +316,11 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                     cv::imshow("Tracked Incomplete Grid Pattern", incmpTrackMat);
                     cv::waitKey(1);
                 }
+                if (!patternLoadFromFile.at(topic)) {
+                    // for each tracked incomplete grid pattern, we draw the track results
+                    grid2d->DrawCenters(SAEMapTrackedCirclesGridBackUp[topic][grid2d->id],
+                                        patternSize);
+                }
                 ++inCompTrackedNum;
                 ++iter;
             }
@@ -314,6 +332,11 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
             compNum, inCompTrackedNum, inCompNotTrackedNum);
     }
     cv::destroyAllWindows();
+
+    for (const auto &[key, SAEMapTrackedCirclesGrid] : SAEMapTrackedCirclesGridBackUp) {
+        CalibSolverIO::SaveSAEMaps(key, SAEMapTrackedCirclesGrid);
+    }
+    std::cin.get();
 
     /**
      * save circle grid patterns to disk

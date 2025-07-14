@@ -241,7 +241,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
                     // blobDetector is NULL then image represents point array of candidates
         ns_cv_helper::CirclesGridFinderParameters());
 
-    if (visualization) {
+    if (visualization && res) {
         cv::drawChessboardCorners(imgExtractCirclesGrid, gridSize, centers, res);
     }
 
