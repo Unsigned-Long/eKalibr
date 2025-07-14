@@ -38,6 +38,7 @@
 #include <core/time_varying_ellipse.h>
 #include <opencv2/flann/flann.hpp>
 #include <util/status.hpp>
+#include <calib/calib_solver_io.h>
 
 namespace ns_ekalibr {
 #define VISUALIZATION_TRACKING 0
@@ -278,6 +279,7 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     cv::hconcat(m3, m, mTmp2);
     cv::hconcat(mTmp1, mTmp2, mTmp1);
     cv::imshow("Tracking Incomplete 2D Grids", mTmp1);
+    CalibSolverIO::SaveIncmpGridTracking(topic, mTmp1, gridToTrack->id);
     cv::waitKey(1);
 #endif
     return incmpGridPatternIdx;

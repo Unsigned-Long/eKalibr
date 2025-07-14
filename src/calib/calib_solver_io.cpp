@@ -287,6 +287,15 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
     }
 }
 
+void CalibSolverIO::SaveIncmpGridTracking(const std::string &topic, cv::Mat &img, int grid2dId) {
+    std::string saveDir = Configor::DataStream::OutputPath + "/sae/incmp_grid_tracking/" + topic;
+    if (!TryCreatePath(saveDir)) {
+        return;
+    }
+    auto filename = saveDir + "/tracking-" + std::to_string(grid2dId) + ".png";
+    cv::imwrite(filename, img);
+}
+
 void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic, int grid2dId) {
     std::string saveDir = Configor::DataStream::OutputPath + "/render/" + topic;
     if (!TryCreatePath(saveDir)) {

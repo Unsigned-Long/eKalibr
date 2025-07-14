@@ -88,6 +88,8 @@ public:
     static void SaveSAEMaps(const std::string &topic,
                             const std::unordered_map<int, cv::Mat> &SAEMapTrackedCirclesGrid);
 
+    static void SaveIncmpGridTracking(const std::string &topic, cv::Mat &img, int grid2dId);
+
     static void SaveTinyViewerOnRender(const std::string &topic, int grid2dId);
 
     static void SaveStageCalibParam(const CalibParamManagerPtr &par, const std::string &desc);
