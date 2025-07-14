@@ -215,7 +215,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                     curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
                     curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
                     _viewer->SetCamView(curViewCamPose);
-                    // CalibSolverIO::SaveTinyViewerOnRender(topic);
+                    // CalibSolverIO::SaveTinyViewerOnRender(topic, grid2dIdx);
                     cv::waitKey(1);
                 }
                 ++grid2dIdx;

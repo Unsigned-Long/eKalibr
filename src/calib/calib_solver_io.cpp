@@ -287,15 +287,12 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
     }
 }
 
-void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic) {
-    static std::map<std::string, int> idxMap;
-    const auto count = idxMap[topic]++;
-
+void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic, int grid2dId) {
     std::string saveDir = Configor::DataStream::OutputPath + "/render/" + topic;
     if (!TryCreatePath(saveDir)) {
         return;
     }
-    auto filename = saveDir + "/tv-render-" + std::to_string(count) + ".png";
+    auto filename = saveDir + "/tv-render-" + std::to_string(grid2dId) + ".png";
     pangolin::SaveWindowOnRender(filename);
 }
 
