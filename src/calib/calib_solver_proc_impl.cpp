@@ -51,7 +51,7 @@ void CalibSolver::Process() {
      * (3) identity cirlce clusters
      * (4) fit time-varying ciecles using least-squares estimation
      */
-    this->GridPatternTracking(true, false);
+    this->GridPatternTracking(true);
     _evMes.clear();  // "we don't talk anymore...", I mean the '_evMes'.
 
     /**

@@ -46,13 +46,7 @@
 #include "core/incmp_pattern_tracking.h"
 
 namespace ns_ekalibr {
-void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion) {
-#define ENABLE_UNDISTORTION 0
-#if not ENABLE_UNDISTORTION
-    if (undistortion) {
-        throw Status(Status::CRITICAL, "Undistortion is not available currently in eKalibr!!!");
-    }
-#endif
+void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
     const double decay = Configor::Prior::DecayTimeOfActiveEvents;
     const auto &pattern = Configor::Prior::CirclePattern;
     auto circlePattern = CirclePattern::FromString(pattern.Type);
@@ -71,6 +65,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         _viewer->ClearViewer();
         _viewer->ResetViewerCamera();
     }
+    /**
+     * tracking complete grid patterns
+     */
     for (const auto &[topic, eventMes] : _evMes) {
         if (tryLoadAndSaveRes) {
             // try load
@@ -136,14 +133,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         std::map<int, ExtractedCirclesVec> rawEvsOfPattern;
         int grid2dIdx = 0;
 
-#if ENABLE_UNDISTORTION
-        const auto &intri = _parMgr->INTRI.Camera.at(topic);
-        VisualUndistortionMap::Ptr undistortionMap = nullptr;
-        if (undistortion) {
-            undistortionMap = VisualUndistortionMap::Create(intri);
-        }
-#endif
-
         for (int i = 0; i < static_cast<int>(eventMes.size()); i++) {
             bar->progress(i, static_cast<int>(eventMes.size()));
 
@@ -151,24 +140,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
                 /**
                  * create sae (surface of active events)
                  */
-                Event::Ptr ev = event;
-#if ENABLE_UNDISTORTION
-                if (undistortion) {
-                    const auto et = event->GetTimestamp();
-                    const auto ex = event->GetPos()(0), ey = event->GetPos()(1);
-                    const auto [x, y] = undistortionMap->RemoveDistortion(ex, ey);
-                    const int xi = static_cast<int>(std::round(x));
-                    const int yi = static_cast<int>(std::round(y));
-                    if (xi < 0 || yi < 0 || xi >= static_cast<int>(intri->imgWidth) ||
-                        yi >= static_cast<int>(intri->imgHeight)) {
-                        continue;
-                    }
-                    // allocate
-                    ev = Event::Create(et, Event::PosType(xi, yi), event->GetPolarity());
-                }
-#endif
-
-                sae->GrabEvent(ev);
+                sae->GrabEvent(event);
                 const auto timeLatest = sae->GetTimeLatest();
 
                 if (timeLatest - eventMes.front()->GetTimestamp() < 0.05 ||
@@ -207,17 +179,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
 
                 auto [isCmp, centers, rawEvs] = circleExtractor->ExtractCirclesGrid(
                     nfPack, patternSize, circlePattern, true, _viewer);
-#if ENABLE_UNDISTORTION
-                if (undistortion && isCmp) {
-                    for (auto &center : centers) {
-                        Eigen::Vector2d uc(center.x, center.y);
-                        // add distortion to get the origin position
-                        Eigen::Vector2d rc = intri->GetDistoPixel(uc);
-                        center.x = static_cast<float>(rc(0));
-                        center.y = static_cast<float>(rc(1));
-                    }
-                }
-#endif
+
                 auto grid2d = CircleGrid2D::Create(
                     grid2dIdx, nfPack->timestamp, centers,
                     std::vector<std::uint8_t>(centers.size(), isCmp ? 1 : 0), isCmp);
@@ -383,73 +345,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion)
         } else {
             spdlog::info("saved raw events of extracted patterns of '{}' to path finished!", topic);
         }
-    }
-#undef ENABLE_UNDISTORTION
-
-    return;
-
-    for (const auto &[topic, rawEvsOfEllipses] : _rawEventsOfExtractedPatterns) {
-        if (!tryLoadAndSaveRes || !Configor::Preference::Visualization) {
-            continue;
-        }
-        if (!patternLoadFromFile.at(topic)) {
-            continue;
-        }
-        // for each topic
-        const auto &config = Configor::DataStream::EventTopics.at(topic);
-        std::map<int, CircleGrid2D::Ptr> grid2dMap;
-        for (const auto &grid2d : _extractedPatterns.at(topic)->GetGrid2d()) {
-            grid2dMap.insert({grid2d->id, grid2d});
-        }
-        const auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
-
-        auto bar = std::make_shared<tqdm>();
-        int idx = 0;
-        for (const auto &[grid2dIdx, ellipse] : rawEvsOfEllipses) {
-            bar->progress(idx++, static_cast<int>(rawEvsOfEllipses.size()));
-            // for each grid 2d pattern
-            // spdlog::info("grid2d id: {}", grid2dIdx);
-            const auto &grid2d = grid2dMap.at(grid2dIdx);
-            const auto &ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
-
-            // camera view
-            auto t = -grid2d->timestamp * ptScale.second;
-            ns_viewer::Posef curViewCamPose = initViewCamPose;
-            curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
-            curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
-            curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
-            _viewer->SetCamView(curViewCamPose);
-
-            for (std::size_t i = 0; i < ellipse.size(); ++i) {
-                // for each circle
-                const auto &[tvEllipse, rawEvs] = ellipse.at(i);
-                if (tvEllipse == nullptr) {
-                    continue;
-                }
-                _viewer->AddEventData(rawEvs, ptScale, {}, 4.0f);
-                _viewer->AddSpatioTemporalTrace(tvEllipse->PosVecAt(1E-3), 2.0f,
-                                                ns_viewer::Colour::Green(), ptScale);
-            }
-
-            if (grid2d->isComplete) {
-                _viewer->AddGridPattern(grid2d->centers, grid2d->timestamp, ptScale,
-                                        ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
-            }
-
-            // sea
-            const auto &verifiedCircles = rawEvsOfPattern.at(grid2d->id);
-            cv::Mat mat =
-                EventCircleExtractor::CreateSAEWithTVEllipses(topic, verifiedCircles, grid2d);
-            EventCircleExtractor::DrawTimeVaryingEllipses(mat, grid2d->timestamp, verifiedCircles);
-            cv::imshow("Tracked Complete/Incomplete Grid", mat);
-
-            const auto ms = static_cast<int>(Configor::Prior::DecayTimeOfActiveEvents * 1000.0);
-            cv::waitKey(ms);
-        }
-        bar->finish();
-        _viewer->ClearViewer();
-        _viewer->ResetViewerCamera();
-        cv::destroyAllWindows();
     }
 }
 

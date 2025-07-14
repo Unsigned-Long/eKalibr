@@ -188,7 +188,7 @@ protected:
 
     void EvCamSpatialTemporalCalib();
 
-    void GridPatternTracking(bool tryLoadAndSaveRes, bool undistortion);
+    void GridPatternTracking(bool tryLoadAndSaveRes);
 
     /**
      * initialize (recover) the rotation spline using raw angular velocity measurements from
