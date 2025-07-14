@@ -336,7 +336,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
     for (const auto &[key, SAEMapTrackedCirclesGrid] : SAEMapTrackedCirclesGridBackUp) {
         CalibSolverIO::SaveSAEMaps(key, SAEMapTrackedCirclesGrid);
     }
-    std::cin.get();
 
     /**
      * save circle grid patterns to disk
