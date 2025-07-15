@@ -32,3 +32,4 @@
 !script/davis_data_recoder.sh
 !script/davis_stereo_data_recoder.sh
 !script/evaluation.py
+!script/video_maker.py
