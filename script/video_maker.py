@@ -70,7 +70,7 @@ def make_video(folder, fps):
     first_number = min(images.keys())
     last_number = max(images.keys())
     img_list = []
-    for i in range(first_number, last_number + 1):
+    for i in range(0, last_number + 1):
         if i not in images:
             # create a black image with the same size and same type as the first image using opencv
             height, width, channels = images[first_number].shape
