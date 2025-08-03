@@ -168,9 +168,6 @@ void Configor::CheckConfigure() {
         // verify event camera type
         EventModel::FromString(config.Type);
 
-        if (config.Weight <= 0.0) {
-            throw Status(Status::ERROR, "weight of event camera '{}' should be positive!", topic);
-        }
         topics.insert(topic);
     }
     for (const auto &[topic, config] : DataStream::IMUTopics) {

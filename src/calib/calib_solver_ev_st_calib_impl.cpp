@@ -186,7 +186,6 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
 
             const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
             auto estimator = Estimator::Create(_parMgr);
-            const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
 
             for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
                 const auto &sPose = poseVec.at(i);
@@ -206,7 +205,7 @@ void CalibSolver::EvCamSpatialTemporalCalib() {
                     sPose.se3(),      // the start transformation
                     ePose.se3(),      // the end transformation
                     opt,              // the optimization option
-                    weight            // the weight
+                    Configor::Prior::EvCameraWeight()  // the weight
                 );
             }
             estimator->SetEvCamParamsConstant(_refEvTopic);

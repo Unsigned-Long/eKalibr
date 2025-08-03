@@ -12,8 +12,6 @@ Configor:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
-          # It is not particularly critical in intrinsic calibration.
-          Weight: 10.0
           # if you want to estimate intrinsics, please keep this field empty, i.e., ""
           Intrinsics: ""
       - key: "/davis_right/events"
@@ -21,8 +19,6 @@ Configor:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
-          # It is not particularly critical in intrinsic calibration.
-          Weight: 10.0
           # if you want to estimate intrinsics, please keep this field empty, i.e., ""
           Intrinsics: ""
 

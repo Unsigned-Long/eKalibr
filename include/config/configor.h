@@ -83,7 +83,6 @@ public:
             std::string Type;
             std::uint16_t Width;
             std::uint16_t Height;
-            double Weight;
             std::string Intrinsics;
 
             EventConfig() = default;
@@ -93,8 +92,7 @@ public:
         public:
             template <class Archive>
             void serialize(Archive &ar) {
-                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height), CEREAL_NVP(Weight),
-                   CEREAL_NVP(Intrinsics));
+                ar(CEREAL_NVP(Type), CEREAL_NVP(Width), CEREAL_NVP(Height), CEREAL_NVP(Intrinsics));
             }
         };
 
@@ -123,6 +121,10 @@ public:
     static struct Prior {
         static constexpr int SplineOrder = 4;
         static std::string SpatTempPrioriPath;
+
+        // sigma for the event circle extraction, in pixel
+        static constexpr double evCircleExtractionSigma = 0.8;
+        static constexpr double EvCameraWeight() { return 1.0 / evCircleExtractionSigma; }
 
         static double GravityNorm;
         static double TimeOffsetPadding;

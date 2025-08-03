@@ -1128,7 +1128,8 @@ void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
     paramBlockVec.push_back(intri->DistCoeffAddress());
 
     // pass to problem
-    this->AddResidualBlock(costFunc, new ceres::HuberLoss(1.0 /*pixel*/ * weight), paramBlockVec);
+    this->AddResidualBlock(costFunc, new ceres::HuberLoss(3.0 /* 3 * sigma as the outliers */),
+                           paramBlockVec);
     this->SetManifold(SO3_CjToBr, QUATER_MANIFOLD.get());
 
     if (!IsOptionWith(Opt::OPT_SO3_CjToBr, option)) {
@@ -1204,7 +1205,8 @@ void Estimator::AddVisualDiscreteProjectionFactor(Sophus::SO3d *SO3_CjToW,
     paramBlockVec.push_back(intri->DistCoeffAddress());
 
     // pass to problem
-    this->AddResidualBlock(costFunc, new ceres::HuberLoss(1.0 /*pixel*/ * weight), paramBlockVec);
+    this->AddResidualBlock(costFunc, new ceres::HuberLoss(3.0 /* 3 * sigma as the outliers */),
+                           paramBlockVec);
     this->SetManifold(SO3_CjToW->data(), QUATER_MANIFOLD.get());
 
     if (!IsOptionWith(Opt::OPT_CAM_FOCAL_LEN, option)) {

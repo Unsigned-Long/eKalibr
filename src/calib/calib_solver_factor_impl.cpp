@@ -121,7 +121,7 @@ std::size_t CalibSolver::AddVisualProjPairsSyncPointBasedToSplineSegments(
     const std::string &camTopic,
     OptOption option,
     const std::optional<double> &w) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
+    auto weight = w == std::nullopt ? Configor::Prior::EvCameraWeight() : *w;
     const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
     std::size_t count = 0;
 
@@ -143,7 +143,7 @@ std::size_t CalibSolver::AddVisualProjPairsAsyncPointBasedToSplineSegments(
     const std::string &camTopic,
     OptOption option,
     const std::optional<double> &w) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
+    auto weight = w == std::nullopt ? Configor::Prior::EvCameraWeight() : *w;
     const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
     std::size_t count = 0;
 

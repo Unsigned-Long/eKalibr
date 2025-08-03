@@ -12,8 +12,6 @@ Configor:
           Type: "DVS_EVENT"
           Width: 346
           Height: 260
-          # It is not particularly critical in intrinsic calibration.
-          Weight: 10.0
     # ------------------------------------------------------------------------------------ #
     # Ignore these fields; they are not used in the intrinsic calibration of event cameras #                                   #
     # ------------------------------------------------------------------------------------ #

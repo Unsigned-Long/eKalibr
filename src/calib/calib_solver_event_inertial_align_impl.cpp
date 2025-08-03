@@ -121,7 +121,6 @@ void CalibSolver::EventInertialAlignment() {
         if (Configor::Prior::OptTemporalParams) {
             optOption |= OptOption::OPT_TO_CjToBr;
         }
-        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
 
         for (int i = 0; i < static_cast<int>(poseVec.size()) - ALIGN_STEP; i++) {
             const auto& sPose = poseVec.at(i);
@@ -139,7 +138,7 @@ void CalibSolver::EventInertialAlignment() {
                 sPose.so3,        // the start rotation
                 ePose.so3,        // the end rotation
                 optOption,        // the optimization option
-                weight            // the weight
+                Configor::Prior::EvCameraWeight()  // the weight
             );
         }
         auto sum = estimator->Solve(_ceresOption, _priori);
@@ -248,7 +247,6 @@ void CalibSolver::EventInertialAlignment() {
     for (const auto& [topic, poseVec] : _camPoses) {
         linVelSeqCm[topic] = std::vector<Eigen::Vector3d>(poseVec.size(), Eigen::Vector3d::Zero());
         auto& curCamLinVelSeq = linVelSeqCm.at(topic);
-        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         const auto& imuFrames = _imuMes.at(Configor::DataStream::RefIMUTopic);
 
@@ -278,7 +276,7 @@ void CalibSolver::EventInertialAlignment() {
                 &curCamLinVelSeq.at(i),               // the start velocity (to be estimated)
                 &curCamLinVelSeq.at(i + ALIGN_STEP),  // the end velocity (to be estimated)
                 optOption,                            // the optimize option
-                weight);                              // the weigh
+                Configor::Prior::EvCameraWeight());   // the weight
             ++count;
         }
         spdlog::info("constraint count of event-inertial alignment for '{}' and '{}': {}", topic,
