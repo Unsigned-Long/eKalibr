@@ -46,7 +46,6 @@
 #include <core/circle_grid.h>
 #include "tiny-viewer/entity/utils.h"
 #include "factor/visual_projection_factor.hpp"
-#include "factor/visual_projection_circle_based_factor.hpp"
 #include "calib/spat_temp_priori.h"
 #include <core/time_varying_ellipse.h>
 
@@ -369,46 +368,6 @@ void CalibSolver::CreateVisualProjPairsAsyncPointBased(double dt) {
         }
         spdlog::info("constructed 'VisualProjectionPair:AsyncPointBased' count for camera '{}': {}",
                      topic, corrList.size());
-    }
-}
-
-void CalibSolver::CreateVisualProjPairsAsyncCircleBased(std::size_t pairCountPerTvCircle) {
-    /**
-     * Based on the prior knowledge of the chessboard, we construct circles in the world coordinate
-     * system and associate them with circular observations in the image domain.
-     */
-    std::vector<Circle3D::Ptr> circle3dVec(_grid3d->points.size());
-    for (std::size_t i = 0; i < _grid3d->points.size(); i++) {
-        const auto &p = _grid3d->points.at(i);
-        circle3dVec.at(i) = Circle3D::CreateFromGridPattern(
-            Eigen::Vector3d(p.x, p.y, p.z), Configor::Prior::CirclePattern.Radius());
-    }
-
-    std::default_random_engine eng(std::chrono::system_clock::now().time_since_epoch().count());
-    for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
-        auto &corrList = _evAsyncCircleProjPairs[topic];
-        corrList.clear();
-        for (const auto &[grid2dIdx, rawEvsOfGrids] : rawEvsVecOfGrids) {
-            // correspondences of each grid
-            for (int i = 0; i < static_cast<int>(rawEvsOfGrids.size()); i++) {
-                const auto &[tvCircle, evAry] = rawEvsOfGrids.at(i);
-                if (tvCircle == nullptr) {
-                    continue;
-                }
-                const auto &evs = evAry->GetEvents();
-                const std::size_t sampleCount = std::min(pairCountPerTvCircle, evs.size());
-                auto evsDownsample = SamplingWoutReplace2(eng, evs, sampleCount);
-                for (int j = 0; j < static_cast<int>(evsDownsample.size()); j++) {
-                    const auto &event = evsDownsample.at(j);
-                    corrList.push_back(VisualProjectionCircleBasedPair::Create(
-                        circle3dVec.at(i), event, tvCircle->PosAt(event->GetTimestamp())));
-                }
-            }
-        }
-        spdlog::info(
-            "constructed 'VisualProjectionCircleBasedPair:AsyncCircleBased' count for camera '{}': "
-            "{}",
-            topic, corrList.size());
     }
 }
 

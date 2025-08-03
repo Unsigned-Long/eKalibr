@@ -65,7 +65,7 @@ void CalibSolver::BatchOptimizations() {
         }
     }
 
-    enum class VisualProjType { SYNC_POINT_BASED, ASYNC_POINT_BASED, ASYNC_CIRCLE_BASED };
+    enum class VisualProjType { SYNC_POINT_BASED, ASYNC_POINT_BASED };
     constexpr VisualProjType vpType = VisualProjType::ASYNC_POINT_BASED;
 
     switch (vpType) {
@@ -75,10 +75,6 @@ void CalibSolver::BatchOptimizations() {
         }
         case VisualProjType::ASYNC_POINT_BASED: {
             this->CreateVisualProjPairsAsyncPointBased();
-            break;
-        }
-        case VisualProjType::ASYNC_CIRCLE_BASED: {
-            this->CreateVisualProjPairsAsyncCircleBased(2);
             break;
         }
     }
@@ -112,13 +108,6 @@ void CalibSolver::BatchOptimizations() {
                     auto s = this->AddVisualProjPairsAsyncPointBasedToSplineSegments(
                         estimator, topic, option, {});
                     spdlog::info("add '{}' 'VisualProjectionFactor' for camera '{}'...", s, topic);
-                    break;
-                }
-                case VisualProjType::ASYNC_CIRCLE_BASED: {
-                    auto s = this->AddVisualProjPairsAsyncCircleBasedToSplineSegments(
-                        estimator, topic, option, {});
-                    spdlog::info("add '{}' 'VisualProjectionCircleBasedFactor' for camera '{}'...",
-                                 s, topic);
                     break;
                 }
             }

@@ -31,7 +31,6 @@
 #include "spdlog/spdlog.h"
 #include "calib/estimator.h"
 #include <core/circle_grid.h>
-#include "factor/visual_projection_circle_based_factor.hpp"
 #include "util/utils_tpl.hpp"
 #include <magic_enum_flags.hpp>
 #include "calib/calib_solver_io.h"

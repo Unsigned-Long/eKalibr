@@ -255,13 +255,6 @@ public:
                                            Opt option,
                                            double weight);
 
-    void AddVisualProjectionCircleBasedFactor(const So3SplineType &so3Spline,
-                                              const PosSplineType &posSpline,
-                                              const std::string &camTopic,
-                                              const VisualProjectionCircleBasedPairPtr &pair,
-                                              Opt option,
-                                              double weight);
-
     void AddPriorExtriSO3Constraint(const Sophus::SO3d &SO3_Sen1ToSen2,
                                     Sophus::SO3d *SO3_Sen1ToRef,
                                     Sophus::SO3d *SO3_Sen2ToRef,

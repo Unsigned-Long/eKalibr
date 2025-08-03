@@ -117,11 +117,6 @@ protected:
     std::map<std::string, std::map<int, ExtractedCirclesVec>> _rawEventsOfExtractedPatterns;
     // the topic of the reference event camera;
     std::string _refEvTopic;
-    /**
-     * circle-based visual reprojection pairs (asynchronous, from time-varying circle,
-     * circle-edge-based)
-     */
-    std::map<std::string, std::list<VisualProjectionCircleBasedPairPtr>> _evAsyncCircleProjPairs;
 
     /**
      * utilized in event-inertial calibration
@@ -214,8 +209,6 @@ protected:
 
     void CreateVisualProjPairsAsyncPointBased(double dt = 0.005);
 
-    void CreateVisualProjPairsAsyncCircleBased(std::size_t pairCountPerTvCircle = 10);
-
     void BatchOptimizations();
 
 protected:
@@ -244,12 +237,6 @@ protected:
         const std::optional<double> &weight) const;
 
     std::size_t AddVisualProjPairsAsyncPointBasedToSplineSegments(
-        const EstimatorPtr &estimator,
-        const std::string &camTopic,
-        OptOption option,
-        const std::optional<double> &weight) const;
-
-    std::size_t AddVisualProjPairsAsyncCircleBasedToSplineSegments(
         const EstimatorPtr &estimator,
         const std::string &camTopic,
         OptOption option,

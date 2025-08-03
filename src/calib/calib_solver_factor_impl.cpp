@@ -29,8 +29,6 @@
 #include "calib/calib_solver.h"
 #include "calib/estimator.h"
 #include "calib/calib_param_mgr.h"
-
-#include <factor/visual_projection_circle_based_factor.hpp>
 #include <factor/visual_projection_factor.hpp>
 
 namespace ns_ekalibr {
@@ -157,28 +155,6 @@ std::size_t CalibSolver::AddVisualProjPairsAsyncPointBasedToSplineSegments(
         estimator->AddVisualProjectionFactor(_splineSegments.at(*idx).first,
                                              _splineSegments.at(*idx).second, camTopic, pair,
                                              option, weight);
-        ++count;
-    }
-    return count;
-}
-
-std::size_t CalibSolver::AddVisualProjPairsAsyncCircleBasedToSplineSegments(
-    const EstimatorPtr &estimator,
-    const std::string &camTopic,
-    OptOption option,
-    const std::optional<double> &w) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::EventTopics.at(camTopic).Weight : *w;
-    const auto &TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(camTopic);
-    std::size_t count = 0;
-
-    for (const auto &pair : _evAsyncCircleProjPairs.at(camTopic)) {
-        auto idx = this->IsTimeInValidSegment(pair->ev->GetTimestamp() + TO_CjToBr);
-        if (idx == std::nullopt) {
-            continue;
-        }
-        estimator->AddVisualProjectionCircleBasedFactor(_splineSegments.at(*idx).first,
-                                                        _splineSegments.at(*idx).second, camTopic,
-                                                        pair, option, weight);
         ++count;
     }
     return count;
