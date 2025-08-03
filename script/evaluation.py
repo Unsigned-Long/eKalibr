@@ -134,7 +134,6 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
                 "Type": "DVS_EVENT",
                 "Width": 346,
                 "Height": 260,
-                "Weight": 10.0,
                 "Intrinsics": ""
             }
         },
@@ -144,7 +143,6 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
                 "Type": "DVS_EVENT",
                 "Width": 346,
                 "Height": 260,
-                "Weight": 10.0,
                 "Intrinsics": ""
             }
         }
