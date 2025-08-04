@@ -177,12 +177,13 @@ void Configor::CheckConfigure() {
         // verify imu type
         IMUModel::FromString(config.Type);
 
-        if (config.AcceWeight <= 0.0) {
-            throw Status(Status::ERROR, "accelerator weight of IMU '{}' should be positive!",
+        if (config.AcceWhiteNoise <= 0.0) {
+            throw Status(Status::ERROR, "accelerator white noise of IMU '{}' should be positive!",
                          topic);
         }
-        if (config.GyroWeight <= 0.0) {
-            throw Status(Status::ERROR, "gyroscope weight of IMU '{}' should be positive!", topic);
+        if (config.GyroWhiteNoise <= 0.0) {
+            throw Status(Status::ERROR, "gyroscope white noise of IMU '{}' should be positive!",
+                         topic);
         }
         topics.insert(topic);
     }

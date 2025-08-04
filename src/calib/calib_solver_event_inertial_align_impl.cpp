@@ -304,7 +304,7 @@ void CalibSolver::EventInertialAlignment() {
                     sVel,            // the start velocity (to be estimated)
                     eVel,            // the end velocity (to be estimated)
                     optOption,       // the optimize option
-                    Configor::DataStream::IMUTopics.at(topic).AcceWeight);
+                    Configor::DataStream::IMUTopics.at(topic).AcceWeight(_imuFrequency.at(topic)));
                 ++count;
             }
             spdlog::info("constraint count of inertial alignment for '{}' and '{}': {}", topic,

@@ -66,15 +66,24 @@ public:
         struct IMUConfig {
         public:
             std::string Type;
-            double AcceWeight;
-            double GyroWeight;
+            double AcceWhiteNoise;
+            double GyroWhiteNoise;
+
+            double AcceWeight(int hz) const {
+                double cov = hz * AcceWhiteNoise * AcceWhiteNoise;
+                return 1.0 / std::sqrt(cov);
+            }
+            double GyroWeight(int hz) const {
+                double cov = hz * GyroWhiteNoise * GyroWhiteNoise;
+                return 1.0 / std::sqrt(cov);
+            }
 
             IMUConfig() = default;
 
         public:
             template <class Archive>
             void serialize(Archive &ar) {
-                ar(CEREAL_NVP(Type), CEREAL_NVP(AcceWeight), CEREAL_NVP(GyroWeight));
+                ar(CEREAL_NVP(Type), CEREAL_NVP(AcceWhiteNoise), CEREAL_NVP(GyroWhiteNoise));
             }
         };
 

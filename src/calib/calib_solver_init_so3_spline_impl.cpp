@@ -74,7 +74,7 @@ void CalibSolver::InitSo3Spline() const {
         if (Configor::Prior::OptTemporalParams) {
             optOption |= OptOption::OPT_TO_BiToBr;
         }
-        for (const auto& [topic, _] : Configor::DataStream::IMUTopics) {
+        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
             this->AddGyroFactorToFullSo3Spline(estimator, topic, optOption, 0.1 /*weight*/,
                                                100 /*down sampling*/);
         }

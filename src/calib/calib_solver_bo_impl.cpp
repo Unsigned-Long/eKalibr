@@ -112,6 +112,10 @@ void CalibSolver::BatchOptimizations() {
                 }
             }
         }
+        for (auto &[so3Spline, posSpline] : _splineSegments) {
+            estimator->AddRegularizationL2Constraint(so3Spline, option, 1E-3);
+            estimator->AddRegularizationL2Constraint(posSpline, option, 1E-3);
+        }
         // make this problem full rank
         estimator->SetIMUParamsConstant(Configor::DataStream::RefIMUTopic);
         auto sum = estimator->Solve(_ceresOption, _priori);

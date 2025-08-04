@@ -97,6 +97,8 @@ protected:
      */
     std::map<std::string, std::vector<EventArrayPtr>> _evMes;
     std::map<std::string, std::vector<IMUFramePtr>> _imuMes;
+    std::map<std::string, int> _imuFrequency;
+
     // start time, end time
     std::pair<double, double> _dataRawTimestamp;
     std::pair<double, double> _dataAlignedTimestamp;

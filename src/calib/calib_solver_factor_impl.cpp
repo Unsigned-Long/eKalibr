@@ -37,7 +37,10 @@ std::size_t CalibSolver::AddGyroFactorToFullSo3Spline(const Estimator::Ptr &esti
                                                       Estimator::Opt option,
                                                       const std::optional<double> &w,
                                                       const std::optional<double> &dsRate) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    auto weight =
+        w == std::nullopt
+            ? Configor::DataStream::IMUTopics.at(imuTopic).GyroWeight(_imuFrequency.at(imuTopic))
+            : *w;
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
     if (dsRate == std::nullopt) {
@@ -60,7 +63,10 @@ std::size_t CalibSolver::AddGyroFactorToSplineSegments(const EstimatorPtr &estim
                                                        OptOption option,
                                                        const std::optional<double> &w,
                                                        const std::optional<double> &dsRate) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    auto weight =
+        w == std::nullopt
+            ? Configor::DataStream::IMUTopics.at(imuTopic).GyroWeight(_imuFrequency.at(imuTopic))
+            : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;
@@ -90,7 +96,10 @@ std::size_t CalibSolver::AddAcceFactorToSplineSegments(const EstimatorPtr &estim
                                                        OptOption option,
                                                        const std::optional<double> &w,
                                                        const std::optional<double> &dsRate) const {
-    auto weight = w == std::nullopt ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight : *w;
+    auto weight =
+        w == std::nullopt
+            ? Configor::DataStream::IMUTopics.at(imuTopic).AcceWeight(_imuFrequency.at(imuTopic))
+            : *w;
     const auto &To_BiToBr = _parMgr->TEMPORAL.TO_BiToBr.at(imuTopic);
     std::size_t index = 0, count = 0;
     std::size_t pick = 1UL;

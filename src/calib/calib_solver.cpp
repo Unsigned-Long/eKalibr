@@ -239,6 +239,17 @@ void CalibSolver::LoadDataFromRosBag() {
         }
     }
 
+    // compute imu frequency
+    for (const auto &[topic, data] : _imuMes) {
+        double dt = data.back()->GetTimestamp() - data.front()->GetTimestamp();
+        _imuFrequency[topic] = static_cast<int>(static_cast<int>(data.size()) / dt);
+        spdlog::info(
+            "imu topic '{}', frequency: '{:04}' (Hz), acce weight: {:.3f}, gyro weight: {:.3f}",
+            topic, _imuFrequency.at(topic),
+            Configor::DataStream::IMUTopics.at(topic).AcceWeight(_imuFrequency.at(topic)),
+            Configor::DataStream::IMUTopics.at(topic).GyroWeight(_imuFrequency.at(topic)));
+    }
+
     this->OutputDataStatus();
 }
 
