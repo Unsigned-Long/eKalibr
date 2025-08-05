@@ -70,9 +70,7 @@ void SpatialTemporalPriori::CheckValidityWithConfigor() const {
                      "the spatiotemporal priori config file!!!",
                      p.first, p.second);
     }
-
-    // topic, camera type string
-    std::map<std::string, std::string> optCamModelType;
+#if 0
     std::set<std::string> topics;
     // add topics to vector
     for (const auto& [topic, _] : Configor::DataStream::IMUTopics) {
@@ -113,6 +111,7 @@ void SpatialTemporalPriori::CheckValidityWithConfigor() const {
     for (const auto& [sensorPair, _] : TO_Sen1ToSen2) {
         CheckTopic(sensorPair, "time offset");
     }
+#endif
 }
 
 void SpatialTemporalPriori::AddSpatTempPrioriConstraint(Estimator& estimator,
@@ -122,31 +121,45 @@ void SpatialTemporalPriori::AddSpatTempPrioriConstraint(Estimator& estimator,
     std::map<std::string, Eigen::Vector3d*> POSAddress;
     // time offsets
     std::map<std::string, double*> TOAddress;
+    std::unordered_set<std::string> topics;
     // extrinsic rotations
     for (auto& [topic, item] : parMagr.EXTRI.SO3_BiToBr) {
         SO3Address.insert({topic, &item});
+        topics.insert(topic);
     }
     for (auto& [topic, item] : parMagr.EXTRI.SO3_CjToBr) {
         SO3Address.insert({topic, &item});
+        topics.insert(topic);
     }
     // extrinsic translations
     for (auto& [topic, item] : parMagr.EXTRI.POS_BiInBr) {
         POSAddress.insert({topic, &item});
+        // comment this line as this topic has been added in SO3Address
+        // topics.insert(topic);
     }
     for (auto& [topic, item] : parMagr.EXTRI.POS_CjInBr) {
         POSAddress.insert({topic, &item});
+        // comment this line as this topic has been added in SO3Address
+        // topics.insert(topic);
     }
     // time offsets
     for (auto& [topic, item] : parMagr.TEMPORAL.TO_BiToBr) {
         TOAddress.insert({topic, &item});
+        // comment this line as this topic has been added in SO3Address
+        // topics.insert(topic);
     }
     for (auto& [topic, item] : parMagr.TEMPORAL.TO_CjToBr) {
         TOAddress.insert({topic, &item});
+        // comment this line as this topic has been added in SO3Address
+        // topics.insert(topic);
     }
     auto RefIMU = Configor::DataStream::RefIMUTopic;
 
     for (const auto& [sensorPair, Sen1ToSen2] : this->SO3_Sen1ToSen2) {
         const auto& [sen1, sen2] = sensorPair;
+        if (topics.count(sen1) == 0 || topics.count(sen2) == 0) {
+            continue;
+        }
         Sophus::SO3d *rot1 = SO3Address.at(sen1), *rot2 = SO3Address.at(sen2);
         if (sen2 == RefIMU) {
             // if this priori is with respect to the reference IMU, set param constant directly
@@ -163,6 +176,9 @@ void SpatialTemporalPriori::AddSpatTempPrioriConstraint(Estimator& estimator,
     }
     for (const auto& [sensorPair, Sen1InSen2] : this->POS_Sen1InSen2) {
         const auto& [sen1, sen2] = sensorPair;
+        if (topics.count(sen1) == 0 || topics.count(sen2) == 0) {
+            continue;
+        }
         Eigen::Vector3d *pos1 = POSAddress.at(sen1), *pos2 = POSAddress.at(sen2);
         Sophus::SO3d* rot2 = SO3Address.at(sen2);
         if (sen2 == RefIMU) {
@@ -178,6 +194,9 @@ void SpatialTemporalPriori::AddSpatTempPrioriConstraint(Estimator& estimator,
     }
     for (const auto& [sensorPair, Sen1ToSen2] : this->TO_Sen1ToSen2) {
         const auto& [sen1, sen2] = sensorPair;
+        if (topics.count(sen1) == 0 || topics.count(sen2) == 0) {
+            continue;
+        }
         double *to1 = TOAddress.at(sen1), *to2 = TOAddress.at(sen2);
         if (sen2 == RefIMU) {
             // if this priori is with respect to the reference IMU, set param constant directly
