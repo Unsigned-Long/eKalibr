@@ -33,3 +33,4 @@
 !script/davis_stereo_data_recoder.sh
 !script/evaluation.py
 !script/video_maker.py
+!script/aedat4tobag.py
