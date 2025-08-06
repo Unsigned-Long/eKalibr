@@ -90,6 +90,7 @@ void CalibSolver::InitSo3SplineSegments() {
     // fitting so3 segments
     spdlog::info("fitting so3 part of spline segments...");
     auto estimator = Estimator::Create(_parMgr);
+#if 0
     for (const auto &[topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         const auto &SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
@@ -107,7 +108,24 @@ void CalibSolver::InitSo3SplineSegments() {
     AddGyroFactorToSplineSegments(estimator, Configor::DataStream::RefIMUTopic,
                                   OptOption::OPT_SO3_SPLINE, 0.1, /*weight*/
                                   100 /*down sampling rate*/);
-
+#else
+    double st = _fullSo3Spline.MinTime(), et = _fullSo3Spline.MaxTime(),
+           dt = _splineSegments.front().first.GetTimeInterval() * 0.1;
+    for (double t = st; t < et; t += dt) {
+        if (!_fullSo3Spline.TimeStampInRange(t)) {
+            continue;
+        }
+        auto idx = this->IsTimeInValidSegment(t);
+        if (idx == std::nullopt) {
+            continue;
+        }
+        estimator->AddSo3Constraint(_splineSegments.at(*idx).first, t, _fullSo3Spline.Evaluate(t),
+                                    OptOption::OPT_SO3_SPLINE, 10.0);
+    }
+    for (auto &[so3Spline, posSpline] : _splineSegments) {
+        estimator->AddRegularizationL2Constraint(so3Spline, OptOption::OPT_SO3_SPLINE, 1E-3);
+    }
+#endif
     auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 }
