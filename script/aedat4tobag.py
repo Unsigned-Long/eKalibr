@@ -111,7 +111,7 @@ def add_frames_to_bag(topic, bag, aedat_file):
 if __name__ == "__main__":
     print(
       "\033[93mThis script is deprecated. The process efficiency is low!!! "
-      "To convert AEDAT4 to ROS bag, please use the official aedat2bag tool:\n"
+      "To convert AEDAT4 to ROS bag, please use the official aedat2bag tool (rosrun dv_ros_aedat4 convert_aedat4 --input your_aedat4_file):\n"
       "https://gitlab.com/inivation/dv/dv-ros/-/blob/master/dv_ros_aedat4/src/convert_aedat4.cpp\033[0m"
     )
     raise SystemExit()
