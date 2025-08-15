@@ -31,6 +31,17 @@ import yaml
 import concurrent.futures
 import numpy as np
 from quaternions import Quaternion
+from enum import Enum
+
+np_print_precisive = 6
+np.set_printoptions(
+    formatter={'float': lambda x, p=np_print_precisive: f"{x:+.{p}f}"}
+)
+
+
+class EvaluateMode(Enum):
+    MULTI_CAMERAS = "MULTI_CAMERAS"
+    VISUAL_INERTIAL = "VISUAL_INERTIAL"
 
 
 def is_roscore_running():
@@ -116,7 +127,8 @@ def run_ekalibr_calibration_task(config_path, output=True):
         subprocess.run(cmd, shell=True)
 
 
-def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
+def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers, delete_existing_output,
+                            resolve_existing_output):
     if not is_roscore_running():
         print("\033[93mWarning: roscore is not running. Please start roscore before running this script.\033[0m")
         return []
@@ -147,6 +159,28 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
             }
         }
     ]
+    config_data['Configor']['DataStream']['IMUTopics'] = []
+    if solve_mode == EvaluateMode.VISUAL_INERTIAL:
+        config_data['Configor']['DataStream']['IMUTopics'] = [
+            {
+                "key": "/davis_left/imu",
+                "value": {
+                    "Type": "SENSOR_IMU",
+                    "AcceWhiteNoise": 1.86e-03,
+                    "GyroWhiteNoise": 1.87e-04,
+                }
+            },
+            {
+                "key": "/davis_right/imu",
+                "value": {
+                    "Type": "SENSOR_IMU",
+                    "AcceWhiteNoise": 1.86e-03,
+                    "GyroWhiteNoise": 1.87e-04,
+                }
+            }
+        ]
+        config_data["Configor"]["DataStream"]["RefIMUTopic"] = "/davis_left/imu"
+        config_data["Configor"]["Prior"]["GravityNorm"] = 9.81
     config_data["Configor"]["Preference"]["Visualization"] = False
 
     solve_info = []
@@ -175,8 +209,12 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
                 os.system(f"rm -r {output_path}")
                 info["need_to_solve"] = True
             else:
-                print(f"Output path {output_path} already exists, skip it...")
-                info["need_to_solve"] = False
+                if resolve_existing_output:
+                    print(f"Output path {output_path} already exists, resolve it...")
+                    info["need_to_solve"] = True
+                else:
+                    print(f"Output path {output_path} already exists, skip it...")
+                    info["need_to_solve"] = False
         else:
             info["need_to_solve"] = True
         solve_info.append(info)
@@ -200,7 +238,7 @@ def run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output):
     return solve_info_succuss
 
 
-def extract_values_by_key_path_and_event(data, path_list, target_key):
+def extract_values_by_key_path_and_event(data, path_list, target_key, path_list2=None):
     result = []
 
     for entry in data.values():
@@ -210,7 +248,11 @@ def extract_values_by_key_path_and_event(data, path_list, target_key):
                 current = current[key]
             for item in current:
                 if item.get("key") == target_key:
-                    result.append(item["value"])
+                    elem = item["value"]
+                    if path_list2 is not None:
+                        for key2 in path_list2:
+                            elem = elem[key2]
+                    result.append(elem)
         except (KeyError, TypeError):
             continue
 
@@ -237,38 +279,127 @@ def save_solve_results(solve_info_succuss, output_path):
     print(f"eKalibr solving results saved to {output_path}")
 
 
-def evaluate(ekalibr_results_path):
-    # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
-    all_params = load_yaml_file(ekalibr_results_path)
+def evaluate_extrinsic_rotation(all_params, param_desc, topic):
     SO3_CjToBr = extract_values_by_key_path_and_event(
-        all_params, ["CalibParam", "EXTRI", "SO3_CjToBr"], "/davis_right/events"
+        all_params, ["CalibParam", "EXTRI", param_desc], topic
     )
     SO3_CjToBr = [Quaternion(elem["qw"], elem["qx"], elem["qy"], elem["qz"]).get_euler() for elem in SO3_CjToBr]
     SO3_CjToBr = [[elem * 180.0 / np.pi for elem in euler] for euler in SO3_CjToBr]
-
-    POS_CjInBr = extract_values_by_key_path_and_event(
-        all_params, ["CalibParam", "EXTRI", "POS_CjInBr"], "/davis_right/events"
-    )
-    POS_CjInBr = [[elem["r0c0"] * 100.0, elem["r1c0"] * 100.0, elem["r2c0"] * 100.0] for elem in POS_CjInBr]
-
-    TO_CjToBr = extract_values_by_key_path_and_event(
-        all_params, ["CalibParam", "TEMPORAL", "TO_CjToBr"], "/davis_right/events"
-    )
-    TO_CjToBr = [[elem * 1000.0] for elem in TO_CjToBr]
-
-    np.set_printoptions(precision=3, suppress=True)
-    print(f"'SO3_CjToBr'-> "
+    print(f"'{topic}':'{param_desc}'-> "
           f"mean: {np.mean(np.array(SO3_CjToBr), axis=0)} deg, "
           f"std: {np.std(np.array(SO3_CjToBr), axis=0)} deg")
-    print(f"'POS_CjInBr'-> "
+
+
+def evaluate_extrinsic_translation(all_params, param_desc, topic):
+    POS_CjInBr = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "EXTRI", param_desc], topic
+    )
+    POS_CjInBr = [[elem["r0c0"] * 100.0, elem["r1c0"] * 100.0, elem["r2c0"] * 100.0] for elem in POS_CjInBr]
+    print(f"'{topic}':'{param_desc}'-> "
           f"mean: {np.mean(np.array(POS_CjInBr), axis=0)} cm, "
           f"std: {np.std(np.array(POS_CjInBr), axis=0)} cm")
-    print(f" 'TO_CjToBr'-> "
+
+
+def evaluate_temporal_offset(all_params, param_desc, topic):
+    TO_CjToBr = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "TEMPORAL", param_desc], topic
+    )
+    TO_CjToBr = [[elem * 1000.0] for elem in TO_CjToBr]  # convert to ms
+    print(f"'{topic}': '{param_desc}'-> "
           f"mean: {np.mean(np.array(TO_CjToBr), axis=0)} ms, "
           f"std: {np.std(np.array(TO_CjToBr), axis=0)} ms")
 
 
-def full_pipeline_evaluation(dataset_folder, max_workers=1, delete_existing_output=True):
+def evaluate_visual_intrinsics(all_params, param_desc, topic):
+    intrinsics = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "INTRI", "Camera"], topic, ["ptr_wrapper", "data", param_desc]
+    )
+    print(f"'{topic}':'{param_desc}'-> "
+          f"mean: {np.mean(np.array(intrinsics), axis=0)}, "
+          f"std: {np.std(np.array(intrinsics), axis=0)}")
+
+
+def evaluate_imu_intrinsics(all_params, param_desc, topic):
+    acce_intri = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "INTRI", "IMU"], topic,
+        ["ptr_wrapper", "data", "ACCE", param_desc]
+    )
+    n = len(acce_intri[0])
+    acce_intri = [[elem[f"r{i}c0"] for i in range(n)] for elem in acce_intri]
+    gyro_intri = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "INTRI", "IMU"], topic,
+        ["ptr_wrapper", "data", "GYRO", param_desc]
+    )
+    gyro_intri = [[elem["r0c0"], elem["r1c0"], elem["r2c0"]] for elem in gyro_intri]
+    print(f"'{topic}':'ACCE':'{param_desc}'-> "
+          f"mean: {np.mean(np.array(acce_intri), axis=0)}, "
+          f"std: {np.std(np.array(acce_intri), axis=0)}")
+    print(f"'{topic}':'GYRO':'{param_desc}'-> "
+          f"mean: {np.mean(np.array(gyro_intri), axis=0)}, "
+          f"std: {np.std(np.array(gyro_intri), axis=0)}")
+
+
+def evaluate_imu_intrinsics_SO3_AtoG(all_params, topic):
+    SO3_AtoG = extract_values_by_key_path_and_event(
+        all_params, ["CalibParam", "INTRI", "IMU"], topic,
+        ["ptr_wrapper", "data", "SO3_AtoG"]
+    )
+    SO3_AtoG = [Quaternion(elem["qw"], elem["qx"], elem["qy"], elem["qz"]).get_euler() for elem in SO3_AtoG]
+    SO3_AtoG = [[elem * 180.0 / np.pi for elem in euler] for euler in SO3_AtoG]
+    print(f"'{topic}':'SO3_AtoG'-> "
+          f"mean: {np.mean(np.array(SO3_AtoG), axis=0)} deg, "
+          f"std: {np.std(np.array(SO3_AtoG), axis=0)} deg")
+
+
+def evaluate(solve_mode: EvaluateMode, ekalibr_results_path):
+    # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
+    all_params = load_yaml_file(ekalibr_results_path)
+
+    # extrinsic rotation, translation and temporal offset
+    if solve_mode == EvaluateMode.VISUAL_INERTIAL:
+        evaluate_extrinsic_rotation(all_params, "SO3_BiToBr", "/davis_left/imu")
+        evaluate_extrinsic_translation(all_params, "POS_BiInBr", "/davis_left/imu")
+        evaluate_temporal_offset(all_params, "TO_BiToBr", "/davis_left/imu")
+        print()
+        evaluate_extrinsic_rotation(all_params, "SO3_BiToBr", "/davis_right/imu")
+        evaluate_extrinsic_translation(all_params, "POS_BiInBr", "/davis_right/imu")
+        evaluate_temporal_offset(all_params, "TO_BiToBr", "/davis_right/imu")
+        print()
+        evaluate_extrinsic_rotation(all_params, "SO3_CjToBr", "/davis_left/events")
+        evaluate_extrinsic_translation(all_params, "POS_CjInBr", "/davis_left/events")
+        evaluate_temporal_offset(all_params, "TO_CjToBr", "/davis_left/events")
+        print()
+    evaluate_extrinsic_rotation(all_params, "SO3_CjToBr", "/davis_right/events")
+    evaluate_extrinsic_translation(all_params, "POS_CjInBr", "/davis_right/events")
+    evaluate_temporal_offset(all_params, "TO_CjToBr", "/davis_right/events")
+    print()
+
+    # imu intrinsics
+    if solve_mode == EvaluateMode.VISUAL_INERTIAL:
+        evaluate_imu_intrinsics(all_params, "BIAS", "/davis_left/imu")
+        evaluate_imu_intrinsics(all_params, "MAP_COEFF", "/davis_left/imu")
+        evaluate_imu_intrinsics_SO3_AtoG(all_params, "/davis_left/imu")
+        print()
+
+        evaluate_imu_intrinsics(all_params, "BIAS", "/davis_right/imu")
+        evaluate_imu_intrinsics(all_params, "MAP_COEFF", "/davis_right/imu")
+        evaluate_imu_intrinsics_SO3_AtoG(all_params, "/davis_right/imu")
+        print()
+
+    # visual intrinsics
+    evaluate_visual_intrinsics(all_params, "focal_length", "/davis_left/events")
+    evaluate_visual_intrinsics(all_params, "principal_point", "/davis_left/events")
+    evaluate_visual_intrinsics(all_params, "disto_param", "/davis_left/events")
+    print()
+
+    evaluate_visual_intrinsics(all_params, "focal_length", "/davis_right/events")
+    evaluate_visual_intrinsics(all_params, "principal_point", "/davis_right/events")
+    evaluate_visual_intrinsics(all_params, "disto_param", "/davis_right/events")
+    print()
+
+
+def full_pipeline_evaluation(solve_mode: EvaluateMode, dataset_folder, max_workers=1, delete_existing_output=True,
+                             resolve_existing_output=True):
     if not os.path.exists(dataset_folder):
         print(f"Error: Dataset folder {dataset_folder} does not exist.")
         exit(1)
@@ -284,13 +415,17 @@ def full_pipeline_evaluation(dataset_folder, max_workers=1, delete_existing_outp
             bag_path_list.append(rosbag_path)
 
     print(f"There are {len(bag_path_list)} bags to process")
-    solve_info_succuss = run_ekalibr_calibration(bag_path_list, max_workers, delete_existing_output)
+    solve_info_succuss = run_ekalibr_calibration(solve_mode, bag_path_list, max_workers, delete_existing_output,
+                                                 resolve_existing_output)
     ekalibr_results_path = os.path.join(dataset_folder, "ekalibr_results.yaml")
     save_solve_results(solve_info_succuss, ekalibr_results_path)
-    evaluate(ekalibr_results_path)
+    evaluate(solve_mode, ekalibr_results_path)
 
 
 if __name__ == "__main__":
     dataset_folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
-    full_pipeline_evaluation(dataset_folder=dataset_folder, max_workers=1, delete_existing_output=True)
-    # evaluate(os.path.join(dataset_folder, "ekalibr_results_no_time_offset.yaml"))
+    solve_mode = EvaluateMode.VISUAL_INERTIAL
+    # full_pipeline_evaluation(solve_mode=solve_mode, dataset_folder=dataset_folder, max_workers=1,
+    #                          delete_existing_output=False,
+    #                          resolve_existing_output=True)
+    evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))

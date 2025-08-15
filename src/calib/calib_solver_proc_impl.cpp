@@ -79,21 +79,27 @@ void CalibSolver::Process() {
     /**
      * calibrate spatiotemporal parameters of events camera
      */
-    if (Configor::DataStream::EventTopics.size() > 1) {
-        if (Configor::Preference::Visualization) {
-            _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
-        }
-        this->EvCamSpatialTemporalCalib();
-        _parMgr->ShowParamStatus();
-        CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib");
-    }
-
-    _solveFinished = true;
-    return;
-
     if (Configor::DataStream::IMUTopics.empty()) {
-        _solveFinished = true;
-        return;
+        if (Configor::DataStream::EventTopics.size() > 1) {
+            if (Configor::Preference::Visualization) {
+                _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+            }
+            this->EvCamSpatialTemporalCalib();
+            _parMgr->ShowParamStatus();
+            CalibSolverIO::SaveStageCalibParam(_parMgr, "multi_camera_calib");
+
+            _solveFinished = true;
+            return;
+        } else {
+            // Configor::DataStream::EventTopics.size() <= 1, only perform intrinsic calibration
+        }
+    } else {
+        if (Configor::DataStream::EventTopics.empty()) {
+            // exit
+            _solveFinished = true;
+            return;
+        }
+        // perform visual-inertial calibration
     }
 
     // this->GridPatternTracking(false, true);
@@ -110,7 +116,9 @@ void CalibSolver::Process() {
     _fullSo3Spline = CreateSo3Spline(_dataAlignedTimestamp.first, _dataAlignedTimestamp.second,
                                      Configor::Prior::DecayTimeOfActiveEvents * 2.5, true);
 
-    _viewer->SetStates(nullptr, _parMgr, nullptr);
+    if (Configor::Preference::Visualization) {
+        _viewer->SetStates(nullptr, _parMgr, nullptr);
+    }
 
     /* initialize (recover) the rotation spline using raw angular velocity measurements from the
      * gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and time
@@ -127,7 +135,9 @@ void CalibSolver::Process() {
     // _parMgr->ShowParamStatus();
     CalibSolverIO::SaveStageCalibParam(_parMgr, "visual_inertial_calib_1_visual_inertial_align");
 
-    _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+    if (Configor::Preference::Visualization) {
+        _viewer->SetStates(&_splineSegments, _parMgr, _grid3d);
+    }
 
     /**
      * Due to the possibility that the checkerboard may be intermittently tracked (potentially due
