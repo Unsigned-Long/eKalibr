@@ -45,7 +45,9 @@ void CalibSolver::BatchOptimizations() {
         OptOption::OPT_SO3_BiToBr | OptOption::OPT_POS_BiInBr | OptOption::OPT_TO_BiToBr |
             OptOption::OPT_ACCE_BIAS | OptOption::OPT_GYRO_BIAS,
         // the third one (append to last)
-        OptOption::OPT_ACCE_MAP_COEFF | OptOption::OPT_GYRO_MAP_COEFF | OptOption::OPT_SO3_AtoG};
+        OptOption::OPT_ACCE_MAP_COEFF | OptOption::OPT_GYRO_MAP_COEFF
+        // | OptOption::OPT_SO3_AtoG
+    };
 
     std::vector options(optionAry.size(), OptOption::NONE);
     for (int i = 0; i < static_cast<int>(optionAry.size()); ++i) {
@@ -112,7 +114,7 @@ void CalibSolver::BatchOptimizations() {
                 }
             }
         }
-        for (auto &[so3Spline, posSpline] : _splineSegments) {
+        for (auto& [so3Spline, posSpline] : _splineSegments) {
             estimator->AddRegularizationL2Constraint(so3Spline, option, 1E-3);
             estimator->AddRegularizationL2Constraint(posSpline, option, 1E-3);
         }
