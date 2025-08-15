@@ -34,3 +34,4 @@
 !script/evaluation.py
 !script/video_maker.py
 !script/aedat4tobag.py
+!script/aedat4_to_merged_bag.py
