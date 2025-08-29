@@ -117,8 +117,6 @@ if __name__ == "__main__":
     merge_bags(str(merge_yaml_file_path))
     if not output_bag_path.exists():
         raise RuntimeError(f"Merge failed. Output bag not found: {output_bag_path}")
-    
-    move_merged_bag_to_folder(output_bag_path)
 
     # delete aedat4 files
     for file in aedat4_files:

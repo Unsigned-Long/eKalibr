@@ -128,7 +128,7 @@ def run_ekalibr_calibration_task(config_path, output=True):
 
 
 def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers, delete_existing_output,
-                            resolve_existing_output):
+                            resolve_existing_output, visualization):
     if not is_roscore_running():
         print("\033[93mWarning: roscore is not running. Please start roscore before running this script.\033[0m")
         return []
@@ -181,7 +181,7 @@ def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers
         ]
         config_data["Configor"]["DataStream"]["RefIMUTopic"] = "/davis_left/imu"
         config_data["Configor"]["Prior"]["GravityNorm"] = 9.81
-    config_data["Configor"]["Preference"]["Visualization"] = False
+    config_data["Configor"]["Preference"]["Visualization"] = visualization
 
     solve_info = []
     for bag_path in bag_path_list:
@@ -330,7 +330,8 @@ def evaluate_imu_intrinsics(all_params, param_desc, topic):
         all_params, ["CalibParam", "INTRI", "IMU"], topic,
         ["ptr_wrapper", "data", "GYRO", param_desc]
     )
-    gyro_intri = [[elem["r0c0"], elem["r1c0"], elem["r2c0"]] for elem in gyro_intri]
+    n = len(gyro_intri[0])
+    gyro_intri = [[elem[f"r{i}c0"] for i in range(n)] for elem in gyro_intri]
     print(f"'{topic}':'ACCE':'{param_desc}'-> "
           f"mean: {np.mean(np.array(acce_intri), axis=0)}, "
           f"std: {np.std(np.array(acce_intri), axis=0)}")
@@ -399,7 +400,7 @@ def evaluate(solve_mode: EvaluateMode, ekalibr_results_path):
 
 
 def full_pipeline_evaluation(solve_mode: EvaluateMode, dataset_folder, max_workers=1, delete_existing_output=True,
-                             resolve_existing_output=True):
+                             resolve_existing_output=True, visualization=False):
     if not os.path.exists(dataset_folder):
         print(f"Error: Dataset folder {dataset_folder} does not exist.")
         exit(1)
@@ -416,16 +417,17 @@ def full_pipeline_evaluation(solve_mode: EvaluateMode, dataset_folder, max_worke
 
     print(f"There are {len(bag_path_list)} bags to process")
     solve_info_succuss = run_ekalibr_calibration(solve_mode, bag_path_list, max_workers, delete_existing_output,
-                                                 resolve_existing_output)
+                                                 resolve_existing_output, visualization)
     ekalibr_results_path = os.path.join(dataset_folder, "ekalibr_results.yaml")
     save_solve_results(solve_info_succuss, ekalibr_results_path)
     evaluate(solve_mode, ekalibr_results_path)
 
 
 if __name__ == "__main__":
-    dataset_folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
+    dataset_folder = '/media/csl/samsung/eKalibr/dataset/visual-inertial'
     solve_mode = EvaluateMode.VISUAL_INERTIAL
-    # full_pipeline_evaluation(solve_mode=solve_mode, dataset_folder=dataset_folder, max_workers=1,
-    #                          delete_existing_output=False,
-    #                          resolve_existing_output=True)
-    evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))
+    full_pipeline_evaluation(solve_mode=solve_mode, dataset_folder=dataset_folder, max_workers=1,
+                             delete_existing_output=False,
+                             resolve_existing_output=True,
+                             visualization=True)
+    # evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))
