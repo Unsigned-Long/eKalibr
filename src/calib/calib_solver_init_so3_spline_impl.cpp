@@ -30,6 +30,7 @@
 #include "calib/estimator.h"
 #include "spdlog/spdlog.h"
 #include "calib/calib_param_mgr.h"
+#include <calib/cross_correlation.h>
 
 namespace ns_ekalibr {
 
@@ -68,13 +69,35 @@ void CalibSolver::InitSo3Spline() const {
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
     if (Configor::DataStream::IMUTopics.size() > 1) {
+        // recover the time offsets using cross correlation max
+        if (Configor::Prior::OptTemporalParams) {
+            for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+                if (topic == Configor::DataStream::RefIMUTopic) {
+                    continue;
+                }
+                spdlog::info(
+                    "estimating time offset between '{}' and '{}' using cross correlation...",
+                    Configor::DataStream::RefIMUTopic, topic);
+
+                double dt = TemporalCrossCorrelation::AngularVelocityAlignment(
+                    _imuMes.at(Configor::DataStream::RefIMUTopic), _imuMes.at(topic));
+
+                spdlog::info("estimated time offset is dt = {:.3f} (sec)", dt);
+                _parMgr->TEMPORAL.TO_BiToBr[topic] = dt;
+            }
+        }
+
         // if multiple imus involved, we continue to recover extrinsic rotations and time offsets
+        spdlog::info("recovering extrinsic rotations and time offsets between multiple imus...");
         estimator = Estimator::Create(_parMgr);
         auto optOption = OptOption::OPT_SO3_BiToBr;
         if (Configor::Prior::OptTemporalParams) {
             optOption |= OptOption::OPT_TO_BiToBr;
         }
         for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+            if (topic == Configor::DataStream::RefIMUTopic) {
+                continue;
+            }
             this->AddGyroFactorToFullSo3Spline(estimator, topic, optOption, 0.1 /*weight*/,
                                                100 /*down sampling*/);
         }
