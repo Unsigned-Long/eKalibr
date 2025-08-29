@@ -81,6 +81,11 @@ void CalibSolver::InitSo3Spline() const {
 
                 double dt = TemporalCrossCorrelation::AngularVelocityAlignment(
                     _imuMes.at(Configor::DataStream::RefIMUTopic), _imuMes.at(topic));
+                spdlog::info("estimated time offset is dt = {:.3f} (sec)", dt);
+
+                // // todo: slow!!! need to refine!!!
+                // double dt = TemporalCrossCorrelation::AngularVelocityAlignmentV2(
+                //     _imuMes.at(Configor::DataStream::RefIMUTopic), _imuMes.at(topic));
 
                 spdlog::info("estimated time offset is dt = {:.3f} (sec)", dt);
                 _parMgr->TEMPORAL.TO_BiToBr[topic] = dt;

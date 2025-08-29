@@ -48,6 +48,27 @@ public:
     static double AngularVelocityAlignment(const std::vector<IMUFramePtr>& imu1,
                                            const std::vector<IMUFramePtr>& imu2);
 
+    /**
+     * @brief Estimate the time offset between two IMUs using cross-correlation of their angular
+     * velocities.
+     * @param angVel1 the angular velocity sequence
+     * @param angVel2 the angular velocity sequence
+     * @return the time offset from the second sensor to the sed sensor, i.e., t_sen1 = t_sen2 + dt
+     */
+    static double AngularVelocityAlignment(
+        const std::vector<std::pair<double, Eigen::Vector3d>>& angVel1,
+        const std::vector<std::pair<double, Eigen::Vector3d>>& angVel2);
+
+    /**
+     * @brief Estimate the time offset between two IMUs using cross-correlation of their angular
+     * velocities.
+     * @param imu1 the inertial data of the first IMU
+     * @param imu2 the inertial data of the second IMU
+     * @return the time offset from the second IMU to the first IMU, i.e., t_imu1 = t_imu2 + dt
+     */
+    static double AngularVelocityAlignmentV2(const std::vector<IMUFramePtr>& imu1,
+                                             const std::vector<IMUFramePtr>& imu2);
+
 protected:
     template <class Type>
     static void FrequencyAlign(const std::vector<Type>& data1,
