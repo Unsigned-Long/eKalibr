@@ -197,7 +197,7 @@ void CalibSolver::EventInertialAlignment() {
      */
     spdlog::info(
         "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
-        "system to transform the initialized SO3 spline to the world frame...");
+        "system...");
 
     auto estimator = Estimator::Create(_parMgr);
     Sophus::SO3d SO3_Br0ToW;
@@ -215,33 +215,11 @@ void CalibSolver::EventInertialAlignment() {
     auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
-#if 0
-    transform the initialized SO3 spline to the world coordinate system
+    // transform the initialized SO3 spline to the world coordinate system
     for (int i = 0; i < static_cast<int>(_fullSo3Spline.GetKnots().size()); ++i) {
         _fullSo3Spline.GetKnot(i) =
             SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
-#else
-    estimator = Estimator::Create(_parMgr);
-    for (const auto& [topic, poseVec] : _camPoses) {
-        const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-        const auto& SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
-
-        for (const auto& pose : poseVec) {
-            if (!_fullSo3Spline.TimeStampInRange(pose.timeStamp + TO_CjToBr)) {
-                continue;
-            }
-            Sophus::SO3d SO3_BrToW = pose.so3 /*from camera to world*/ * SO3_CjToBr.inverse();
-            estimator->AddSo3Constraint(_fullSo3Spline, pose.timeStamp + TO_CjToBr, SO3_BrToW,
-                                        OptOption::OPT_SO3_SPLINE, 10.0);
-        }
-    }
-    AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
-                                 OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/, 100 /*down sampling*/);
-
-    sum = estimator->Solve(_ceresOption, _priori);
-    spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-#endif
 
     /**
      * the gravity vector would be recovered in this stage, for better converage performance, we
