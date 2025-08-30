@@ -82,6 +82,46 @@ Type LagrangePolynomialTripleMidFOD(const std::array<std::pair<Type, Type>, 3> &
 }
 
 template <class Type>
+void lagrange_polynomial_triple(Type t_query,
+                                const std::array<Type, 3> &t_data,
+                                const std::array<Sophus::SO3<Type>, 3> &R_data,
+                                Sophus::SO3<Type> *Rt,
+                                typename Sophus::SO3<Type>::Tangent *omega_body) {
+    // Extract time points and corresponding rotation matrices
+    // Compute the Lagrange interpolation coefficients a(t) and b(t)
+    Type a_t = ((t_query - t_data[0]) * ((t_data[2] - t_data[0]) - (t_query - t_data[1]))) /
+               ((t_data[0] - t_data[2]) * (t_data[0] - t_data[1]));
+    Type b_t = ((t_query - t_data[0]) * (t_query - t_data[1])) /
+               ((t_data[2] - t_data[0]) * (t_data[2] - t_data[1]));
+
+    // Compute the relative rotations (in the Lie algebra) and perform interpolation
+    // Calculate R_data[1] ⊖ R_data[0] and R_data[2] ⊖ R_data[1]
+    typename Sophus::SO3<Type>::Tangent R_1_minus_R_0 = (R_data[0].inverse() * R_data[1]).log();
+    typename Sophus::SO3<Type>::Tangent R_2_minus_R_1 = (R_data[1].inverse() * R_data[2]).log();
+
+    if (Rt != nullptr) {
+        // Perform interpolation and apply exponential map to recover the rotation
+        *Rt = R_data[0] * Sophus::SO3<Type>::exp(a_t * R_1_minus_R_0) *
+              Sophus::SO3<Type>::exp(b_t * R_2_minus_R_1);
+    }
+
+    if (omega_body != nullptr) {
+        Type J_a_t = (t_data[2] + t_data[1] - 2 * t_query) /
+                     ((t_data[0] - t_data[2]) * (t_data[0] - t_data[1]));
+        Type J_b_t = (2 * t_query - t_data[0] - t_data[1]) /
+                     ((t_data[2] - t_data[0]) * (t_data[2] - t_data[1]));
+
+        typename Sophus::SO3<Type>::Tangent J_Y_t =
+            Sophus::SO3<Type>::leftJacobian(-a_t * R_1_minus_R_0) * R_1_minus_R_0 * J_a_t;
+
+        typename Sophus::SO3<Type>::Tangent J_Z_t =
+            Sophus::SO3<Type>::leftJacobian(-b_t * R_2_minus_R_1) * R_2_minus_R_1 * J_b_t;
+
+        *omega_body = Sophus::SO3<Type>::exp(-b_t * R_2_minus_R_1) * J_Y_t + J_Z_t;
+    }
+}
+
+template <class Type>
 Type GetParamFromROS(const std::string &param) {
     Type par;
     if (!ros::param::get(param, par)) {

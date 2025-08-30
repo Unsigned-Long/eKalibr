@@ -63,6 +63,13 @@ template <class Type>
 Type LagrangePolynomialTripleMidFOD(const std::array<std::pair<Type, Type>, 3> &data);
 
 template <class Type>
+void lagrange_polynomial_triple(Type t_query,
+                                const std::array<Type, 3> &t_data,
+                                const std::array<Sophus::SO3<Type>, 3> &R_data,
+                                Sophus::SO3<Type> *Rt,
+                                typename Sophus::SO3<Type>::Tangent *omega_body);
+
+template <class Type>
 Type GetParamFromROS(const std::string &param);
 
 std::string UpperString(std::string s);

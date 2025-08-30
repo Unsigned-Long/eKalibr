@@ -31,9 +31,12 @@
 #include "core/extr_rot_estimator.h"
 #include <util/tqdm.h>
 #include "util//status.hpp"
+
+#include <calib/cross_correlation.h>
 #include <core/circle_grid.h>
 #include <calib/estimator.h>
 #include <tiny-viewer/entity/coordinate.h>
+#include <util/utils_tpl.hpp>
 #include <viewer/viewer.h>
 
 namespace ns_ekalibr {
@@ -48,6 +51,48 @@ void CalibSolver::EventInertialAlignment() {
     static constexpr double DESIRED_TIME_INTERVAL = 0.1 /* 0.1 sed */;
     const int ALIGN_STEP = std::max(
         1, static_cast<int>(DESIRED_TIME_INTERVAL / Configor::Prior::DecayTimeOfActiveEvents));
+
+    /**
+     * if we want to optimize the temporal parameters, we recover the rought time offsets first
+     * using corss correlation
+     */
+    if (Configor::Prior::OptTemporalParams) {
+        const auto& imuRef = _imuMes.at(Configor::DataStream::RefIMUTopic);
+        std::vector<std::pair<double, Eigen::Vector3d>> angVelRef(imuRef.size());
+        for (size_t i = 0; i < imuRef.size(); i++) {
+            angVelRef[i] = {imuRef[i]->GetTimestamp(), imuRef[i]->GetGyro()};
+        }
+        for (const auto& [topic, poseVec] : _camPoses) {
+            std::vector<std::pair<double, Eigen::Vector3d>> angVelCam;
+            for (int i = 1; i < static_cast<int>(poseVec.size()) - 1; i++) {
+                int j0 = i - 1, j1 = i, j2 = i + 1;
+                double t0 = poseVec[j0].timeStamp;
+                double t1 = poseVec[j1].timeStamp;
+                double t2 = poseVec[j2].timeStamp;
+                if (t1 - t0 > DESIRED_TIME_INTERVAL || t2 - t1 > DESIRED_TIME_INTERVAL) {
+                    continue;
+                }
+                Sophus::SO3d SO3_00(poseVec[j0].so3);
+                Sophus::SO3d SO3_01(poseVec[j1].so3);
+                Sophus::SO3d SO3_02(poseVec[j2].so3);
+                Sophus::SO3d::Tangent omega_t1_body;
+                lagrange_polynomial_triple<double>(t1, {t0, t1, t2}, {SO3_00, SO3_01, SO3_02},
+                                                   nullptr, &omega_t1_body);
+                angVelCam.emplace_back(t1, omega_t1_body);
+            }
+            spdlog::info(
+                "estimating time offset between '{}' (size: {}) and '{}' (size: {}) using cross "
+                "correlation...",
+                Configor::DataStream::RefIMUTopic, angVelRef.size(), topic, angVelCam.size());
+
+            double dt =
+                TemporalCrossCorrelation::AngularVelAlignSparseToDense(angVelRef, angVelCam);
+
+            spdlog::info("estimated time offset from '{}' to '{}' is dt = {:.3f} (sec)", topic,
+                         Configor::DataStream::RefIMUTopic, dt);
+            _parMgr->TEMPORAL.TO_CjToBr[topic] = dt;
+        }
+    }
 
     /**
      * using the estimated rotations of cameras from the 'cv::solvePnP', we perform extrinsic
@@ -153,51 +198,31 @@ void CalibSolver::EventInertialAlignment() {
     spdlog::info(
         "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
         "system to transform the initialized SO3 spline to the world frame...");
-#if 0
+
     auto estimator = Estimator::Create(_parMgr);
     Sophus::SO3d SO3_Br0ToW;
     for (const auto& [topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
-        const double weight = Configor::DataStream::EventTopics.at(topic).Weight;
 
         for (const auto& pose : poseVec) {
             if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
                 continue;
             }
-            estimator->AddSo3SplineAlignToWorldConstraint(_fullSo3Spline, &SO3_Br0ToW, topic,
-                                                          pose.timeStamp, pose.so3, OptOption::NONE,
-                                                          weight);
+            estimator->AddSo3SplineAlignToWorldConstraint(
+                _fullSo3Spline, &SO3_Br0ToW, topic, pose.timeStamp, pose.so3, OptOption::NONE, 0.1);
         }
     }
-    auto sum = estimator->Solve(_ceresOption);
-    estimator = nullptr;
+    auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 
-    // transform the initialized SO3 spline to the world coordinate system
+#if 0
+    transform the initialized SO3 spline to the world coordinate system
     for (int i = 0; i < static_cast<int>(_fullSo3Spline.GetKnots().size()); ++i) {
         _fullSo3Spline.GetKnot(i) =
             SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
     }
-    {
-        _viewer->ClearViewer();
-        std::vector<ns_viewer::Entity::Ptr> entities;
-        for (double t = st; t < et;) {
-            if (!_fullSo3Spline.TimeStampInRange(t)) {
-                t += 0.005;
-                continue;
-            }
-
-            Sophus::SO3d so3 = _fullSo3Spline.Evaluate(t);
-            // coordinate
-            entities.push_back(ns_viewer::Coordinate::Create(
-                ns_viewer::Posed(so3.matrix(), Eigen::Vector3d::Zero()).cast<float>(), 0.5f));
-            t += 0.005;
-        }
-        _viewer->AddEntityLocal(entities);
-        std::cin.get();
-    }
 #else
-    auto estimator = Estimator::Create(_parMgr);
+    estimator = Estimator::Create(_parMgr);
     for (const auto& [topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         const auto& SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
@@ -214,7 +239,7 @@ void CalibSolver::EventInertialAlignment() {
     AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
                                  OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/, 100 /*down sampling*/);
 
-    auto sum = estimator->Solve(_ceresOption, _priori);
+    sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
 #endif
 
@@ -224,7 +249,7 @@ void CalibSolver::EventInertialAlignment() {
      */
     Eigen::Vector3d firRefAcce = _imuMes.at(Configor::DataStream::RefIMUTopic).front()->GetAcce();
     // g = gDir * gNorm, where gDir = normalize(a - f), by assume the acceleration is zero
-    _parMgr->GRAVITY = -firRefAcce.normalized() * Configor::Prior::GravityNorm;
+    _parMgr->GRAVITY = SO3_Br0ToW * -firRefAcce.normalized() * Configor::Prior::GravityNorm;
     spdlog::info("rough assigned gravity in world frame: ['{:.3f}', '{:.3f}', '{:.3f}']",
                  _parMgr->GRAVITY(0), _parMgr->GRAVITY(1), _parMgr->GRAVITY(2));
 
