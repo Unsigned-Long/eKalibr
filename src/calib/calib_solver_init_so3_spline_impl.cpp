@@ -79,15 +79,26 @@ void CalibSolver::InitSo3Spline() const {
                     "estimating time offset between '{}' and '{}' using cross correlation...",
                     Configor::DataStream::RefIMUTopic, topic);
 
-                double dt = TemporalCrossCorrelation::AngularVelocityAlignment(
-                    _imuMes.at(Configor::DataStream::RefIMUTopic), _imuMes.at(topic));
-                spdlog::info("estimated time offset is dt = {:.3f} (sec)", dt);
+                const auto &imu1 = _imuMes.at(Configor::DataStream::RefIMUTopic);
+                const auto &imu2 = _imuMes.at(topic);
 
-                // // todo: slow!!! need to refine!!!
-                // double dt = TemporalCrossCorrelation::AngularVelocityAlignmentV2(
-                //     _imuMes.at(Configor::DataStream::RefIMUTopic), _imuMes.at(topic));
+                std::vector<std::pair<double, Eigen::Vector3d>> angVel1(imu1.size()),
+                    angVel2(imu2.size());
+                for (size_t i = 0; i < imu1.size(); i++) {
+                    angVel1[i] = {imu1[i]->GetTimestamp(), imu1[i]->GetGyro()};
+                }
+                for (size_t i = 0; i < imu2.size(); i++) {
+                    angVel2[i] = {imu2[i]->GetTimestamp(), imu2[i]->GetGyro()};
+                }
 
-                spdlog::info("estimated time offset is dt = {:.3f} (sec)", dt);
+                double dt =
+                    TemporalCrossCorrelation::AngularVelAlignStableToDense(angVel1, angVel2);
+
+                // double dt =
+                //     TemporalCrossCorrelation::AngularVelAlignSparseToDense(angVel1, angVel2);
+
+                spdlog::info("estimated time offset from '{}' to '{}' is dt = {:.3f} (sec)",
+                             Configor::DataStream::RefIMUTopic, topic, dt);
                 _parMgr->TEMPORAL.TO_BiToBr[topic] = dt;
             }
         }

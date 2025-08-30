@@ -31,23 +31,29 @@
 
 namespace ns_ekalibr {
 
-double TemporalCrossCorrelation::AngularVelocityAlignment(const std::vector<IMUFramePtr>& imu1,
-                                                          const std::vector<IMUFramePtr>& imu2) {
-    std::vector<IMUFramePtr> imu1Aligned, imu2Aligned;
-    FrequencyAlign<IMUFramePtr>(imu1, imu1Aligned, imu2, imu2Aligned,
-                                [](const IMUFramePtr& imu) { return imu->GetTimestamp(); });
+double TemporalCrossCorrelation::AngularVelAlignStableToDense(
+    const std::vector<std::pair<double, Eigen::Vector3d>>& angVel1,
+    const std::vector<std::pair<double, Eigen::Vector3d>>& angVel2) {
+    std::vector<std::pair<double, Eigen::Vector3d>> angVel1Aligned, angVel2Aligned;
+    FrequencyAlign<std::pair<double, Eigen::Vector3d>>(
+        angVel1, angVel1Aligned, angVel2, angVel2Aligned,
+        [](const std::pair<double, Eigen::Vector3d>& p) { return p.first; });
 
-    int N = static_cast<int>(imu1Aligned.size());
-    if (N == 0 || static_cast<int>(imu2Aligned.size()) != N) {
+    int N = static_cast<int>(angVel1Aligned.size());
+    if (N == 0 || static_cast<int>(angVel2Aligned.size()) != N) {
         throw EKalibrStatus(Status::ERROR,
-                            "IMU data size mismatch or empty in "
-                            "[TemporalCrossCorrelation::AngularVelocityAlignment]");
+                            "Angular velocity data size mismatch or empty in "
+                            "[TemporalCrossCorrelation::AngularVelAlignStableFreq]");
     }
 
-    double mean_imu1 = 0.0, mean_imu2 = 0.0;
+    double imu1Means = 0.0, imu2Mean = 0.0;
+    std::vector<double> imu1Norms(N), imu2Norms(N);
     for (int i = 0; i < N; i++) {
-        mean_imu1 += (imu1Aligned[i]->GetGyro().norm() - mean_imu1) / (i + 1);
-        mean_imu2 += (imu2Aligned[i]->GetGyro().norm() - mean_imu2) / (i + 1);
+        imu1Norms[i] = angVel1Aligned[i].second.norm();
+        imu1Means += (imu1Norms[i] - imu1Means) / (i + 1);
+
+        imu2Norms[i] = angVel2Aligned[i].second.norm();
+        imu2Mean += (imu2Norms[i] - imu2Mean) / (i + 1);
     }
 
     double max_corr = -DBL_MAX;
@@ -58,8 +64,7 @@ double TemporalCrossCorrelation::AngularVelocityAlignment(const std::vector<IMUF
         for (int i = 0; i < N; i++) {
             int j = i + lag;
             if (j < 0 || j >= N) continue;
-            corr += (imu1Aligned[i]->GetGyro().norm() - mean_imu1) *
-                    (imu2Aligned[j]->GetGyro().norm() - mean_imu2);
+            corr += (imu1Norms[i] - imu1Means) * (imu2Norms[j] - imu2Mean);
             cnt++;
         }
         if (cnt > 0 && corr > max_corr) {
@@ -67,17 +72,17 @@ double TemporalCrossCorrelation::AngularVelocityAlignment(const std::vector<IMUF
             best_lag = -lag;
         }
     }
-    double freqAvg =
-        (static_cast<double>(N - 1) /
-             (imu1Aligned.back()->GetTimestamp() - imu1Aligned.front()->GetTimestamp()) +
-         static_cast<double>(N - 1) /
-             (imu2Aligned.back()->GetTimestamp() - imu2Aligned.front()->GetTimestamp())) /
-        2.0;
+    double freq1 =
+        static_cast<double>(N - 1) / (angVel1Aligned.back().first - angVel1Aligned.front().first);
+    double freq2 =
+        static_cast<double>(N - 1) / (angVel2Aligned.back().first - angVel2Aligned.front().first);
+
+    double freqAvg = (freq1 + freq2) / 2.0;
     double time_lag = static_cast<double>(best_lag) / freqAvg;
     return time_lag;
 }
 
-double TemporalCrossCorrelation::AngularVelocityAlignment(
+double TemporalCrossCorrelation::AngularVelAlignSparseToDense(
     const std::vector<std::pair<double, Eigen::Vector3d>>& angVel1,
     const std::vector<std::pair<double, Eigen::Vector3d>>& angVel2) {
     bool isStrict =
@@ -112,11 +117,14 @@ double TemporalCrossCorrelation::AngularVelocityAlignment(
     }
 
     double meanHigh = 0.0, meanLow = 0.0;
+    std::vector<double> normsHigh(angVelHigh->size()), normsLow(angVelLow->size());
     for (int i = 0; i < static_cast<int>(angVelHigh->size()); i++) {
-        meanHigh += ((*angVelHigh)[i].second.norm() - meanHigh) / (i + 1);
+        normsHigh[i] = (*angVelHigh)[i].second.norm();
+        meanHigh += (normsHigh[i] - meanHigh) / (i + 1);
     }
     for (int i = 0; i < static_cast<int>(angVelLow->size()); i++) {
-        meanLow += ((*angVelLow)[i].second.norm() - meanLow) / (i + 1);
+        normsLow[i] = (*angVelLow)[i].second.norm();
+        meanLow += (normsLow[i] - meanLow) / (i + 1);
     }
 
     int N = static_cast<int>(angVelHigh->size());
@@ -126,25 +134,27 @@ double TemporalCrossCorrelation::AngularVelocityAlignment(
     for (int lag = -N + 1; lag < N; lag++) {
         double corr = 0.0;
         int cnt = 0;
+        int idx = 0;
         for (int j = 0; j < M; j++) {
             double ti = (*angVelLow)[j].first + lag * dtHigh;
             if (ti < angVelHigh->front().first || ti > angVelHigh->back().first) continue;
 
-            int idx = std::lower_bound(angVelHigh->begin(), angVelHigh->end(), ti,
-                                       [](const auto& a, double t) { return a.first < t; }) -
-                      angVelHigh->begin();
-            Eigen::Vector3d interp;
+            while (idx < N && (*angVelHigh)[idx].first < ti) {
+                idx++;
+            }
+
+            double interp;
             if (idx == 0)
-                interp = (*angVelHigh)[0].second;
+                interp = normsHigh[0];
             else if (idx >= static_cast<int>(angVelHigh->size()))
-                interp = angVelHigh->back().second;
+                interp = normsHigh.back();
             else {
                 double t0 = (*angVelHigh)[idx - 1].first;
                 double t1 = (*angVelHigh)[idx].first;
                 double w = (ti - t0) / (t1 - t0);
-                interp = (1 - w) * (*angVelHigh)[idx - 1].second + w * (*angVelHigh)[idx].second;
+                interp = (1 - w) * normsHigh[idx - 1] + w * normsHigh[idx];
             }
-            corr += (interp.norm() - meanHigh) * ((*angVelLow)[j].second.norm() - meanLow);
+            corr += (interp - meanHigh) * (normsLow[j] - meanLow);
             cnt++;
         }
         if (cnt > 0 && corr > max_corr) {
@@ -161,19 +171,6 @@ double TemporalCrossCorrelation::AngularVelocityAlignment(
         // from freq2 to freq1
     }
     return time_lag;
-}
-
-double TemporalCrossCorrelation::AngularVelocityAlignmentV2(const std::vector<IMUFramePtr>& imu1,
-                                                            const std::vector<IMUFramePtr>& imu2) {
-    throw EKalibrStatus(Status::WARNING, "This method is deprecated and may be removed in future.");
-    std::vector<std::pair<double, Eigen::Vector3d>> angVel1(imu1.size()), angVel2(imu2.size());
-    for (size_t i = 0; i < imu1.size(); i++) {
-        angVel1[i] = {imu1[i]->GetTimestamp(), imu1[i]->GetGyro()};
-    }
-    for (size_t i = 0; i < imu2.size(); i++) {
-        angVel2[i] = {imu2[i]->GetTimestamp(), imu2[i]->GetGyro()};
-    }
-    return AngularVelocityAlignment(angVel1, angVel2);
 }
 
 void TemporalCrossCorrelation::FrequencyAlign(const std::vector<double>& highFreqTimes,
