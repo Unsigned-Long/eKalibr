@@ -130,7 +130,7 @@ void CalibSolver::InitSo3SplineSegments() {
     // fitting so3 segments
     spdlog::info("fitting so3 part of spline segments...");
     auto estimator = Estimator::Create(_parMgr);
-#if 0
+#if 1
     for (const auto &[topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
         const auto &SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);

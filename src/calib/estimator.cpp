@@ -324,8 +324,10 @@ void Estimator::AddIMUGyroMeasurement(const So3SplineType &so3Spline,
     // for the inertial measurements from the reference IMU, there is no need to consider a time
     // padding, as its time offsets would be fixed as identity
     if (IsOptionWith(Opt::OPT_TO_BiToBr, option) && Configor::DataStream::RefIMUTopic != topic) {
-        double minTime = imuFrame->GetTimestamp() - Configor::Prior::TimeOffsetPadding;
-        double maxTime = imuFrame->GetTimestamp() + Configor::Prior::TimeOffsetPadding;
+        double minTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic) -
+                         Configor::Prior::TimeOffsetPadding;
+        double maxTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic) +
+                         Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(minTime) || !so3Spline.TimeStampInRange(maxTime)) {
             return;
@@ -412,8 +414,10 @@ void Estimator::AddIMUGyroMeasurement(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(TIME_OFFSET_BiToBc);
     } else {
         // set bound
-        this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0,
+                                     *TIME_OFFSET_BiToBc - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0,
+                                     *TIME_OFFSET_BiToBc + Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -434,15 +438,19 @@ void Estimator::AddHandEyeRotAlignment(const So3SplineType &so3Spline,
 
     // different relative control points finding [single vs. range]
     if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
-        double lastMinTime = tLastByCj - Configor::Prior::TimeOffsetPadding;
-        double lastMaxTime = tLastByCj + Configor::Prior::TimeOffsetPadding;
+        double lastMinTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                             Configor::Prior::TimeOffsetPadding;
+        double lastMaxTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                             Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(lastMinTime) || !so3Spline.TimeStampInRange(lastMaxTime)) {
             return;
         }
 
-        double curMinTime = tCurByCj - Configor::Prior::TimeOffsetPadding;
-        double curMaxTime = tCurByCj + Configor::Prior::TimeOffsetPadding;
+        double curMinTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                            Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                            Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(curMinTime) || !so3Spline.TimeStampInRange(curMaxTime)) {
             return;
@@ -504,8 +512,8 @@ void Estimator::AddHandEyeRotAlignment(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(TO_CjToBr);
     } else {
         // set bound
-        this->SetParameterLowerBound(TO_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TO_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TO_CjToBr, 0, *TO_CjToBr - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CjToBr, 0, *TO_CjToBr + Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -523,16 +531,20 @@ void Estimator::AddHandEyeTransformAlignment(const So3SplineType &so3Spline,
 
     // different relative control points finding [single vs. range]
     if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
-        double lastMinTime = tLastByCj - Configor::Prior::TimeOffsetPadding;
-        double lastMaxTime = tLastByCj + Configor::Prior::TimeOffsetPadding;
+        double lastMinTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                             Configor::Prior::TimeOffsetPadding;
+        double lastMaxTime = tLastByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                             Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(lastMinTime) || !so3Spline.TimeStampInRange(lastMaxTime) ||
             !posSpline.TimeStampInRange(lastMinTime) || !posSpline.TimeStampInRange(lastMaxTime)) {
             return;
         }
 
-        double curMinTime = tCurByCj - Configor::Prior::TimeOffsetPadding;
-        double curMaxTime = tCurByCj + Configor::Prior::TimeOffsetPadding;
+        double curMinTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                            Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = tCurByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                            Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(curMinTime) || !so3Spline.TimeStampInRange(curMaxTime) ||
             !posSpline.TimeStampInRange(curMinTime) || !posSpline.TimeStampInRange(curMaxTime)) {
@@ -614,8 +626,8 @@ void Estimator::AddHandEyeTransformAlignment(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(TO_CjToBr);
     } else {
         // set bound
-        this->SetParameterLowerBound(TO_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TO_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TO_CjToBr, 0, *TO_CjToBr - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CjToBr, 0, *TO_CjToBr + Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -635,8 +647,10 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(const So3SplineType &so3Splin
 
     // different relative control points finding [single vs. range]
     if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
-        double curMinTime = timeByCj - Configor::Prior::TimeOffsetPadding;
-        double curMaxTime = timeByCj + Configor::Prior::TimeOffsetPadding;
+        double curMinTime = timeByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                            Configor::Prior::TimeOffsetPadding;
+        double curMaxTime = timeByCj + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                            Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(curMinTime) || !so3Spline.TimeStampInRange(curMaxTime)) {
             return;
@@ -700,8 +714,8 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(const So3SplineType &so3Splin
         this->SetParameterBlockConstant(TO_CmToBr);
     } else {
         // set bound
-        this->SetParameterLowerBound(TO_CmToBr, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TO_CmToBr, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TO_CmToBr, 0, *TO_CmToBr - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TO_CmToBr, 0, *TO_CmToBr + Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -855,8 +869,10 @@ void Estimator::AddIMUAcceMeasurement(const So3SplineType &so3Spline,
     // for the inertial measurements from the reference IMU, there is no need to consider a time
     // padding, as its time offsets would be fixed as identity
     if (IsOptionWith(Opt::OPT_TO_BiToBr, option) && Configor::DataStream::RefIMUTopic != topic) {
-        double minTime = imuFrame->GetTimestamp() - Configor::Prior::TimeOffsetPadding;
-        double maxTime = imuFrame->GetTimestamp() + Configor::Prior::TimeOffsetPadding;
+        double minTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic) -
+                         Configor::Prior::TimeOffsetPadding;
+        double maxTime = imuFrame->GetTimestamp() + parMagr->TEMPORAL.TO_BiToBr.at(topic) +
+                         Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(minTime) || !so3Spline.TimeStampInRange(maxTime) ||
             !posSpline.TimeStampInRange(minTime) || !posSpline.TimeStampInRange(maxTime)) {
@@ -960,8 +976,10 @@ void Estimator::AddIMUAcceMeasurement(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(TIME_OFFSET_BiToBc);
     } else {
         // set bound
-        this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TIME_OFFSET_BiToBc, 0,
+                                     *TIME_OFFSET_BiToBc - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TIME_OFFSET_BiToBc, 0,
+                                     *TIME_OFFSET_BiToBc + Configor::Prior::TimeOffsetPadding);
     }
 }
 
@@ -1050,8 +1068,10 @@ void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
     SplineMetaType so3Meta, scaleMeta;
 
     if (IsOptionWith(Opt::OPT_TO_CjToBr, option)) {
-        double minTime = pair->timestamp - Configor::Prior::TimeOffsetPadding;
-        double maxTime = pair->timestamp + Configor::Prior::TimeOffsetPadding;
+        double minTime = pair->timestamp + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) -
+                         Configor::Prior::TimeOffsetPadding;
+        double maxTime = pair->timestamp + parMagr->TEMPORAL.TO_CjToBr.at(camTopic) +
+                         Configor::Prior::TimeOffsetPadding;
         // invalid time stamp
         if (!so3Spline.TimeStampInRange(minTime) || !so3Spline.TimeStampInRange(maxTime) ||
             !posSpline.TimeStampInRange(minTime) || !posSpline.TimeStampInRange(maxTime)) {
@@ -1144,8 +1164,10 @@ void Estimator::AddVisualProjectionFactor(const So3SplineType &so3Spline,
         this->SetParameterBlockConstant(TIME_OFFSET_CjToBr);
     } else {
         // set bound
-        this->SetParameterLowerBound(TIME_OFFSET_CjToBr, 0, -Configor::Prior::TimeOffsetPadding);
-        this->SetParameterUpperBound(TIME_OFFSET_CjToBr, 0, Configor::Prior::TimeOffsetPadding);
+        this->SetParameterLowerBound(TIME_OFFSET_CjToBr, 0,
+                                     *TIME_OFFSET_CjToBr - Configor::Prior::TimeOffsetPadding);
+        this->SetParameterUpperBound(TIME_OFFSET_CjToBr, 0,
+                                     *TIME_OFFSET_CjToBr + Configor::Prior::TimeOffsetPadding);
     }
 
     if (!IsOptionWith(Opt::OPT_CAM_FOCAL_LEN, option)) {
