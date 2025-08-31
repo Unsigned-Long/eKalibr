@@ -280,14 +280,49 @@ def save_solve_results(solve_info_succuss, output_path):
 
 
 def evaluate_extrinsic_rotation(all_params, param_desc, topic):
+    def average_quaternions(quaternions):
+        """
+        quaternions: (N,4) array, each quaternion as [w, x, y, z]
+        """
+        A = np.zeros((4, 4))
+        for q in quaternions:
+            q = q / np.linalg.norm(q)
+            A += np.outer(q, q)
+        A /= len(quaternions)
+        eigvals, eigvecs = np.linalg.eigh(A)
+        return eigvecs[:, np.argmax(eigvals)]  # average quaternion
+
+    def quaternion_angle_diff_vec(q1, q2):
+        from scipy.spatial.transform import Rotation as R
+        """Return 3D angular difference (rotation vector) between two quaternions."""
+        # normalize
+        q1 = q1 / np.linalg.norm(q1)
+        q2 = q2 / np.linalg.norm(q2)
+
+        # relative rotation q_rel = q2 * q1⁻¹
+        r1 = R.from_quat(q1)
+        r2 = R.from_quat(q2)
+        r_rel = r2 * r1.inv()
+
+        # rotation vector (axis * angle), length = radians, direction = axis
+        rotvec = r_rel.as_rotvec()  # in radians
+        return np.degrees(rotvec)  # convert to degrees
+
     SO3_CjToBr = extract_values_by_key_path_and_event(
         all_params, ["CalibParam", "EXTRI", param_desc], topic
     )
-    SO3_CjToBr = [Quaternion(elem["qw"], elem["qx"], elem["qy"], elem["qz"]).get_euler() for elem in SO3_CjToBr]
-    SO3_CjToBr = [[elem * 180.0 / np.pi for elem in euler] for euler in SO3_CjToBr]
+    # SO3_CjToBr = [Quaternion(elem["qw"], elem["qx"], elem["qy"], elem["qz"]).get_euler() for elem in SO3_CjToBr]
+    # SO3_CjToBr = [[elem * 180.0 / np.pi for elem in euler] for euler in SO3_CjToBr]
+
+    quats = [[elem["qw"], elem["qx"], elem["qy"], elem["qz"]] for elem in SO3_CjToBr]
+    q_mean = average_quaternions(quats)
+    euler_mean = np.array(Quaternion(*q_mean).get_euler()) * 180.0 / np.pi
+
+    angles = [quaternion_angle_diff_vec(q, q_mean) for q in quats]
+
     print(f"'{topic}':'{param_desc}'-> "
-          f"mean: {np.mean(np.array(SO3_CjToBr), axis=0)} deg, "
-          f"std: {np.std(np.array(SO3_CjToBr), axis=0)} deg")
+          f"mean: {np.array(euler_mean)} deg, "
+          f"std: {np.std(np.array(angles), axis=0)} deg")
 
 
 def evaluate_extrinsic_translation(all_params, param_desc, topic):
@@ -428,6 +463,6 @@ if __name__ == "__main__":
     solve_mode = EvaluateMode.VISUAL_INERTIAL
     full_pipeline_evaluation(solve_mode=solve_mode, dataset_folder=dataset_folder, max_workers=1,
                              delete_existing_output=False,
-                             resolve_existing_output=True,
+                             resolve_existing_output=False,
                              visualization=True)
     # evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))
