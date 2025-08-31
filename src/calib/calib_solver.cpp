@@ -159,11 +159,14 @@ void CalibSolver::LoadDataFromRosBag() {
     spdlog::info("expect data duration: from '{:.5f}' to '{:.5f}'.", begTime.toSec(),
                  endTime.toSec());
 
-    spdlog::info("loading event data from rosbag...");
-    _evMes = LoadEventsFromROSBag(bag.get(), evTopicTypeMap, begTime, endTime);
-    spdlog::info("loading imu data from rosbag...");
-    _imuMes = LoadIMUDataFromROSBag(bag.get(), imuTopicTypeMap, begTime, endTime);
-
+    if (!evTopicTypeMap.empty()) {
+        spdlog::info("loading event data from rosbag...");
+        _evMes = LoadEventsFromROSBag(bag.get(), evTopicTypeMap, begTime, endTime);
+    }
+    if (!imuTopicTypeMap.empty()) {
+        spdlog::info("loading imu data from rosbag...");
+        _imuMes = LoadIMUDataFromROSBag(bag.get(), imuTopicTypeMap, begTime, endTime);
+    }
     bag->close();
 
     /**
