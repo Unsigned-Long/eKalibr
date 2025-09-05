@@ -35,13 +35,15 @@ from enum import Enum
 
 np_print_precisive = 6
 np.set_printoptions(
-    formatter={'float': lambda x, p=np_print_precisive: f"{x:+.{p}f}"}
+    formatter={'float': lambda x, p=np_print_precisive: f"{x:.{p}f}"}
 )
 
 
 class EvaluateMode(Enum):
     MULTI_CAMERAS = "MULTI_CAMERAS"
     VISUAL_INERTIAL = "VISUAL_INERTIAL"
+    BY_CATEGORY = "BY_CATEGORY"
+    REGARDLESS_OF_CATEGORY = "REGARDLESS_OF_CATEGORY"
 
 
 def is_roscore_running():
@@ -199,6 +201,7 @@ def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers
         write_yaml_file(config_data, config_path)
         info = {
             "id": bag_path.split('/')[-1].split('.')[0],
+            "board_size": f"{rows}x{columns}",
             "config_file_path": config_path,
             "output_dir_path": output_path,
             "param_file_path": os.path.join(output_path, "ekalibr_param.all.yaml")
@@ -259,7 +262,7 @@ def extract_values_by_key_path_and_event(data, path_list, target_key, path_list2
     return result
 
 
-def save_solve_results(solve_info_succuss, output_path):
+def save_solve_results(evaluate_mode: EvaluateMode, solve_info_succuss, output_path):
     # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
     all_params = {}
     for item in solve_info_succuss:
@@ -273,10 +276,28 @@ def save_solve_results(solve_info_succuss, output_path):
             print(f"\033[93mWarning: Failed to load parameters from {param_file_path}, "
                   f"its evaluation is not performed!!!\033[0m")
             continue
-        all_params[item["id"]] = params
+        if evaluate_mode == EvaluateMode.REGARDLESS_OF_CATEGORY:
+            all_params[item["id"]] = params
+            all_params[item["id"]]["Category"] = item["board_size"]
+        else:
+            all_params.setdefault(item["board_size"], {})
+            all_params[item["board_size"]][item["id"]] = params
+            all_params[item["board_size"]][item["id"]]["Category"] = item["board_size"]
 
-    write_yaml_file(all_params, output_path)
-    print(f"eKalibr solving results saved to {output_path}")
+    if evaluate_mode == EvaluateMode.REGARDLESS_OF_CATEGORY:
+        ekalibr_results_path = os.path.join(output_path, "ekalibr_results.yaml")
+        write_yaml_file(all_params, ekalibr_results_path)
+        print(f"eKalibr solving results saved to {ekalibr_results_path}")
+        return [ekalibr_results_path]
+    elif evaluate_mode == EvaluateMode.BY_CATEGORY:
+        ekalibr_results_paths = []
+        for category, params in all_params.items():
+            ekalibr_results_path = os.path.join(output_path, f"ekalibr_results_{category}.yaml")
+            write_yaml_file(params, ekalibr_results_path)
+            print(f"eKalibr solving results of category {category} saved to {ekalibr_results_path}")
+            ekalibr_results_paths.append(ekalibr_results_path)
+        return ekalibr_results_paths
+    return None
 
 
 def evaluate_extrinsic_rotation(all_params, param_desc, topic):
@@ -434,8 +455,12 @@ def evaluate(solve_mode: EvaluateMode, ekalibr_results_path):
     print()
 
 
-def full_pipeline_evaluation(solve_mode: EvaluateMode, dataset_folder, max_workers=1, delete_existing_output=True,
-                             resolve_existing_output=True, visualization=False):
+def full_pipeline_evaluation(solve_mode: EvaluateMode,
+                             evaluate_mode: EvaluateMode,
+                             dataset_folder, max_workers=1,
+                             delete_existing_output=True,
+                             resolve_existing_output=True,
+                             visualization=False):
     if not os.path.exists(dataset_folder):
         print(f"Error: Dataset folder {dataset_folder} does not exist.")
         exit(1)
@@ -453,15 +478,20 @@ def full_pipeline_evaluation(solve_mode: EvaluateMode, dataset_folder, max_worke
     print(f"There are {len(bag_path_list)} bags to process")
     solve_info_succuss = run_ekalibr_calibration(solve_mode, bag_path_list, max_workers, delete_existing_output,
                                                  resolve_existing_output, visualization)
-    ekalibr_results_path = os.path.join(dataset_folder, "ekalibr_results.yaml")
-    save_solve_results(solve_info_succuss, ekalibr_results_path)
-    evaluate(solve_mode, ekalibr_results_path)
+    ekalibr_results_paths = save_solve_results(evaluate_mode, solve_info_succuss, dataset_folder)
+    for ekalibr_results_path in ekalibr_results_paths:
+        print(f"\033[92mevaluating results in {ekalibr_results_path} ...\033[0m")
+        evaluate(solve_mode, ekalibr_results_path)
 
 
 if __name__ == "__main__":
     dataset_folder = '/media/csl/samsung/eKalibr/dataset/visual-inertial'
     solve_mode = EvaluateMode.VISUAL_INERTIAL
-    full_pipeline_evaluation(solve_mode=solve_mode, dataset_folder=dataset_folder, max_workers=1,
+    evaluate_mode = EvaluateMode.REGARDLESS_OF_CATEGORY
+    full_pipeline_evaluation(solve_mode=solve_mode,
+                             evaluate_mode=evaluate_mode,
+                             dataset_folder=dataset_folder,
+                             max_workers=1,
                              delete_existing_output=False,
                              resolve_existing_output=False,
                              visualization=True)
