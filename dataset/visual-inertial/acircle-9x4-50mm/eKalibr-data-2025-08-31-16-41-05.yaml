@@ -1,0 +1,57 @@
+Configor:
+  DataStream:
+    BagPath: /media/csl/samsung/eKalibr/dataset/visual-inertial/acircle-9x4-50mm/eKalibr-data-2025-08-31-16-41-05.bag
+    BeginTime: -1
+    Duration: -1
+    EventTopics:
+    - key: /davis_left/events
+      value:
+        Height: 260
+        Intrinsics: ''
+        Type: DVS_EVENT
+        Width: 346
+    - key: /davis_right/events
+      value:
+        Height: 260
+        Intrinsics: ''
+        Type: DVS_EVENT
+        Width: 346
+    IMUTopics:
+    - key: /davis_left/imu
+      value:
+        AcceWhiteNoise: 0.00186
+        GyroWhiteNoise: 0.000187
+        Type: SENSOR_IMU
+    - key: /davis_right/imu
+      value:
+        AcceWhiteNoise: 0.00186
+        GyroWhiteNoise: 0.000187
+        Type: SENSOR_IMU
+    RefIMUTopic: /davis_left/imu
+  Preference:
+    MaxEntityCountInViewer: 2000
+    OutputDataFormat: YAML
+    Outputs:
+    - NONE
+    Visualization: true
+  Prior:
+    CircleExtractor:
+      CircleClusterPairDirThd: 30
+      PointToCircleDistThd: 2.0
+      ValidClusterAreaThd: 10
+    CirclePattern:
+      Cols: 4
+      RadiusRate: 2.5
+      Rows: 9
+      SpacingMeters: 0.05
+      Type: ASYMMETRIC_GRID
+    DecayTimeOfActiveEvents: 0.02
+    GravityNorm: 9.81
+    NormFlowEstimator:
+      EventToPlaneTimeDistThd: 2E-3
+      RansacInlierRatioThd: 0.8
+      RansacMaxIterations: 2
+      WinSizeInPlaneFit: 1
+    OptTemporalParams: true
+    SpatTempPrioriPath: ''
+    TimeOffsetPadding: 0.1

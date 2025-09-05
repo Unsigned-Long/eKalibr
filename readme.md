@@ -4,14 +4,16 @@
 
 ---
 
-<h3 align="center">eKalibr: Event-Based Visual Calibration Framework</h3>
+<h3 align="center">eKalibr: Event-Based Visual and Visual-Inertial Calibration Framework</h3>
 <p align="center">
     <a href="https://github.com/Unsigned-Long"><strong>Author » Shuolong Chen</strong></a>
 </p>
 <p align="center"><i>"The naming of <strong>eKalibr</strong> is inspired by <a href="https://github.com/ethz-asl/kalibr.git">Kalibr</a>, but not an extension of it."</i></p>
 <p align="center">
-    :tada: <a href="./docs/details/news.md"><i><strong>News »</strong> eKalibr Version 2.0.0 Is Released! Support Intrinsic, Extrinsic, Time Offset Calibration!</i></a>
+    :tada: <a href="./docs/details/news.md"><i><strong>News »</strong> eKalibr Version 3.0.0 Is Released! Support Intrinsic, Extrinsic, Time Offset Calibration!</i></a>
 </p>
+
+
 
 
 
@@ -23,12 +25,13 @@
 
 + Calibration using a circular grid pattern. `eKalibr` includes a precise circular grid pattern recognition pipeline, capable of directly extracting patterns from raw event streams.
 + It is open-source and free of charge. Any organization, as long as it complies with the `eKalibr` open-source license, can freely use `eKalibr` for secondary development without restrictions.
-+ Currently, `eKalibr` supports ***<u>intrinsic calibration</u>*** and ***<u>spatiotemporal calibration</u>*** (extrinsic and time offset) for event cameras. In the future, I will extend `eKalibr` to support event-IMU (event-inertial) spatiotemporal calibration. Stay tuned!
++ Currently, `eKalibr` supports ***<u>intrinsic calibration</u>***, ***<u>spatiotemporal calibration</u>*** (extrinsic and time offset) for multiple event cameras and event-inertial sensor suites.
 
 For more details, please refer to our article :point_down::
 
 + **S. Chen**, X. Li*, L. Yuan and Z. Liu, "eKalibr: Dynamic Intrinsic Calibration for Event Cameras From First Principles of Events," in IEEE Robotics and Automation Letters (RA-L), 2025. [[paper-ral](https://ieeexplore.ieee.org/document/11012137)] [[paper-arXiv](https://arxiv.org/abs/2501.05688)] [[video](https://www.bilibili.com/video/BV1yKc1e8Edc)] [[code](https://github.com/Unsigned-Long/eKalibr.git)]
 + **S. Chen**, X. Li*, and L. Yuan. eKalibr-Stereo: Continuous-Time Spatiotemporal Calibration for  Event-Based Stereo Visual Systems[J]. arXiv preprint arXiv:2504.04451, 2025. [[paper-arXiv](https://arxiv.org/abs/2504.04451)] [[video](https://www.bilibili.com/video/BV1LEu2zFE4X)] [[code](https://github.com/Unsigned-Long/eKalibr.git)] [**_Under Review_**]
++ **TODO**: add `eKalibr-Inertial` arXiv paper...
 
 
 
@@ -65,7 +68,7 @@ To facilitate the learning of those interested in `eKalibr`, we have made the da
 
 + Intrinsic calibration datasets of event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1-tTVQmLRH07sNR3R9nA_jT8dswKElUk_?usp=sharing).
 + multi-camera (e.g., stereo camera) calibration datasets for event cameras. These datasets can be accessed [here](https://drive.google.com/drive/folders/1KY9-Gom8WSHp2-oOdN21phY6l54NQgWf?usp=sharing).
-+ Stay tuned...
++ **TODO**: add visual-inertial dataset...
 
 
 

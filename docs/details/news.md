@@ -4,12 +4,24 @@
 
 ---
 
-<h3 align="center">eKalibr: Event-Based Visual Calibration Framework</h3>
+<h3 align="center">eKalibr: Event-Based Visual and Visual-Inertial Calibration Framework</h3>
 <p align="center">
     <a href="https://github.com/Unsigned-Long"><strong>Author » Shuolong Chen</strong></a>
 </p>
 
+
 ---
+
+
+
+<p align="center">
+    <a><strong>Version 3.0.0 » eKalibr-Inertial: Spatiotemporal Calibration for Event-Inertial Sensor Suites</strong></a>
+</p>
+
+`eKalibr-Inertial` is a spatiotemporal calibrator for event-based visual-inertial systems. `eKalibr-Inertial` has the following features:
+
++ `eKalibr-Inertial` supports both spatial (extrinsics) and temporal (time offsets) calibration, and is also a continuous-time-based optimizator. `eKalibr-Inertial` has been integrated into the original `eKalibr` repository and can be used directly by downloading it.
++ It is open-source and free of charge. Any organization, as long as it complies with the `eKalibr-Inertial` open-source license, can freely use `eKalibr-Inertial` for secondary development without restrictions.
 
 
 

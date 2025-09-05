@@ -41,7 +41,22 @@ Configor:
     # (6)     SENSOR_IMU_DEG_G: gyro unit (deg/s), acce unit (G)                           #
     # (7) SENSOR_IMU_DEG_G_NEG: gyro unit (deg/s), acce unit (-G)                          #
     IMUTopics:
-    RefIMUTopic: ""
+      - key: "/dvs1/imu"
+        value:
+          # Accelerometer "white noise", sigma_a, unit: m/s^2/rtHz
+          # see https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
+          AcceWhiteNoise: 0.00186
+          # Gyroscope "white noise", sigma_a, unit: rad/s/rtHz
+          # see https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
+          GyroWhiteNoise: 0.000187
+          Type: SENSOR_IMU
+      - key: "/sbg/imu"
+        value:
+          AcceWhiteNoise: 0.00186
+          GyroWhiteNoise: 0.000187
+          Type: SBG_IMU
+    # the reference IMU topic, which should be one of the IMUTopics above
+    RefIMUTopic: "/sbg/imu"
     # ------------------------------------------------------------------------------------ #
 
     BagPath: "/the_absolute_path_of_the_ROS_bag_file.bag"
@@ -124,7 +139,7 @@ Configor:
     # priori about spatiotemporal parameters, given by corresponding config file path      #
     SpatTempPrioriPath: ""                                                                 #
     # unit: m/s^2                                                                          #
-    GravityNorm: 9.8                                                                       #
+    GravityNorm: 9.81                                                                      #
     # ------------------------------------------------------------------------------------ #
 
     # the range where the time offsets would be optimized.                                 #
