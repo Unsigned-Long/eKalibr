@@ -32,7 +32,6 @@
 #include "sensor/imu.hpp"
 #include "util/utils.h"
 #include "util/cereal_archive_helper.hpp"
-#include "ctraj/utils/eigen_utils.hpp"
 
 namespace ns_ekalibr {
 

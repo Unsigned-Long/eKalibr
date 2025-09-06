@@ -34,7 +34,6 @@
 #include "spdlog/spdlog.h"
 #include "rosbag/view.h"
 #include "util/tqdm.h"
-#include "config/configor.h"
 
 namespace ns_ekalibr {
 
@@ -92,15 +91,6 @@ std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
         }
     }
     bar->finish();
-
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
-        if (auto iter = eventMes.find(topic); iter == eventMes.end() || iter->second.empty()) {
-            throw Status(Status::CRITICAL,
-                         "there is no data in topic '{}'! "
-                         "check your configure file and rosbag!",
-                         topic);
-        }
-    }
 
     return eventMes;
 }

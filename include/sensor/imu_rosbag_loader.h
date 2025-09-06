@@ -48,6 +48,7 @@ std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
     rosbag::Bag *bag,
     // topic, type
     const std::map<std::string, std::string> &topics,
+    double gravityNorm,
     const ros::Time &begTime,
     const ros::Time &endTime);
 

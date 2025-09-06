@@ -168,7 +168,7 @@ aux_source_directory(${CMAKE_CURRENT_SOURCE_DIR}/src/calib CALIB_SRC_FILES)
 # libekalibr_util #
 ###################
 add_library(
-        ${PROJECT_NAME}_util SHARED
+        ${PROJECT_NAME}_util STATIC
         # source files
         ${UTIL_SRC_FILES}
 )
@@ -191,7 +191,7 @@ target_link_libraries(
 # libekalibr_config #
 #####################
 add_library(
-        ${PROJECT_NAME}_config SHARED
+        ${PROJECT_NAME}_config STATIC
         # source files
         ${CONFIG_SRC_FILES}
 )
@@ -216,7 +216,7 @@ target_link_libraries(
 # libekalibr_sensor #
 #####################
 add_library(
-        ${PROJECT_NAME}_sensor SHARED
+        ${PROJECT_NAME}_sensor STATIC
         # source files
         ${SENSOR_SRC_FILES}
 )
@@ -232,15 +232,15 @@ target_link_libraries(
         ${PROJECT_NAME}_sensor PUBLIC
         ${catkin_LIBRARIES}
         # thirdparty
-        tiny-viewer
         veta
         ctraj
+        ${YAML_CPP_LIBRARIES}
 )
 ###################
 # libekalibr_core #
 ###################
 add_library(
-        ${PROJECT_NAME}_core SHARED
+        ${PROJECT_NAME}_core STATIC
         # source files
         ${CORE_SRC_FILES}
 )
@@ -268,7 +268,7 @@ target_link_libraries(
 # libikalibr_viewer #
 #####################
 add_library(
-        ${PROJECT_NAME}_viewer SHARED
+        ${PROJECT_NAME}_viewer STATIC
         # source files
         ${VIEWER_SRC_FILES}
 )
@@ -292,7 +292,7 @@ target_link_libraries(
 # libekalibr_factor #
 #####################
 add_library(
-        ${PROJECT_NAME}_factor SHARED
+        ${PROJECT_NAME}_factor STATIC
         # source files
         ${FACTOR_SRC_FILES}
 )
@@ -316,7 +316,7 @@ target_link_libraries(
 # libekalibr_calib #
 ###################
 add_library(
-        ${PROJECT_NAME}_calib SHARED
+        ${PROJECT_NAME}_calib STATIC
         # source files
         ${CALIB_SRC_FILES}
 )
@@ -381,7 +381,6 @@ target_include_directories(
         ${catkin_INCLUDE_DIRS}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-
 ## Specify libraries to link a library or executable target against
 target_link_libraries(
         ${PROJECT_NAME}_prog
@@ -402,6 +401,23 @@ target_include_directories(
 ## Specify libraries to link a library or executable target against
 target_link_libraries(
         ${PROJECT_NAME}_undistortion
+        ${catkin_LIBRARIES}
+        ${PROJECT_NAME}_calib
+)
+
+add_executable(
+        ${PROJECT_NAME}_converter
+        exe/converter.cpp
+)
+target_include_directories(
+        ${PROJECT_NAME}_converter PUBLIC
+        # include
+        ${catkin_INCLUDE_DIRS}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+## Specify libraries to link a library or executable target against
+target_link_libraries(
+        ${PROJECT_NAME}_converter
         ${catkin_LIBRARIES}
         ${PROJECT_NAME}_calib
 )

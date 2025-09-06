@@ -32,13 +32,13 @@
 #include "sensor_msgs/Imu.h"
 #include "rosbag/message_instance.h"
 #include "rosbag/view.h"
-#include <config/configor.h>
 #include "util/tqdm.h"
 
 namespace ns_ekalibr {
 std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
     rosbag::Bag *bag,
     const std::map<std::string, std::string> &topics,
+    double gravityNorm,
     const ros::Time &begTime,
     const ros::Time &endTime) {
     if (topics.empty() || bag == nullptr) {
@@ -66,8 +66,7 @@ std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
 
     // get type enum from the string
     for (const auto &[topic, type] : topics) {
-        imuDataLoaders.insert(
-            {topic, IMUDataLoader::GetLoader(type, Configor::Prior::GravityNorm)});
+        imuDataLoaders.insert({topic, IMUDataLoader::GetLoader(type, gravityNorm)});
         // reserve tp speed up the data loading
         auto size = MessageNumInTopic(bag, topic, begTime, endTime);
         if (size > 0) {
@@ -91,15 +90,6 @@ std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
         }
     }
     bar->finish();
-
-    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
-        if (auto iter = imuMes.find(topic); iter == imuMes.end() || iter->second.empty()) {
-            throw Status(Status::CRITICAL,
-                         "there is no data in topic '{}'! "
-                         "check your configure file and rosbag!",
-                         topic);
-        }
-    }
 
     return imuMes;
 }

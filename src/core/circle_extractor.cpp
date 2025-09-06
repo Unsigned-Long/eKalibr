@@ -27,7 +27,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/circle_extractor.h"
-#include "util/circlesgrid.h"
+#include "../../include/core/opencv_circlesgrid.h"
 #include "viewer/viewer.h"
 #include "sensor/event.h"
 #include "opencv4/opencv2/calib3d.hpp"

@@ -162,10 +162,29 @@ void CalibSolver::LoadDataFromRosBag() {
     if (!evTopicTypeMap.empty()) {
         spdlog::info("loading event data from rosbag...");
         _evMes = LoadEventsFromROSBag(bag.get(), evTopicTypeMap, begTime, endTime);
+
+        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+            if (auto iter = _evMes.find(topic); iter == _evMes.end() || iter->second.empty()) {
+                throw Status(Status::CRITICAL,
+                             "there is no data in topic '{}'! "
+                             "check your configure file and rosbag!",
+                             topic);
+            }
+        }
     }
     if (!imuTopicTypeMap.empty()) {
         spdlog::info("loading imu data from rosbag...");
-        _imuMes = LoadIMUDataFromROSBag(bag.get(), imuTopicTypeMap, begTime, endTime);
+        _imuMes = LoadIMUDataFromROSBag(bag.get(), imuTopicTypeMap, Configor::Prior::GravityNorm,
+                                        begTime, endTime);
+
+        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+            if (auto iter = _imuMes.find(topic); iter == _imuMes.end() || iter->second.empty()) {
+                throw Status(Status::CRITICAL,
+                             "there is no data in topic '{}'! "
+                             "check your configure file and rosbag!",
+                             topic);
+            }
+        }
     }
     bag->close();
 

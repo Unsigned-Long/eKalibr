@@ -31,9 +31,7 @@
 
 #include "sensor/event.h"
 #include "Eigen/Dense"
-#include "tiny-viewer/core/utils.hpp"
 #include "cereal/cereal.hpp"
-#include "ctraj/utils/eigen_utils.hpp"
 
 namespace ns_ekalibr {
 class Event {
@@ -48,11 +46,11 @@ private:
     bool _polarity;
 
 public:
-    explicit Event(double timestamp = INVALID_TIME_STAMP,
-                   PosType pos = PosType::Zero(),
-                   bool polarity = {});
+    explicit Event(double timestamp = -1.0, PosType pos = PosType::Zero(), bool polarity = {});
 
-    static Ptr Create(double timestamp, const PosType& pos = PosType::Zero(), bool polarity = {});
+    static Ptr Create(double timestamp = -1.0,
+                      const PosType& pos = PosType::Zero(),
+                      bool polarity = {});
 
     [[nodiscard]] double GetTimestamp() const;
 
@@ -82,11 +80,9 @@ private:
     std::vector<Event::Ptr> _events;
 
 public:
-    explicit EventArray(double timestamp = INVALID_TIME_STAMP,
-                        const std::vector<Event::Ptr>& events = {});
+    explicit EventArray(double timestamp = -1.0, const std::vector<Event::Ptr>& events = {});
 
-    static Ptr Create(double timestamp = INVALID_TIME_STAMP,
-                      const std::vector<Event::Ptr>& events = {});
+    static Ptr Create(double timestamp = -1.0, const std::vector<Event::Ptr>& events = {});
 
     [[nodiscard]] double GetTimestamp() const;
 

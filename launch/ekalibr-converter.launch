@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<launch>
+
+    <arg name="rosbag_file"
+         default="/media/csl/samsung/eKalibr/dataset/visual-inertial/acircle-7x3-50mm/eKalibr-data-2025-08-31-09-19-30.bag"/>
+    <!--
+        The event topics [topic:type:widthxhright], multiple topics are supported, split using ';'.
+        Supported event types:
+        (1) PROPHESEE_EVENT: https://github.com/prophesee-ai/prophesee_ros_wrapper.git
+        (2)       DVS_EVENT: https://github.com/uzh-rpg/rpg_dvs_ros.git
+        (3) ...
+    -->
+    <arg name="event_topics"
+         default="/davis_left/events:DVS_EVENT:346x260;/davis_right/events:DVS_EVENT:346x260"/>
+    <!--
+        The data format type to convert to. Current supported type:
+        (1) e2vid: the format used by the E2VID network. Website: https://rpg.ifi.uzh.ch/E2VID.html
+        (2) ...
+     -->
+    <arg name="desired_type" default="e2vid"/>
+
+    <node pkg="ekalibr" type="ekalibr_converter" name="ekalibr_converter" output="screen">
+        <param name="rosbag_file" value="$(arg rosbag_file)" type="string"/>
+        <param name="event_topics" value="$(arg event_topics)" type="string"/>
+        <param name="desired_type" value="$(arg desired_type)" type="string"/>
+    </node>
+
+</launch>
