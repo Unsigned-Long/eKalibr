@@ -174,7 +174,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                  * extract circle grid pattern
                  */
                 auto circleExtractor = EventCircleExtractor::Create(
-                    Configor::Preference::Visualization,
+                    true, /* create sea mats */
                     Configor::Prior::CircleExtractor.ValidClusterAreaThd,
                     Configor::Prior::CircleExtractor.CircleClusterPairDirThd,
                     Configor::Prior::CircleExtractor.PointToCircleDistThd);

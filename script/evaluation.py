@@ -184,6 +184,7 @@ def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers
         config_data["Configor"]["DataStream"]["RefIMUTopic"] = "/davis_left/imu"
         config_data["Configor"]["Prior"]["GravityNorm"] = 9.81
     config_data["Configor"]["Preference"]["Visualization"] = visualization
+    config_data["Configor"]["Preference"]["Outputs"] = ["ALL"]
 
     solve_info = []
     for bag_path in bag_path_list:
@@ -485,7 +486,7 @@ def full_pipeline_evaluation(solve_mode: EvaluateMode,
 
 
 if __name__ == "__main__":
-    dataset_folder = '/media/csl/samsung/eKalibr/dataset/visual-inertial'
+    dataset_folder = '/media/csl/T7/eKalibr-Dataset/visual-inertial'
     solve_mode = EvaluateMode.VISUAL_INERTIAL
     evaluate_mode = EvaluateMode.REGARDLESS_OF_CATEGORY
     full_pipeline_evaluation(solve_mode=solve_mode,
@@ -494,5 +495,5 @@ if __name__ == "__main__":
                              max_workers=1,
                              delete_existing_output=False,
                              resolve_existing_output=False,
-                             visualization=True)
+                             visualization=False)
     # evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))
