@@ -494,6 +494,6 @@ if __name__ == "__main__":
                              dataset_folder=dataset_folder,
                              max_workers=1,
                              delete_existing_output=False,
-                             resolve_existing_output=False,
+                             resolve_existing_output=True,
                              visualization=False)
     # evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))

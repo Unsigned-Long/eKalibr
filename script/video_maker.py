@@ -26,7 +26,6 @@
 #  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 #  POSSIBILITY OF SUCH DAMAGE.
 
-import sys
 import os
 import cv2
 import glob
@@ -46,7 +45,7 @@ def save_images_as_video(images, output_path, fps):
             return
 
     # Define the codec and create VideoWriter object (use XVID for high quality)
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # XVID codec (good quality)
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")  # XVID codec (good quality)
     out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
     # Write images to video
@@ -57,15 +56,15 @@ def save_images_as_video(images, output_path, fps):
     print(f"Video saved to {output_path}")
 
 
-def make_video(folder, fps):
+def ekalibr_make_video(folder, fps):
     # find all png files in the folder (only single layer)
-    png_files = sorted(glob.glob(os.path.join(folder, '*.png')))
+    png_files = sorted(glob.glob(os.path.join(folder, "*.png")))
     # filename format: 'tv-render-0.png', sort according to the number
-    png_files.sort(key=lambda x: int(os.path.basename(x).split('-')[-1].split('.')[0]))
+    png_files.sort(key=lambda x: int(os.path.basename(x).split("-")[-1].split(".")[0]))
     # number: opencv image
     images = {}
     for png_file in png_files:
-        number = int(os.path.basename(png_file).split('-')[-1].split('.')[0])
+        number = int(os.path.basename(png_file).split("-")[-1].split(".")[0])
         images[number] = cv2.imread(png_file)
     first_number = min(images.keys())
     last_number = max(images.keys())
@@ -76,7 +75,29 @@ def make_video(folder, fps):
             height, width, channels = images[first_number].shape
             images[i] = np.zeros((height, width, channels), dtype=np.uint8)
         img_list.append(images[i])
-    path = os.path.join(folder, 'video.avi')
+    path = os.path.join(folder, "video.avi")
+    save_images_as_video(img_list, path, fps)
+    return path
+
+
+def e2vid_make_video(folder, fps):
+    # find all png files in the folder (only single layer)
+    png_files = sorted(glob.glob(os.path.join(folder, "*.png")))
+    # filename format: 'tv-render-0.png', sort according to the number
+    png_files.sort(key=lambda x: int(os.path.basename(x).split("_")[-1].split(".")[0]))
+    path = os.path.join(folder, "video.avi")
+    img_list = [cv2.imread(png_file) for png_file in png_files]
+    save_images_as_video(img_list, path, fps)
+    return path
+
+
+def raw_images_make_video(folder, fps):
+    # find all png files in the folder (only single layer)
+    png_files = sorted(glob.glob(os.path.join(folder, "*.png")))
+    # filename format: 'tv-render-0.png', sort according to the number
+    png_files.sort(key=lambda x: int(os.path.basename(x).split("-")[-1].split(".")[0]))
+    path = os.path.join(folder, "video.avi")
+    img_list = [cv2.imread(png_file) for png_file in png_files]
     save_images_as_video(img_list, path, fps)
     return path
 
@@ -85,22 +106,89 @@ def generate_new_path(original_path, folder):
     file_name = os.path.basename(original_path)
     parent_folder = os.path.dirname(original_path)
     relative_path = os.path.relpath(parent_folder, folder)
-    new_file_name = relative_path.replace('/', '_') + '_' + file_name
-    new_path = os.path.join(folder, 'video_maker', new_file_name)
+    # print(f"Relative path: {relative_path}")
+    new_file_name = relative_path.replace("/", "_") + "_" + file_name
+    new_path = os.path.join(folder, "video_maker", new_file_name)
     return new_path
 
 
-if __name__ == "__main__":
-    folder = '/media/csl/samsung/eKalibr/dataset/multi-camera'
+def make_videos_for_ekalibr(folder):
+    def is_ekalibr_output_folder(filename):
+        # strings 'cluster_norm_flow_events', or 'extract_circles', or 'extract_circles_grid', or 'identify_category', or 'sae', or 'search_matches', or 'tracked_circles_grid' is contained in the filename
+        target_strings = [
+            "cluster_norm_flow_events",
+            "extract_circles",
+            "extract_circles_grid",
+            "identify_category",
+            "sae",
+            "search_matches",
+            "tracked_circles_grid",
+        ]
+        for target in target_strings:
+            if target in filename:
+                return True
+        return False
+
     # recursively find all subfolders in folders that contain *.png files, return the folder list (absolute path)
     subfolders = []
     for root, dirs, files in os.walk(folder):
-        if any(file.endswith('.png') for file in files):
+        if any(file.endswith(".png") for file in files) and is_ekalibr_output_folder(
+                root
+        ):
             subfolders.append(os.path.abspath(root))
+    print(f"Found {len(subfolders)} subfolders containing PNG files.")
     for subfolder in subfolders:
         print(f"Processing folder: {subfolder}")
-        path = make_video(subfolder, fps=50)  # DecayTimeOfActiveEvents = 0.02, 1.0 / 0.02 = 50
+        path = ekalibr_make_video(
+            subfolder, fps=50
+        )  # DecayTimeOfActiveEvents = 0.02, 1.0 / 0.02 = 50
         new_path = generate_new_path(path, folder)
         # move the video to the new path using os.move
         os.makedirs(os.path.dirname(new_path), exist_ok=True)
         os.rename(path, new_path)
+        print(f"Moved video to {new_path}")
+
+
+def make_videos_for_e2vid(folder):
+    # recursively find all subfolders in folders that contain *.png files, return the folder list (absolute path)
+    subfolders = []
+    for root, dirs, files in os.walk(folder):
+        if (
+                "e2vid" in root
+                and "reconstruction" in root
+                and any(file.endswith(".png") for file in files)
+        ):
+            subfolders.append(os.path.abspath(root))
+    print(f"Found {len(subfolders)} subfolders containing PNG files.")
+    for subfolder in subfolders:
+        print(f"Processing folder: {subfolder}")
+        path = e2vid_make_video(subfolder, fps=50)  # 20ms time window, 1.0 / 0.02 = 50
+        new_path = generate_new_path(path, folder)
+        # move the video to the new path using os.move
+        os.makedirs(os.path.dirname(new_path), exist_ok=True)
+        os.rename(path, new_path)
+        print(f"Moved video to {new_path}")
+
+
+def make_videos_for_raw_images_folder(folder):
+    # recursively find all subfolders in folders that contain *.png files, return the folder list (absolute path)
+    subfolders = []
+    for root, dirs, files in os.walk(folder):
+        if any(file.endswith(".png") for file in files) and "images" in root:
+            subfolders.append(os.path.abspath(root))
+    print(f"Found {len(subfolders)} subfolders containing PNG files.")
+    for subfolder in subfolders:
+        print(f"Processing folder: {subfolder}")
+        path = raw_images_make_video(subfolder, fps=25)
+        new_path = generate_new_path(path, folder)
+        # move the video to the new path using os.move
+        os.makedirs(os.path.dirname(new_path), exist_ok=True)
+        os.rename(path, new_path)
+        print(f"Moved video to {new_path}")
+
+
+if __name__ == "__main__":
+    folder = "/media/csl/T7/eKalibr-Dataset/visual-inertial"
+    make_videos_for_ekalibr(folder)
+    make_videos_for_e2vid(folder)
+    make_videos_for_raw_images_folder(folder)
