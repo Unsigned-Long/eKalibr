@@ -23,6 +23,10 @@
 + `eKalibr-Inertial` supports both spatial (extrinsics) and temporal (time offsets) calibration, and is also a continuous-time-based optimizator. `eKalibr-Inertial` has been integrated into the original `eKalibr` repository and can be used directly by downloading it.
 + It is open-source and free of charge. Any organization, as long as it complies with the `eKalibr-Inertial` open-source license, can freely use `eKalibr-Inertial` for secondary development without restrictions.
 
+For more details, please see the following paper:
+
++ **S. Chen**, X. Li*, and L. Yuan. eKalibr-Inertial: Continuous-Time Spatiotemporal Calibration for  Event-Based Visual-Inertial Systems[J]. arXiv preprint arXiv:2509.05923, 2025. [[paper-arXiv](https://arxiv.org/abs/2509.05923)] [[code](https://github.com/Unsigned-Long/eKalibr.git)]
+
 
 
 <p align="center">
