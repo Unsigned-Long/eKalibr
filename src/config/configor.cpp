@@ -49,6 +49,7 @@ const static std::map<std::string, OutputOption> OutputOptionMap = {
     {"SAEMapExtractCirclesGrid", OutputOption::SAEMapExtractCirclesGrid},
     {"SAEMapTrackedCirclesGrid", OutputOption::SAEMapTrackedCirclesGrid},
     {"SAEMap", OutputOption::SAEMap},
+    {"SAEMapAccumulatedEvents", OutputOption::SAEMapAccumulatedEvents},
     {"ALL", OutputOption::ALL},
 };
 

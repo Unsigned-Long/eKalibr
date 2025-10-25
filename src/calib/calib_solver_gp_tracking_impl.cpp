@@ -143,7 +143,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                 /**
                  * create sae (surface of active events)
                  */
-                sae->GrabEvent(event);
+                sae->GrabEvent(event, true);
                 const auto timeLatest = sae->GetTimeLatest();
 
                 if (timeLatest - eventMes.front()->GetTimestamp() < 0.05 ||
@@ -192,7 +192,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                  */
                 rawEvsOfPattern.insert({grid2dIdx, rawEvs});
 
-                CalibSolverIO::SaveSAEMaps(topic, circleExtractor, grid2dIdx, nfPack->tsImg);
+                CalibSolverIO::SaveSAEMaps(topic, circleExtractor, grid2dIdx, nfPack->tsImg,
+                                           sae->GetAccumulatedEventImg(true));
 
                 /**
                  * for incomplete grid patterns, we will try to track it. we save the time

@@ -83,7 +83,8 @@ public:
     static void SaveSAEMaps(const std::string &topic,
                             const EventCircleExtractorPtr &extractor,
                             int grid2dId,
-                            const cv::Mat &sae = cv::Mat());
+                            const cv::Mat &sae = cv::Mat(),
+                            const cv::Mat &accumEventsImg = cv::Mat());
 
     static void SaveSAEMaps(const std::string &topic,
                             const std::unordered_map<int, cv::Mat> &SAEMapTrackedCirclesGrid);

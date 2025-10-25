@@ -220,7 +220,8 @@ std::string CalibSolverIO::GetDiskPathOfOpenCVIntrinsicCalibRes(const std::strin
 void CalibSolverIO::SaveSAEMaps(const std::string &topic,
                                 const EventCircleExtractorPtr &extractor,
                                 int grid2dId,
-                                const cv::Mat &sae) {
+                                const cv::Mat &sae,
+                                const cv::Mat &accumEventsImg) {
     if (IsOptionWith(OutputOption::SAEMapClusterNormFlowEvents, Configor::Preference::Outputs)) {
         std::string saveDir =
             Configor::DataStream::OutputPath + "/sae/cluster_norm_flow_events" + topic;
@@ -269,6 +270,15 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
             return;
         }
         cv::imwrite(saveDir + "/sae-" + std::to_string(grid2dId) + ".png", sae);
+    }
+    if (!accumEventsImg.empty() &&
+        IsOptionWith(OutputOption::SAEMapAccumulatedEvents, Configor::Preference::Outputs)) {
+        std::string saveDir = Configor::DataStream::OutputPath + "/sae/accumulated_events" + topic;
+        if (!TryCreatePath(saveDir)) {
+            return;
+        }
+        cv::imwrite(saveDir + "/AccumulatedEventsImg-" + std::to_string(grid2dId) + ".png",
+                    accumEventsImg);
     }
 }
 

@@ -51,10 +51,12 @@ enum class OutputOption : std::uint32_t {
     SAEMapExtractCirclesGrid = 1 << 9,
     SAEMap = 1 << 10,
     SAEMapTrackedCirclesGrid = 1 << 11,
+    SAEMapAccumulatedEvents = 1 << 12,
 
     ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError |
           SAEMapClusterNormFlowEvents | SAEMapIdentifyCategory | SAEMapSearchMatches |
-          SAEMapExtractCircles | SAEMapExtractCirclesGrid | SAEMap | SAEMapTrackedCirclesGrid
+          SAEMapExtractCircles | SAEMapExtractCirclesGrid | SAEMap | SAEMapTrackedCirclesGrid |
+          SAEMapAccumulatedEvents
 };
 
 struct Configor {
