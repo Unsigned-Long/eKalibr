@@ -297,13 +297,62 @@ void CalibSolverIO::SaveSAEMaps(const std::string &topic,
     }
 }
 
-void CalibSolverIO::SaveIncmpGridTracking(const std::string &topic, cv::Mat &img, int grid2dId) {
-    std::string saveDir = Configor::DataStream::OutputPath + "/sae/incmp_grid_tracking/" + topic;
+void CalibSolverIO::SaveIncmpGridTracking(const std::string &topic,
+                                          const cv::Mat &img,
+                                          int grid2dId) {
+    std::string saveDir =
+        Configor::DataStream::OutputPath + "/sae/debug_incmp_grid_tracking/" + topic;
     if (!TryCreatePath(saveDir)) {
         return;
     }
     auto filename = saveDir + "/tracking-" + std::to_string(grid2dId) + ".png";
     cv::imwrite(filename, img);
+}
+
+void CalibSolverIO::SaveNormalFlowEstimation(const std::string &topic,
+                                             const cv::Mat &nfSeedsImg,
+                                             const cv::Mat &nfsImg,
+                                             const cv::Mat &accEvMat,
+                                             const cv::Mat &nfInlierEvMat,
+                                             int grid2dId) {
+    std::string saveDir =
+        Configor::DataStream::OutputPath + "/sae/debug_norm_flow_estimation/" + topic;
+    if (!TryCreatePath(saveDir)) {
+        return;
+    }
+    cv::imwrite(saveDir + "/nfSeedsImg-" + std::to_string(grid2dId) + ".png", nfSeedsImg);
+    cv::imwrite(saveDir + "/nfsImg-" + std::to_string(grid2dId) + ".png", nfsImg);
+    cv::imwrite(saveDir + "/accEvMat-" + std::to_string(grid2dId) + ".png", accEvMat);
+    cv::imwrite(saveDir + "/nfInlierEvMat-" + std::to_string(grid2dId) + ".png", nfInlierEvMat);
+}
+
+void CalibSolverIO::SaveCircleExtractionVisualization(const std::string &topic,
+                                                      const cv::Mat &clusterNfImg,
+                                                      const cv::Mat &identifyCategoryImg,
+                                                      const cv::Mat &searchMatches1Img,
+                                                      const cv::Mat &searchMatches2Img,
+                                                      const cv::Mat &searchMatches3Img,
+                                                      const cv::Mat &extractCirclesImg,
+                                                      const cv::Mat &extractCirclesGridImg,
+                                                      int grid2dId) {
+    std::string saveDir =
+        Configor::DataStream::OutputPath + "/sae/debug_circle_extraction/" + topic;
+    if (!TryCreatePath(saveDir)) {
+        return;
+    }
+    cv::imwrite(saveDir + "/clusterNfImg-" + std::to_string(grid2dId) + ".png", clusterNfImg);
+    cv::imwrite(saveDir + "/identifyCategoryImg-" + std::to_string(grid2dId) + ".png",
+                identifyCategoryImg);
+    cv::imwrite(saveDir + "/searchMatches1Img-" + std::to_string(grid2dId) + ".png",
+                searchMatches1Img);
+    cv::imwrite(saveDir + "/searchMatches2Img-" + std::to_string(grid2dId) + ".png",
+                searchMatches2Img);
+    cv::imwrite(saveDir + "/searchMatches3Img-" + std::to_string(grid2dId) + ".png",
+                searchMatches3Img);
+    cv::imwrite(saveDir + "/extractCirclesImg-" + std::to_string(grid2dId) + ".png",
+                extractCirclesImg);
+    cv::imwrite(saveDir + "/extractCirclesGridImg-" + std::to_string(grid2dId) + ".png",
+                extractCirclesGridImg);
 }
 
 void CalibSolverIO::SaveTinyViewerOnRender(const std::string &topic, int grid2dId) {

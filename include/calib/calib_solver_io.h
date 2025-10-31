@@ -89,7 +89,24 @@ public:
     static void SaveSAEMaps(const std::string &topic,
                             const std::unordered_map<int, cv::Mat> &SAEMapTrackedCirclesGrid);
 
-    static void SaveIncmpGridTracking(const std::string &topic, cv::Mat &img, int grid2dId);
+    static void SaveIncmpGridTracking(const std::string &topic, const cv::Mat &img, int grid2dId);
+
+    static void SaveNormalFlowEstimation(const std::string &topic,
+                                         const cv::Mat &nfSeedsImg,
+                                         const cv::Mat &nfsImg,
+                                         const cv::Mat &accEvMat,
+                                         const cv::Mat &nfInlierEvMat,
+                                         int grid2dId);
+
+    static void SaveCircleExtractionVisualization(const std::string &topic,
+                                                  const cv::Mat &clusterNfImg,
+                                                  const cv::Mat &identifyCategoryImg,
+                                                  const cv::Mat &searchMatches1Img,
+                                                  const cv::Mat &searchMatches2Img,
+                                                  const cv::Mat &searchMatches3Img,
+                                                  const cv::Mat &extractCirclesImg,
+                                                  const cv::Mat &extractCirclesGridImg,
+                                                  int grid2dId);
 
     static void SaveTinyViewerOnRender(const std::string &topic, int grid2dId);
 

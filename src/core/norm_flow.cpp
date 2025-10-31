@@ -27,12 +27,17 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/norm_flow.h"
+
+#include "calib/calib_solver_io.h"
 #include "core/sae.h"
 #include "sensor/event.h"
 #include "util/utils.h"
 #include "opencv4/opencv2/imgproc.hpp"
 #include "opengv/sac/Ransac.hpp"
+#include "util/status.hpp"
+
 #include <config/configor.h>
+#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
 
 namespace ns_ekalibr {
@@ -89,7 +94,7 @@ std::list<Event::Ptr> EventNormFlow::NormFlowPack::NormFlowInlierEvents() const 
     return events;
 }
 
-cv::Mat EventNormFlow::NormFlowPack::Visualization(double dt, bool save) const {
+void EventNormFlow::NormFlowPack::Visualization(double dt, bool save, int grid2dIdx) const {
     cv::Mat m1;
     cv::hconcat(nfSeedsImg, nfsImg, m1);
 
@@ -100,23 +105,17 @@ cv::Mat EventNormFlow::NormFlowPack::Visualization(double dt, bool save) const {
 
     cv::Mat m3;
     cv::vconcat(m1, m2, m3);
+    cv::imshow("Normal Flow Estimation", m3);
 
     if (save) {
-        static int count = 0;
-        cv::imwrite(
-            Configor::DataStream::DebugPath + "/nfSeedsImg-" + std::to_string(count) + ".png",
-            nfSeedsImg);
-        cv::imwrite(Configor::DataStream::DebugPath + "/nfsImg-" + std::to_string(count) + ".png",
-                    nfsImg);
-        cv::imwrite(Configor::DataStream::DebugPath + "/accEvMat-" + std::to_string(count) + ".png",
-                    accEvMat);
-        cv::imwrite(
-            Configor::DataStream::DebugPath + "/nfInlierEvMat-" + std::to_string(count) + ".png",
-            nfInlierEvMat);
-        ++count;
+        if (grid2dIdx < 0) {
+            throw EKalibrStatus(Status::ERROR,
+                                "EventNormFlow::NormFlowPack::Visualization: a valid 'grid2dIdx' "
+                                "is required to save normal flow estimation images!!!");
+        }
+        CalibSolverIO::SaveNormalFlowEstimation("camera", nfSeedsImg, nfsImg, accEvMat,
+                                                nfInlierEvMat, grid2dIdx);
     }
-
-    return m3;
 }
 
 cv::Mat EventNormFlow::NormFlowPack::InliersOccupyMat() const {

@@ -45,23 +45,37 @@ using EventArrayPtr = std::shared_ptr<EventArray>;
 struct InCmpPatternTracker {
     // for a tracked 2d grid pattern
     using ExtractedCirclesVec = std::vector<std::pair<TimeVaryingEllipsePtr, EventArrayPtr>>;
+    using Ptr = std::shared_ptr<InCmpPatternTracker>;
+
+private:
+    int cenNumThdForEachInCmpPattern;
+    double distThdToTrackCen;
+    bool visualization;
+    bool save;
 
 public:
-    static std::set<int> Tracking(const std::string& topic,
-                                  const CircleGridPatternPtr& pattern,
-                                  int cenNumThdForEachInCmpPattern,
-                                  double distThdToTrackCen,
-                                  std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
+    InCmpPatternTracker(int cen_num_thd_for_each_in_cmp_pattern,
+                        double dist_thd_to_track_cen,
+                        bool visualization,
+                        bool save);
+
+    static Ptr Create(int cen_num_thd_for_each_in_cmp_pattern,
+                      double dist_thd_to_track_cen,
+                      bool visualization,
+                      bool save);
+
+    std::set<int> Tracking(const std::string& topic,
+                           const CircleGridPatternPtr& pattern,
+                           std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
 
 protected:
-    static std::vector<int> TryToTrackInCmpGridPattern(
+    std::vector<int> TryToTrackInCmpGridPattern(
         const std::string& topic,
         const CircleGrid2DPtr& grid1,
         const CircleGrid2DPtr& grid2,
         const CircleGrid2DPtr& grid3,
         const CircleGrid2DPtr& gridToTrack,
-        double distThdToTrackCen,
-        const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs);
+        const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) const;
 
     static void DrawTrace(cv::Mat& img,
                           double t1,

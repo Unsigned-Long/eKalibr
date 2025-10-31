@@ -71,6 +71,8 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
     std::unordered_map<std::string, std::unordered_map<int, cv::Mat>>
         SAEMapTrackedCirclesGridBackUp;
 
+    constexpr bool VisualizationSaveForDebug = false;
+
     for (const auto &[topic, eventMes] : _evMes) {
         if (tryLoadAndSaveRes) {
             // try load
@@ -168,8 +170,6 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                                                        // domain, unit (s)
                     nfConfig.RansacMaxIterations);     // ransac iteration count
 
-                // cv::imshow("Time Surface & Norm Flow", nfPack->Visualization(decay));
-
                 /**
                  * extract circle grid pattern
                  */
@@ -207,7 +207,9 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
                     circleExtractor->SAEMapExtractCirclesGrid();
 
                 if (Configor::Preference::Visualization) {
-                    circleExtractor->Visualization();
+                    // to save more information, set the parameter as 'true'
+                    nfPack->Visualization(decay, VisualizationSaveForDebug, grid2dIdx);
+                    circleExtractor->Visualization(VisualizationSaveForDebug, grid2dIdx, topic);
 
                     auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
                     auto t = -timeLatest * ptScale.second;
@@ -261,13 +263,14 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
 
         auto &rawEvsOfPattern = _rawEventsOfExtractedPatterns.at(topic);
         auto gridSize = static_cast<int>(curPattern->GetGrid3d()->points.size());
-        auto trackedIncmpGridIds = InCmpPatternTracker::Tracking(
-            topic,
-            curPattern,  // the total extracted grid patterns, including cmp and incmp ones
+        auto tracker = InCmpPatternTracker::Create(
             // for those tracked incmp grids, their center num should be larger than this value
             std::max(static_cast<int>(gridSize * 0.4), 4),
-            avgDist * 0.15,  // only the distance smaller than this val would be considered tracked,
-            rawEvsOfPattern);
+            avgDist * 0.15,  // only the distance smaller than this val would be considered tracked
+            Configor::Preference::Visualization,
+            VisualizationSaveForDebug  // only for debug
+        );
+        auto trackedIncmpGridIds = tracker->Tracking(topic, curPattern, rawEvsOfPattern);
 
         auto &grid2ds = curPattern->GetGrid2d();
         int compNum = 0, inCompTrackedNum = 0, inCompNotTrackedNum = 0;

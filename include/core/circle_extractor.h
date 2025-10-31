@@ -117,7 +117,7 @@ public:
         bool refineCirclesToEllipse,
         const ViewerPtr& viewer = nullptr);
 
-    void Visualization(bool save = false) const;
+    void Visualization(bool save = false, int grid2dIdx = -1, const std::string& topic = "") const;
 
     static void DrawTimeVaryingEllipses(cv::Mat& mat,
                                         double timestamp,

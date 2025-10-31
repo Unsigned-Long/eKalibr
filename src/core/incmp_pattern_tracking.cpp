@@ -41,13 +41,27 @@
 #include <calib/calib_solver_io.h>
 
 namespace ns_ekalibr {
-#define VISUALIZATION_TRACKING 0
+
+InCmpPatternTracker::InCmpPatternTracker(int cen_num_thd_for_each_in_cmp_pattern,
+                                         double dist_thd_to_track_cen,
+                                         bool visualization,
+                                         bool save)
+    : cenNumThdForEachInCmpPattern(cen_num_thd_for_each_in_cmp_pattern),
+      distThdToTrackCen(dist_thd_to_track_cen),
+      visualization(visualization),
+      save(save) {}
+
+InCmpPatternTracker::Ptr InCmpPatternTracker::Create(int cen_num_thd_for_each_in_cmp_pattern,
+                                                     double dist_thd_to_track_cen,
+                                                     bool visualization,
+                                                     bool save) {
+    return std::make_shared<InCmpPatternTracker>(cen_num_thd_for_each_in_cmp_pattern,
+                                                 dist_thd_to_track_cen, visualization, save);
+}
 
 std::set<int> InCmpPatternTracker::Tracking(
     const std::string& topic,
     const CircleGridPatternPtr& pattern,
-    int cenNumThdForEachInCmpPattern,
-    double distThdToTrackCen,
     std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
     spdlog::info(
         "InCmpPatternTracker::Tracking: 'cenNumThdForEachInCmpPattern': '{}', 'distThdToTrackCen': "
@@ -98,8 +112,8 @@ std::set<int> InCmpPatternTracker::Tracking(
             //              static_cast<int>(isAscendingOrder), grid1->id, grid2->id, grid3->id,
             //              gridToTrack->id);
 
-            auto incmpGridPatternIdx = TryToTrackInCmpGridPattern(
-                topic, grid1, grid2, grid3, gridToTrack, distThdToTrackCen, tvCirclesWithRawEvs);
+            auto incmpGridPatternIdx = TryToTrackInCmpGridPattern(topic, grid1, grid2, grid3,
+                                                                  gridToTrack, tvCirclesWithRawEvs);
             // good count (tracked centers)
             const std::size_t trackedCount =
                 std::count_if(incmpGridPatternIdx.cbegin(), incmpGridPatternIdx.cend(),
@@ -171,18 +185,18 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
     const CircleGrid2DPtr& grid2,
     const CircleGrid2DPtr& grid3,
     const CircleGrid2DPtr& gridToTrack,
-    double distThdToTrackCen,
-    const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) {
-#if VISUALIZATION_TRACKING
-    auto m1 = EventCircleExtractor::CreateSAEWithTVEllipses(
-        topic, tvCirclesWithRawEvs.at(grid1->id), grid1);
-    auto m2 = EventCircleExtractor::CreateSAEWithTVEllipses(
-        topic, tvCirclesWithRawEvs.at(grid2->id), grid2);
-    auto m3 = EventCircleExtractor::CreateSAEWithTVEllipses(
-        topic, tvCirclesWithRawEvs.at(grid3->id), grid3);
-    auto m = EventCircleExtractor::CreateSAEWithTVEllipses(
-        topic, tvCirclesWithRawEvs.at(gridToTrack->id), gridToTrack);
-#endif
+    const std::map<int, ExtractedCirclesVec>& tvCirclesWithRawEvs) const {
+    std::array<cv::Mat, 4> mats;
+    if (visualization) {
+        mats[0] = EventCircleExtractor::CreateSAEWithTVEllipses(
+            topic, tvCirclesWithRawEvs.at(grid1->id), grid1);
+        mats[1] = EventCircleExtractor::CreateSAEWithTVEllipses(
+            topic, tvCirclesWithRawEvs.at(grid2->id), grid2);
+        mats[2] = EventCircleExtractor::CreateSAEWithTVEllipses(
+            topic, tvCirclesWithRawEvs.at(grid3->id), grid3);
+        mats[3] = EventCircleExtractor::CreateSAEWithTVEllipses(
+            topic, tvCirclesWithRawEvs.at(gridToTrack->id), gridToTrack);
+    }
     auto size = static_cast<int>(grid1->centers.size());
     assert(size == grid2->centers.size());
     assert(size == grid3->centers.size());
@@ -219,16 +233,18 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
             nearestPts.at(i) = {indices[0], distance};
         }
 
-#if VISUALIZATION_TRACKING
-        // const double dt = std::abs(gridToTrack->timestamp - grid3->timestamp);
-        const double dt = 0.0;
-        if (grid1->timestamp > grid3->timestamp) {
-            DrawTrace(m, grid3->timestamp, grid2->timestamp, grid1->timestamp, dt, c3, c2, c1, 1.0);
-        } else {
-            DrawTrace(m, grid1->timestamp, grid2->timestamp, grid3->timestamp, dt, c1, c2, c3, 1.0);
+        if (visualization) {
+            // const double dt = std::abs(gridToTrack->timestamp - grid3->timestamp);
+            const double dt = 0.0;
+            if (grid1->timestamp > grid3->timestamp) {
+                DrawTrace(mats[3], grid3->timestamp, grid2->timestamp, grid1->timestamp, dt, c3, c2,
+                          c1, 1.0);
+            } else {
+                DrawTrace(mats[3], grid1->timestamp, grid2->timestamp, grid3->timestamp, dt, c1, c2,
+                          c3, 1.0);
+            }
+            DrawKeypointOnCVMat(mats[3], pPred, false, cv::Scalar(255, 255, 255));
         }
-        DrawKeypointOnCVMat(m, pPred, false, cv::Scalar(255, 255, 255));
-#endif
     }
 
     // Map to store the minimum distance and corresponding index position for each unique index
@@ -264,24 +280,26 @@ std::vector<int> InCmpPatternTracker::TryToTrackInCmpGridPattern(
         }
     }
 
-#if VISUALIZATION_TRACKING
-    for (int i = 0; i < size; i++) {
-        if (incmpGridPatternIdx.at(i) < 0) {
-            continue;
+    if (visualization) {
+        for (int i = 0; i < size; i++) {
+            if (incmpGridPatternIdx.at(i) < 0) {
+                continue;
+            }
+            cv::Point2f pTracked = gridToTrack->centers.at(incmpGridPatternIdx.at(i));
+            cv::Point2f p3 = grid3->centers.at(i);
+            DrawLineOnCVMat(mats[3], pTracked, p3, cv::Scalar(255, 0, 0));
+            // spdlog::info("nearest distance: '{:.3f}' (pixels)", nearestPts.at(i)->second);
         }
-        cv::Point2f pTracked = gridToTrack->centers.at(incmpGridPatternIdx.at(i));
-        cv::Point2f p3 = grid3->centers.at(i);
-        DrawLineOnCVMat(m, pTracked, p3, cv::Scalar(255, 0, 0));
-        // spdlog::info("nearest distance: '{:.3f}' (pixels)", nearestPts.at(i)->second);
+        cv::Mat mTmp1, mTmp2;
+        cv::hconcat(mats[0], mats[1], mTmp1);
+        cv::hconcat(mats[2], mats[3], mTmp2);
+        cv::hconcat(mTmp1, mTmp2, mTmp1);
+        cv::imshow("Tracking Incomplete 2D Grids", mTmp1);
+        if (save) {
+            CalibSolverIO::SaveIncmpGridTracking(topic, mTmp1, gridToTrack->id);
+        }
+        cv::waitKey(1);
     }
-    cv::Mat mTmp1, mTmp2;
-    cv::hconcat(m1, m2, mTmp1);
-    cv::hconcat(m3, m, mTmp2);
-    cv::hconcat(mTmp1, mTmp2, mTmp1);
-    cv::imshow("Tracking Incomplete 2D Grids", mTmp1);
-    CalibSolverIO::SaveIncmpGridTracking(topic, mTmp1, gridToTrack->id);
-    cv::waitKey(1);
-#endif
     return incmpGridPatternIdx;
 }
 
@@ -320,5 +338,4 @@ void InCmpPatternTracker::DrawTrace(cv::Mat& img,
         DrawKeypointOnCVMat(img, cv::Point2d(xData[i], yData[i]), false, cv::Scalar(0, 255, 0));
     }
 }
-#undef VISUALIZATION_TRACKING
 }  // namespace ns_ekalibr

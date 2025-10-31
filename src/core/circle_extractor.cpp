@@ -28,6 +28,7 @@
 
 #include "core/circle_extractor.h"
 #include "../../include/core/opencv_circlesgrid.h"
+#include "calib/calib_solver_io.h"
 #include "viewer/viewer.h"
 #include "sensor/event.h"
 #include "opencv4/opencv2/calib3d.hpp"
@@ -298,7 +299,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
     }
 }
 
-void EventCircleExtractor::Visualization(bool save) const {
+void EventCircleExtractor::Visualization(bool save, int grid2dIdx, const std::string& topic) const {
     if (!this->visualization) {
         return;
     }
@@ -313,29 +314,15 @@ void EventCircleExtractor::Visualization(bool save) const {
     cv::imshow("Found Circle Grid", matGrid);
 
     if (save) {
-        static int count = 0;
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgClusterNormFlowEvents-" +
-                        std::to_string(count) + ".png",
-                    imgClusterNormFlowEvents);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgIdentifyCategory-" +
-                        std::to_string(count) + ".png",
-                    imgIdentifyCategory);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches1-" +
-                        std::to_string(count) + ".png",
-                    imgSearchMatches1);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches2-" +
-                        std::to_string(count) + ".png",
-                    imgSearchMatches2);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgSearchMatches3-" +
-                        std::to_string(count) + ".png",
-                    imgSearchMatches3);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgExtractCircles-" +
-                        std::to_string(count) + ".png",
-                    imgExtractCircles);
-        cv::imwrite(Configor::DataStream::DebugPath + "/imgExtractCirclesGrid-" +
-                        std::to_string(count) + ".png",
-                    imgExtractCirclesGrid);
-        ++count;
+        if (grid2dIdx < 0) {
+            throw EKalibrStatus(Status::ERROR,
+                                "EventCircleExtractor::Visualization: a valid 'grid2dIdx' "
+                                "is required to save circle extraction images!!!");
+        }
+        CalibSolverIO::SaveCircleExtractionVisualization(
+            topic, imgClusterNormFlowEvents, imgIdentifyCategory, imgSearchMatches1,
+            imgSearchMatches2, imgSearchMatches3, imgExtractCircles, imgExtractCirclesGrid,
+            grid2dIdx);
     }
 }
 
