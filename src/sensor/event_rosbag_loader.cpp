@@ -85,9 +85,18 @@ std::map<std::string, std::vector<EventArray::Ptr>> LoadEventsFromROSBag(
         if (eventDataLoaders.cend() != eventDataLoaders.find(topic)) {
             // an event array
             auto mes = eventDataLoaders.at(topic)->UnpackData(item);
-            if (mes != nullptr) {
-                eventMes.at(topic).push_back(mes);
+            if (mes == nullptr) {
+                continue;
             }
+            if (!eventMes.at(topic).empty() &&
+                eventMes.at(topic).back()->GetTimestamp() >= mes->GetTimestamp()) {
+                spdlog::warn(
+                    "the event data in topic '{}' is not time-ordered, "
+                    "skip the current data array at time '{:.6f}' (s)!",
+                    topic, mes->GetTimestamp());
+                continue;
+            }
+            eventMes.at(topic).push_back(mes);
         }
     }
     bar->finish();

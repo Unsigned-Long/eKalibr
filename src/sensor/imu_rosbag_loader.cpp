@@ -84,9 +84,18 @@ std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
         if (imuDataLoaders.cend() != imuDataLoaders.find(topic)) {
             // an event array
             auto mes = imuDataLoaders.at(topic)->UnpackData(item);
-            if (mes != nullptr) {
-                imuMes.at(topic).push_back(mes);
+            if (mes == nullptr) {
+                continue;
             }
+            if (!imuMes.at(topic).empty() &&
+                imuMes.at(topic).back()->GetTimestamp() >= mes->GetTimestamp()) {
+                spdlog::warn(
+                    "imu measurement time disorder detected in topic '{}', "
+                    "skip the measurement at time '{:.6f}' (s)!",
+                    topic, mes->GetTimestamp());
+                continue;
+            }
+            imuMes.at(topic).push_back(mes);
         }
     }
     bar->finish();
