@@ -87,6 +87,7 @@ protected:
     const double CLUSTER_AREA_THD;
     const double DIR_DIFF_DEG_THD;
     const double POINT_TO_CIRCLE_AVG_THD;
+    const int CLUSTER_DILATE_SIZE;
 
     // for visualization
     bool visualization;
@@ -100,12 +101,14 @@ public:
     EventCircleExtractor(bool visualization,
                          double CLUSTER_AREA_THD,
                          double DIR_DIFF_DEG_THD,
-                         double POINT_TO_CIRCLE_AVG_THD);
+                         double POINT_TO_CIRCLE_AVG_THD,
+                         int CLUSTER_DILATE_SIZE);
 
     static Ptr Create(bool visualization = false,
                       double CLUSTER_AREA_THD = 10.0,
                       double DIR_DIFF_DEG_THD = 30.0,
-                      double POINT_TO_CIRCLE_AVG_THD = 1.0);
+                      double POINT_TO_CIRCLE_AVG_THD = 1.0,
+                      int CLUSTER_DILATE_SIZE = 5);
 
     ExtractedCirclesVec ExtractCircles(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                        const ViewerPtr& viewer = nullptr);
@@ -149,7 +152,8 @@ protected:
     std::vector<std::pair<EventArrayPtr, EventArrayPtr>> ExtractPotentialCircleClusters(
         const EventNormFlow::NormFlowPack::Ptr& nfPack,
         double CLUSTER_AREA_THD,
-        double DIR_DIFF_DEG_THD);
+        double DIR_DIFF_DEG_THD,
+        int CLUSTER_DILATE_SIZE);
 
     static TimeVaryingEllipsePtr FitTimeVaryingCircle(const EventArrayPtr& ary1,
                                                       const EventArrayPtr& ary2,
@@ -229,7 +233,9 @@ protected:
      * The following functions serve the purpose of 'ClusterNormFlowEvents'.
      */
     static std::pair<std::vector<std::list<NormFlowPtr>>, std::vector<std::list<NormFlowPtr>>>
-    ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::Ptr& nfPack, double clusterAreaThd);
+    ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::Ptr& nfPack,
+                          double clusterAreaThd,
+                          int clusterDilateSize);
 
     static void InterruptionInTimeDomain(cv::Mat& pMat, const cv::Mat& tMat, double thd);
 

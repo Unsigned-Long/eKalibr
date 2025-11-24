@@ -321,12 +321,13 @@ bool Configor::LoadConfigure(const std::string &filename, CerealArchiveType::Enu
                                        cereal::make_nvp("Configor", *configor));
     } catch (const cereal::Exception &exception) {
         throw Status(
-            Status::CRITICAL,
+            Status::WARNING,
             "The configuration file '{}' is outdated or broken, and can not be loaded in eKalibr "
             "using cereal!!! To make it right, please refer to our latest configuration file "
             "template released at "
-            "https://github.com/Unsigned-Long/eKalibr.git, and then fix your custom configuration "
-            "file. Detailed cereal exception information: \n'{}'",
+            "https://github.com/Unsigned-Long/eKalibr/blob/master/config/ekalibr-config.yaml, and "
+            "then fix your custom configuration file. Detailed cereal exception information: "
+            "\n'{}'",
             filename, exception.what());
     }
 

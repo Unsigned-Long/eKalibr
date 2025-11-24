@@ -486,14 +486,14 @@ def full_pipeline_evaluation(solve_mode: EvaluateMode,
 
 
 if __name__ == "__main__":
-    dataset_folder = '/media/csl/T7/eKalibr-Dataset/visual-inertial'
+    dataset_folder = '/media/csl/T7/eKalibr-Dataset/all'
     solve_mode = EvaluateMode.VISUAL_INERTIAL
-    evaluate_mode = EvaluateMode.REGARDLESS_OF_CATEGORY
+    evaluate_mode = EvaluateMode.BY_CATEGORY
     full_pipeline_evaluation(solve_mode=solve_mode,
                              evaluate_mode=evaluate_mode,
                              dataset_folder=dataset_folder,
                              max_workers=1,
                              delete_existing_output=False,
                              resolve_existing_output=True,
-                             visualization=False)
+                             visualization=True)
     # evaluate(solve_mode, os.path.join(dataset_folder, "ekalibr_results.yaml"))

@@ -169,13 +169,14 @@ public:
             double ValidClusterAreaThd;
             double CircleClusterPairDirThd;
             double PointToCircleDistThd;
+            int ClusterDilateSize;
 
             CircleExtractorConfig() = default;
 
             template <class Archive>
             void serialize(Archive &ar) {
                 ar(CEREAL_NVP(ValidClusterAreaThd), CEREAL_NVP(CircleClusterPairDirThd),
-                   CEREAL_NVP(PointToCircleDistThd));
+                   CEREAL_NVP(PointToCircleDistThd), CEREAL_NVP(ClusterDilateSize));
             }
         };
 

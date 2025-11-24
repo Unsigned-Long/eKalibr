@@ -40,6 +40,9 @@
 
 int main(int argc, char **argv) {
     ros::init(argc, argv, "ekalibr_prog");
+    const auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
+    const auto WStyle = fmt::emphasis::italic | fmt::fg(fmt::color::yellow);
+    const auto ECStyle = fmt::emphasis::italic | fmt::fg(fmt::color::red);
 
     try {
         ns_ekalibr::ConfigSpdlog();
@@ -94,32 +97,29 @@ int main(int argc, char **argv) {
         ns_ekalibr::CalibSolverIO::Create(solver)->SaveVisualIntrinsics();
         ns_ekalibr::CalibSolverIO::Create(solver)->SaveByProductsToDisk();
 
-        static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
         spdlog::info(format(FStyle, "solving and outputting finished!!! Everything is fine!!!"));
 
     } catch (const ns_ekalibr::EKalibrStatus &status) {
         // if error happened, print it
-        static constexpr auto FStyle = fmt::emphasis::italic | fmt::fg(fmt::color::green);
-        static constexpr auto WECStyle = fmt::emphasis::italic | fmt::fg(fmt::color::red);
+
         switch (status.flag) {
             case ns_ekalibr::Status::FINE:
                 // this case usually won't happen
                 spdlog::info(fmt::format(FStyle, "{}", status.what));
                 break;
             case ns_ekalibr::Status::WARNING:
-                spdlog::warn(fmt::format(WECStyle, "{}", status.what));
+                spdlog::warn(fmt::format(WStyle, "{}", status.what));
                 break;
             case ns_ekalibr::Status::ERROR:
-                spdlog::error(fmt::format(WECStyle, "{}", status.what));
+                spdlog::error(fmt::format(ECStyle, "{}", status.what));
                 break;
             case ns_ekalibr::Status::CRITICAL:
-                spdlog::critical(fmt::format(WECStyle, "{}", status.what));
+                spdlog::critical(fmt::format(ECStyle, "{}", status.what));
                 break;
         }
     } catch (const std::exception &e) {
         // an unknown exception not thrown by this program
-        static constexpr auto WECStyle = fmt::emphasis::italic | fmt::fg(fmt::color::red);
-        spdlog::critical(fmt::format(WECStyle, "unknown error happened: '{}'", e.what()));
+        spdlog::critical(fmt::format(ECStyle, "unknown error happened: '{}'", e.what()));
     }
     return 0;
 }

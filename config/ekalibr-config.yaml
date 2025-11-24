@@ -113,6 +113,8 @@ Configor:
     DecayTimeOfActiveEvents: 0.02
     # extraction of circular shapes based on raw events
     CircleExtractor:
+      # the dilation size used in clustering neighboring events into clusters, unit: pixels.
+      ClusterDilateSize: 5
       # clusters with an area greater than the following threshold value are considered valid clusters, unit: pixels.
       ValidClusterAreaThd: 10
       # two matched circular clusters whose average directional difference of norm flows,

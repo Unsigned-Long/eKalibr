@@ -27,7 +27,7 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "core/circle_extractor.h"
-#include "../../include/core/opencv_circlesgrid.h"
+#include "core/opencv_circlesgrid.h"
 #include "calib/calib_solver_io.h"
 #include "viewer/viewer.h"
 #include "sensor/event.h"
@@ -41,6 +41,7 @@
 #include "core/time_varying_ellipse.h"
 #include "core/sae.h"
 #include "core/circle_grid.h"
+#include <queue>
 
 namespace ns_ekalibr {
 /**
@@ -70,18 +71,21 @@ EventCircleExtractor::CircleClusterInfo::Ptr EventCircleExtractor::CircleCluster
 EventCircleExtractor::EventCircleExtractor(bool visualization,
                                            double CLUSTER_AREA_THD,
                                            double DIR_DIFF_DEG_THD,
-                                           double POINT_TO_CIRCLE_AVG_THD)
+                                           double POINT_TO_CIRCLE_AVG_THD,
+                                           int CLUSTER_DILATE_SIZE)
     : CLUSTER_AREA_THD(CLUSTER_AREA_THD),
       DIR_DIFF_DEG_THD(DIR_DIFF_DEG_THD),
       POINT_TO_CIRCLE_AVG_THD(POINT_TO_CIRCLE_AVG_THD),
+      CLUSTER_DILATE_SIZE(CLUSTER_DILATE_SIZE),
       visualization(visualization) {}
 
 EventCircleExtractor::Ptr EventCircleExtractor::Create(bool visualization,
                                                        double CLUSTER_AREA_THD,
                                                        double DIR_DIFF_DEG_THD,
-                                                       double POINT_TO_CIRCLE_AVG_THD) {
+                                                       double POINT_TO_CIRCLE_AVG_THD,
+                                                       int CLUSTER_DILATE_SIZE) {
     return std::make_shared<EventCircleExtractor>(visualization, CLUSTER_AREA_THD, DIR_DIFF_DEG_THD,
-                                                  POINT_TO_CIRCLE_AVG_THD);
+                                                  POINT_TO_CIRCLE_AVG_THD, CLUSTER_DILATE_SIZE);
 }
 
 EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
@@ -91,7 +95,7 @@ EventCircleExtractor::ExtractedCirclesVec EventCircleExtractor::ExtractCircles(
     }
 
     auto evsInEachCircleClusterPair = this->ExtractPotentialCircleClusters(
-        nfPack, this->CLUSTER_AREA_THD, this->DIR_DIFF_DEG_THD);
+        nfPack, this->CLUSTER_AREA_THD, this->DIR_DIFF_DEG_THD, this->CLUSTER_DILATE_SIZE);
 
     if (evsInEachCircleClusterPair.empty()) {
         return {};
@@ -376,8 +380,10 @@ cv::Mat EventCircleExtractor::CreateSAEWithTVEllipses(
 std::vector<std::pair<EventArray::Ptr, EventArray::Ptr>>
 EventCircleExtractor::ExtractPotentialCircleClusters(const EventNormFlow::NormFlowPack::Ptr& nfPack,
                                                      double CLUSTER_AREA_THD,
-                                                     double DIR_DIFF_DEG_THD) {
-    auto [pNormFlowCluster, nNormFlowCluster] = ClusterNormFlowEvents(nfPack, CLUSTER_AREA_THD);
+                                                     double DIR_DIFF_DEG_THD,
+                                                     int CLUSTER_DILATE_SIZE) {
+    auto [pNormFlowCluster, nNormFlowCluster] =
+        ClusterNormFlowEvents(nfPack, CLUSTER_AREA_THD, CLUSTER_DILATE_SIZE);
     auto pCenDir = ComputeCenterDir(pNormFlowCluster, nfPack);
     auto nCenDir = ComputeCenterDir(nNormFlowCluster, nfPack);
 
@@ -985,7 +991,140 @@ std::pair<Eigen::Vector2d, Eigen::Vector2d> EventCircleExtractor::ComputeCenterD
 
 std::pair<std::vector<std::list<NormFlow::Ptr>>, std::vector<std::list<NormFlow::Ptr>>>
 EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::Ptr& nfPack,
-                                            double clusterAreaThd) {
+                                            double clusterAreaThd,
+                                            int clusterDilateSize) {
+    /*
+     * range: 0 to 65535
+     * 0: empty
+     * 1: occupied
+     * 2-65535: cluster idx
+     */
+    cv::Mat pMat(nfPack->rawTimeSurfaceMap.size(), CV_16U, cv::Scalar(0));
+    cv::Mat nMat(nfPack->rawTimeSurfaceMap.size(), CV_16U, cv::Scalar(0));
+    for (const auto& event : nfPack->NormFlowInlierEvents()) {
+        Event::PosType::Scalar ex = event->GetPos()(0), ey = event->GetPos()(1);
+        if (event->GetPolarity()) {
+            pMat.at<ushort>(ey, ex) = 1;
+        } else {
+            nMat.at<ushort>(ey, ex) = 1;
+        }
+    }
+
+    auto MarkConnectedArea = [&clusterDilateSize](cv::Mat& mat) {
+        ushort curClass = 2;
+        static int dirs[8][2] = {{-1, -1}, {-1, 0}, {-1, 1}, {0, -1},
+                                 {0, 1},   {1, -1}, {1, 0},  {1, 1}};
+        std::unordered_map<ushort, int> classArea;
+        for (int i = 0; i < mat.rows; ++i) {
+            for (int j = 0; j < mat.cols; ++j) {
+                if (mat.at<ushort>(i, j) != 1) {
+                    continue;
+                }
+                // BFS
+                std::queue<std::pair<int, int>> q;
+                q.emplace(i, j);
+                mat.at<ushort>(i, j) = curClass;
+                int area = 1;
+                while (!q.empty()) {
+                    auto [r, c] = q.front();
+                    q.pop();
+                    for (auto& dir : dirs) {
+                        int nr = r + dir[0];
+                        int nc = c + dir[1];
+                        if (nr < 0 || nr >= mat.rows || nc < 0 || nc >= mat.cols) {
+                            continue;
+                        }
+                        if (mat.at<ushort>(nr, nc) != 1) {
+                            continue;
+                        }
+                        mat.at<ushort>(nr, nc) = curClass;
+                        ++area;
+                        q.emplace(nr, nc);
+                    }
+                }
+                classArea[curClass] = area;
+                ++curClass;
+            }
+        }
+        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT,
+                                                   cv::Size(clusterDilateSize, clusterDilateSize));
+        cv::dilate(mat, mat, kernel);
+        // merge connected areas after dilation
+        for (int i = 0; i < mat.rows; ++i) {
+            for (int j = 0; j < mat.cols; ++j) {
+                ushort cls = mat.at<ushort>(i, j);
+                if (cls < 2) {
+                    continue;
+                }
+                // BFS
+                std::queue<std::pair<int, int>> q;
+                q.emplace(i, j);
+                std::unordered_set<int> mergedClasses;
+                while (!q.empty()) {
+                    auto [r, c] = q.front();
+                    q.pop();
+                    for (auto& dir : dirs) {
+                        int nr = r + dir[0];
+                        int nc = c + dir[1];
+                        if (nr < 0 || nr >= mat.rows || nc < 0 || nc >= mat.cols) {
+                            continue;
+                        }
+                        ushort ncls = mat.at<ushort>(nr, nc);
+                        if (ncls < 2 || ncls == cls) {
+                            continue;
+                        }
+                        // merge
+                        mat.at<ushort>(nr, nc) = cls;
+                        if (mergedClasses.find(ncls) == mergedClasses.end()) {
+                            classArea.at(cls) += classArea.at(ncls);
+                            classArea.erase(ncls);
+                            mergedClasses.insert(ncls);
+                        }
+                        q.emplace(nr, nc);
+                    }
+                }
+            }
+        }
+
+        return classArea;
+    };
+
+    auto pClassArea = MarkConnectedArea(pMat);
+    auto nClassArea = MarkConnectedArea(nMat);
+
+    // cv::imwrite(Configor::DataStream::DebugPath + "/connected_pMat.png", pMat);
+    // cv::imwrite(Configor::DataStream::DebugPath + "/connected_nMat.png", nMat);
+
+    auto AssignNormFlowsToClasses = [&nfPack, &clusterAreaThd](
+                                        const cv::Mat& mat,
+                                        const std::unordered_map<ushort, int>& classArea) {
+        std::unordered_map<ushort, std::list<NormFlow::Ptr>> classNFs;
+        for (const auto& [nf, inliers] : nfPack->nfs) {
+            for (const auto& [x, y, t] : inliers) {
+                ushort cls = mat.at<ushort>(y, x);
+                if (cls < 2) {
+                    continue;
+                }
+                if (classArea.at(cls) < clusterAreaThd) {
+                    continue;
+                }
+                classNFs[cls].push_back(nf);
+                break;
+            }
+        }
+        std::vector<std::list<NormFlow::Ptr>> normFlowCluster;
+        normFlowCluster.reserve(classNFs.size());
+        for (const auto& [cls, nfs] : classNFs) {
+            normFlowCluster.push_back(nfs);
+        }
+        return normFlowCluster;
+    };
+
+    auto pNormFlowCluster = AssignNormFlowsToClasses(pMat, pClassArea);
+    auto nNormFlowCluster = AssignNormFlowsToClasses(nMat, nClassArea);
+    return {pNormFlowCluster, nNormFlowCluster};
+
+#if 0
     cv::Mat pMat(nfPack->rawTimeSurfaceMap.size(), CV_8UC1, cv::Scalar(0));
     cv::Mat nMat(nfPack->rawTimeSurfaceMap.size(), CV_8UC1, cv::Scalar(0));
     for (const auto& event : nfPack->NormFlowInlierEvents()) {
@@ -997,14 +1136,14 @@ EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::P
         }
     }
 
-    {
-        std::thread pThread(InterruptionInTimeDomain, std::ref(pMat), nfPack->rawTimeSurfaceMap,
-                            7E-3);
-        std::thread nThread(InterruptionInTimeDomain, std::ref(nMat), nfPack->rawTimeSurfaceMap,
-                            7E-3);
-        pThread.join();
-        nThread.join();
-    }
+    // {
+    //     std::thread pThread(InterruptionInTimeDomain, std::ref(pMat), nfPack->rawTimeSurfaceMap,
+    //                         1E-2);
+    //     std::thread nThread(InterruptionInTimeDomain, std::ref(nMat), nfPack->rawTimeSurfaceMap,
+    //                         1E-2);
+    //     pThread.join();
+    //     nThread.join();
+    // }
 
     std::vector<std::vector<cv::Point>> pContours, nContours;
     {
@@ -1054,6 +1193,7 @@ EventCircleExtractor::ClusterNormFlowEvents(const EventNormFlow::NormFlowPack::P
     // ++count;
 
     return {pNormFlowCluster, ncNormFlowCluster};
+#endif
 }
 
 void EventCircleExtractor::InterruptionInTimeDomain(cv::Mat& pMat,
