@@ -37,18 +37,16 @@
 
 namespace ns_ekalibr {
 void CalibSolver::BatchOptimizations() {
-    std::array<OptOption, 4> optionAry = {
+    std::array<OptOption, 3> optionAry = {
         // the first one
-        OptOption::OPT_SO3_SPLINE,
-        // the second one
-        OptOption::OPT_SCALE_SPLINE | OptOption::OPT_GRAVITY | OptOption::OPT_SO3_CjToBr |
-            OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr,
-        // the third one (append to last)
+        OptOption::OPT_SO3_SPLINE | OptOption::OPT_SCALE_SPLINE | OptOption::OPT_GRAVITY |
+            OptOption::OPT_SO3_CjToBr | OptOption::OPT_POS_CjInBr | OptOption::OPT_TO_CjToBr,
+        // the second one (append to last)
         OptOption::OPT_SO3_BiToBr | OptOption::OPT_POS_BiInBr | OptOption::OPT_TO_BiToBr |
             OptOption::OPT_ACCE_BIAS | OptOption::OPT_GYRO_BIAS,
         // the last one (append to last)
         OptOption::OPT_ACCE_MAP_COEFF | OptOption::OPT_GYRO_MAP_COEFF
-        // | OptOption::OPT_SO3_AtoG
+        // | OptOption::OPT_SO3_AtoG don't optimize the rotation between accelerometer and gyroscope
     };
 
     std::vector options(optionAry.size(), OptOption::NONE);

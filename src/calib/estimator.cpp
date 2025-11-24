@@ -642,6 +642,8 @@ void Estimator::AddSo3SplineAlignToWorldConstraint(const So3SplineType &so3Splin
                                                    const Sophus::SO3d &SO3_CurCjToW,
                                                    Opt option,
                                                    double weight) {
+    throw Status(Status::ERROR, "This function is deprecated!!!");
+
     // prepare metas for splines
     SplineMetaType so3Meta;
 

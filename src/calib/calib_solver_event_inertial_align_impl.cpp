@@ -200,26 +200,25 @@ void CalibSolver::EventInertialAlignment() {
         "system...");
 
     auto estimator = Estimator::Create(_parMgr);
-    Sophus::SO3d SO3_Br0ToW;
     for (const auto& [topic, poseVec] : _camPoses) {
         const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+        const auto& SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
 
         for (const auto& pose : poseVec) {
             if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
                 continue;
             }
-            estimator->AddSo3SplineAlignToWorldConstraint(
-                _fullSo3Spline, &SO3_Br0ToW, topic, pose.timeStamp, pose.so3, OptOption::NONE, 0.1);
+            estimator->AddSo3Constraint(_fullSo3Spline, pose.timeStamp + TO_CjToBr,
+                                        pose.so3 * SO3_CjToBr.inverse(), OptOption::OPT_SO3_SPLINE,
+                                        10.0);
         }
     }
+    this->AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
+                                       OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/,
+                                       100 /*down sampling*/);
     auto sum = estimator->Solve(_ceresOption, _priori);
     spdlog::info("here is the summary:\n{}\n", sum.BriefReport());
-
-    // transform the initialized SO3 spline to the world coordinate system
-    for (int i = 0; i < static_cast<int>(_fullSo3Spline.GetKnots().size()); ++i) {
-        _fullSo3Spline.GetKnot(i) =
-            SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
-    }
+    auto SO3_Br0ToW = _fullSo3Spline.Evaluate(st);
 
     /**
      * the gravity vector would be recovered in this stage, for better converage performance, we
