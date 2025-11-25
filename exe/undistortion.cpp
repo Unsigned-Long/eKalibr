@@ -54,27 +54,22 @@ int main(int argc, char **argv) {
             ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_undistortion/valid_name_regex");
         spdlog::info("valid name regex: '{}'", valid_name_regex);
 
-        auto ekalibr_param_file =
-            ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_undistortion/ekalibr_param_file");
-        if (!std::filesystem::exists(ekalibr_param_file)) {
+        auto ekalibr_intri_param_file = ns_ekalibr::GetParamFromROS<std::string>(
+            "/ekalibr_undistortion/ekalibr_intri_param_file");
+        if (!std::filesystem::exists(ekalibr_intri_param_file)) {
             throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,
-                                     "ekalibr param file dose not exist: '{}'", ekalibr_param_file);
+                                     "ekalibr intrinsic param file dose not exist: '{}'",
+                                     ekalibr_intri_param_file);
         }
-        spdlog::info("ekalibr param file: '{}'", ekalibr_param_file);
-        auto par = ns_ekalibr::CalibParamManager::Load(ekalibr_param_file);
+        spdlog::info("ekalibr intrinsic param file: '{}'", ekalibr_intri_param_file);
+        auto intri =
+            ns_ekalibr::CalibParamManager::ParIntri::LoadCameraIntri(ekalibr_intri_param_file);
 
-        auto topic_in_param_file =
-            ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_undistortion/topic_in_param_file");
-        spdlog::info("camera topic in param file: '{}'", topic_in_param_file);
-
-        auto intriIter = par->INTRI.Camera.find(topic_in_param_file);
-        if (intriIter == par->INTRI.Camera.end()) {
-            throw ns_ekalibr::Status(
-                ns_ekalibr::Status::CRITICAL,
-                "camera topic '{}' dose not exist in eKalibr parameter file: '{}'",
-                topic_in_param_file, ekalibr_param_file);
+        if (!intri) {
+            throw ns_ekalibr::Status(ns_ekalibr::Status::CRITICAL,
+                                     "load intrinsics from file '{}' failed!!!",
+                                     ekalibr_intri_param_file);
         }
-        const auto &intri = intriIter->second;
 
         auto imgs_dir = ns_ekalibr::GetParamFromROS<std::string>("/ekalibr_undistortion/imgs_dir");
         if (!std::filesystem::exists(imgs_dir)) {

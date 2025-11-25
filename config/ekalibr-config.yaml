@@ -114,7 +114,7 @@ Configor:
     # extraction of circular shapes based on raw events
     CircleExtractor:
       # the dilation size used in clustering neighboring events into clusters, unit: pixels.
-      ClusterDilateSize: 5
+      ClusterDilateSize: 3
       # clusters with an area greater than the following threshold value are considered valid clusters, unit: pixels.
       ValidClusterAreaThd: 10
       # two matched circular clusters whose average directional difference of norm flows,
@@ -129,7 +129,7 @@ Configor:
       # The number of iterations for fitting a plane using the RANSAC method.
       RansacMaxIterations: 2
       # The threshold for the required ratio of inliers when fitting a plane using the RANSAC method.
-      RansacInlierRatioThd: 0.8
+      RansacInlierRatioThd: 0.6
       # When fitting a plane using the RANSAC method, the distance from a point to the plane
       # is computed in the time domain. The following value represents the distance threshold
       # for classifying a point as an inlier.

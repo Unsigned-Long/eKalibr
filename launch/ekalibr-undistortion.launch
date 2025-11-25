@@ -3,13 +3,12 @@
 
     <node pkg="ekalibr" type="ekalibr_undistortion" name="ekalibr_undistortion" output="screen">
         <param name="imgs_dir"
-               value="/media/csl/samsung/eKalibr/dataset/acircle-11x4-50mm/eKalibr-data-2024-12-28-16-52-04/sae"
+               value="/media/csl/T7/eKalibr-Dataset/all/acircle-11x4-50mm/eKalibr-data-2025-11-23-23-15-46/sae/extract_circles_grid/davis_right/events"
                type="string"/>
         <param name="valid_name_regex" value="(SAEMapExtractCirclesGrid-\d+\.png)" type="string"/>
-        <param name="ekalibr_param_file"
-               value="/media/csl/samsung/eKalibr/dataset/acircle-11x4-50mm/eKalibr-data-2024-12-28-16-52-04/ekalibr_param.yaml"
+        <param name="ekalibr_intri_param_file"
+               value="/media/csl/T7/eKalibr-Dataset/all/acircle-11x4-50mm/eKalibr-data-2025-11-23-23-15-46/davis_right_events.intri.yaml"
                type="string"/>
-        <param name="topic_in_param_file" value="/dvs/events" type="string"/>
     </node>
 
 </launch>
