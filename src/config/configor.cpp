@@ -166,9 +166,12 @@ void Configor::CheckConfigure() {
         if (topic.empty()) {
             throw Status(Status::ERROR, "the topic of event camera should not be empty string!");
         }
-        // verify event camera type
-        EventModel::FromString(config.Type);
-
+        // verify event camera type.
+        if (config.TemporarilyForFrame) {
+            FrameModel::FromString(config.Type);
+        } else {
+            EventModel::FromString(config.Type);
+        }
         topics.insert(topic);
     }
     for (const auto &[topic, config] : DataStream::IMUTopics) {
@@ -362,6 +365,16 @@ bool Configor::LoadConfigure(const std::string &filename, CerealArchiveType::Enu
                          outputDir);
         } else {
             DataStream::OutputPath = outputDir;
+        }
+    }
+    for (auto &[topic, config] : DataStream::EventTopics) {
+        for (const auto &name : magic_enum::enum_names<FrameModelType>()) {
+            if (config.Type == name) {
+                config.TemporarilyForFrame = true;
+                spdlog::warn("the event topic '{}' is configured as frame model '{}'!!!", topic,
+                             config.Type);
+                break;
+            }
         }
     }
     // perform checking

@@ -77,9 +77,8 @@ void CalibSolver::EstimateCameraIntrinsics() {
     const auto scale = static_cast<float>(Configor::Preference::SplineViewerSpatialScale);
     for (const auto &[topic, curCamPoses] : _camPoses) {
         // grid pattern
-        _viewer->AddGridPattern(_grid3d->points,
-                                static_cast<float>(Configor::Prior::CirclePattern.Radius()), scale,
-                                ns_viewer::Colour::Black());
+        _viewer->AddGridPattern(_grid3d->points, _grid3d->GetPatternSize(),
+                                static_cast<float>(Configor::Prior::CirclePattern.Radius()), scale);
 
         // cameras
         std::vector<ns_viewer::Entity::Ptr> entities;

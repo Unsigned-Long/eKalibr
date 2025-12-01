@@ -94,19 +94,17 @@ public:
                          const std::optional<ns_viewer::Colour> &color = {},
                          float ptSize = 1.0f);
 
-    Viewer &AddGridPattern(
-        const std::vector<cv::Point2f> &centers,
-        double timestamp,
-        const std::pair<float, float> &ptScales = {0.01f, 2.0f},
-        const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
-        float ptSize = 0.05f);
+    Viewer &AddGridPattern(const std::vector<cv::Point2f> &centers,
+                           const cv::Size &patternSize,
+                           double timestamp,
+                           const std::pair<float, float> &ptScales = {0.01f, 2.0f},
+                           float ptSize = 0.05f);
 
-    Viewer &AddGridPattern(
-        const std::vector<cv::Point3f> &centers,
-        float radius,
-        const float &pScale = 0.01f,
-        const ns_viewer::Colour &color = ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f),
-        float ptSize = 0.05f);
+    Viewer &AddGridPattern(const std::vector<cv::Point3f> &centers,
+                           const cv::Size &patternSize,
+                           float radius,
+                           const float &pScale = 0.01f,
+                           float ptSize = 0.05f);
 
     Viewer &UpdateViewer(const Sophus::SE3f &SE3_RefToWorld = {},
                          const float &pScale = Configor::Preference::SplineViewerSpatialScale,

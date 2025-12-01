@@ -190,6 +190,8 @@ protected:
 
     void GridPatternTracking(bool tryLoadAndSaveRes);
 
+    void GridPatternTrackingFrameBased(bool tryLoadAndSaveRes);
+
     /**
      * initialize (recover) the rotation spline using raw angular velocity measurements from
      * the gyroscope. If multiple gyroscopes (IMUs) are involved, the extrinsic rotations and

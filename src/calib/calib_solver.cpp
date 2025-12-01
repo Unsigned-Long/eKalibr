@@ -128,13 +128,12 @@ void CalibSolver::LoadDataFromRosBag() {
          * The following logic flow is very unprofessional; we only use it for temporary processing
          * of frame data.
          */
-        if (info.Type == FrameModel::ToString(FrameModelType::SENSOR_IMAGE) ||
-            info.Type == FrameModel::ToString(FrameModelType::SENSOR_IMAGE_COMP)) {
-            frameTopicTypeMap[topic] = info.Type;
-            continue;
-        }
         topicsToQuery.push_back(topic);
-        evTopicTypeMap[topic] = info.Type;
+        if (info.TemporarilyForFrame) {
+            frameTopicTypeMap[topic] = info.Type;
+        } else {
+            evTopicTypeMap[topic] = info.Type;
+        }
     }
     for (const auto &[topic, info] : Configor::DataStream::IMUTopics) {
         topicsToQuery.push_back(topic);
@@ -173,7 +172,7 @@ void CalibSolver::LoadDataFromRosBag() {
         spdlog::info("loading event data from rosbag...");
         _evMes = LoadEventsFromROSBag(bag.get(), evTopicTypeMap, begTime, endTime);
 
-        for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+        for (const auto &[topic, _] : evTopicTypeMap) {
             if (auto iter = _evMes.find(topic); iter == _evMes.end() || iter->second.empty()) {
                 throw Status(Status::CRITICAL,
                              "there is no data in topic '{}'! "
@@ -187,7 +186,7 @@ void CalibSolver::LoadDataFromRosBag() {
         _imuMes = LoadIMUDataFromROSBag(bag.get(), imuTopicTypeMap, Configor::Prior::GravityNorm,
                                         begTime, endTime);
 
-        for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+        for (const auto &[topic, _] : imuTopicTypeMap) {
             if (auto iter = _imuMes.find(topic); iter == _imuMes.end() || iter->second.empty()) {
                 throw Status(Status::CRITICAL,
                              "there is no data in topic '{}'! "
@@ -433,6 +432,7 @@ void CalibSolver::CreateVisualProjPairsSyncPointBased() {
 }
 
 void CalibSolver::CreateVisualProjPairsAsyncPointBased(double dt) {
+    // for event cameras
     for (const auto &[topic, rawEvsVecOfGrids] : _rawEventsOfExtractedPatterns) {
         auto &corrList = _evAsyncPointProjPairs[topic];
         corrList.clear();
@@ -452,6 +452,35 @@ void CalibSolver::CreateVisualProjPairsAsyncPointBased(double dt) {
         }
         spdlog::info("constructed 'VisualProjectionPair:AsyncPointBased' count for camera '{}': {}",
                      topic, corrList.size());
+    }
+    // for frame cameras
+    for (const auto &[topic, config] : Configor::DataStream::EventTopics) {
+        if (!config.TemporarilyForFrame) {
+            continue;
+        }
+        const auto patterns = _extractedPatterns.at(topic);
+        const auto &grid3d = patterns->GetGrid3d();
+        const auto &grid2dVec = patterns->GetGrid2d();
+
+        auto &pairs = _evAsyncPointProjPairs[topic];
+        pairs.clear();
+
+        for (const auto &grid2d : grid2dVec) {
+            for (int i = 0; i < static_cast<int>(grid2d->centers.size()); ++i) {
+                if (!grid2d->cenValidity.at(i)) {
+                    continue;
+                }
+                const auto &center = grid2d->centers.at(i);
+                const Eigen::Vector2d pixel(center.x, center.y);
+
+                const auto &point3d = grid3d->points.at(i);
+                const Eigen::Vector3d point(point3d.x, point3d.y, point3d.z);
+
+                pairs.push_back(VisualProjectionPair::Create(grid2d->timestamp, point, pixel));
+            }
+        }
+        spdlog::info("create 'VisualProjectionPair:AsyncPointBased' count for camera '{}': {}",
+                     topic, pairs.size());
     }
 }
 

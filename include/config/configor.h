@@ -95,6 +95,7 @@ public:
             std::uint16_t Width;
             std::uint16_t Height;
             std::string Intrinsics;
+            bool TemporarilyForFrame = false;
 
             EventConfig() = default;
 

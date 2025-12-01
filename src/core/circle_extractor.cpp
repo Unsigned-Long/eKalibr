@@ -252,8 +252,7 @@ EventCircleExtractor::ExtractCirclesGrid(const EventNormFlow::NormFlowPack::Ptr&
 
     if (viewer != nullptr && res == true) {
         const auto& ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
-        viewer->AddGridPattern(centers, nfPack->timestamp, ptScale,
-                               ns_viewer::Colour(1.0f, 1.0f, 0.0f, 1.0f), 0.05f);
+        viewer->AddGridPattern(centers, gridSize, nfPack->timestamp, ptScale, 0.05f);
     }
 
     if (!res) {

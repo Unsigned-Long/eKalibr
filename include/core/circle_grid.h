@@ -94,6 +94,8 @@ struct CircleGrid3D {
                  double spacing = 0.0,
                  CirclePatternType type = CirclePatternType::ASYMMETRIC_GRID);
 
+    cv::Size GetPatternSize() const;
+
     static Ptr Create(std::size_t rows, std::size_t cols, double spacing, CirclePatternType type);
 
     std::size_t GridCoordinatesToPointIdx(std::size_t r, std::size_t c) const;

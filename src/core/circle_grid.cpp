@@ -157,6 +157,9 @@ CircleGrid3D::CircleGrid3D(std::size_t rows,
                          "'ASYMMETRIC_GRID' are supported!!!");
     }
 }
+cv::Size CircleGrid3D::GetPatternSize() const {
+    return cv::Size(static_cast<int>(cols), static_cast<int>(rows));
+}
 
 CircleGrid3D::Ptr CircleGrid3D::Create(std::size_t rows,
                                        std::size_t cols,

@@ -44,6 +44,9 @@
 #include <veta/camera/pinhole.h>
 #include "calib/calib_solver_io.h"
 #include "core/incmp_pattern_tracking.h"
+#include "opencv2/calib3d.hpp"
+
+#include <sensor/frame.h>
 
 namespace ns_ekalibr {
 void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
@@ -245,7 +248,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
      * tracking incomplete grid patterns
      */
     for (const auto &[topic, curPattern] : _extractedPatterns) {
-        if (patternLoadFromFile.at(topic)) {
+        if (patternLoadFromFile.count(topic) == 0 || patternLoadFromFile.at(topic)) {
             continue;
         }
         spdlog::info("tracking incomplete grid patterns for camera '{}'...", topic);
@@ -343,7 +346,7 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
         if (!tryLoadAndSaveRes) {
             continue;
         }
-        if (patternLoadFromFile.at(topic)) {
+        if (patternLoadFromFile.count(topic) == 0 || patternLoadFromFile.at(topic)) {
             continue;
         }
         auto [gridPatternPath, rawEvsPath] =
@@ -366,6 +369,79 @@ void CalibSolver::GridPatternTracking(bool tryLoadAndSaveRes) {
         } else {
             spdlog::info("saved raw events of extracted patterns of '{}' to path finished!", topic);
         }
+    }
+}
+
+void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
+    const auto &pattern = Configor::Prior::CirclePattern;
+    auto circlePattern = CirclePattern::FromString(pattern.Type);
+    auto patternSize = cv::Size(pattern.Cols, pattern.Rows);
+
+    _grid3d = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
+                                   pattern.SpacingMeters /*unit: meters*/, circlePattern);
+
+    const ns_viewer::Posef initViewCamPose(Eigen::Matrix3f::Identity(), {0.0f, 0.0f, -4.0f});
+    if (Configor::Preference::Visualization) {
+        _viewer->ClearViewer();
+        _viewer->ResetViewerCamera();
+    }
+    /**
+     * tracking complete grid patterns
+     */
+    for (const auto &[topic, frameMes] : _frameMes) {
+        auto curPattern = CircleGridPattern::Create(_grid3d, _dataRawTimestamp.first);
+        const auto &config = Configor::DataStream::EventTopics.at(topic);
+
+        auto bar = std::make_shared<tqdm>();
+        spdlog::info("perform frame-based circle grid detection for camera '{}'...", topic);
+        for (int grid2dIdx = 0; grid2dIdx < static_cast<int>(frameMes.size()); grid2dIdx++) {
+            bar->progress(grid2dIdx, static_cast<int>(frameMes.size()));
+            const auto &frame = frameMes.at(grid2dIdx);
+
+            bool success = false;
+            std::vector<cv::Point2f> centers;
+            if (circlePattern == CirclePatternType::ASYMMETRIC_GRID) {
+                success = cv::findCirclesGrid(frame->GetImg(), patternSize, centers,
+                                              cv::CALIB_CB_ASYMMETRIC_GRID);
+            } else {
+                success = cv::findCirclesGrid(frame->GetImg(), patternSize, centers);
+            }
+            if (success) {
+                auto grid2d =
+                    CircleGrid2D::Create(grid2dIdx, frame->GetTimestamp(), centers,
+                                         std::vector<std::uint8_t>(centers.size(), true), true);
+                curPattern->AddGrid2d(grid2d);
+            }
+            if (Configor::Preference::Visualization) {
+                cv::Mat imgCopy = frame->GetColorImg().clone();
+                if (success) {
+                    cv::drawChessboardCorners(imgCopy, patternSize, centers, success);
+                    const auto &ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+                    _viewer->AddGridPattern(centers, patternSize, frame->GetTimestamp(), ptScale,
+                                            0.05f);
+                }
+                cv::imshow("Frame-Based Circle Grid Detection", imgCopy);
+
+                auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+                auto t = -frame->GetTimestamp() * ptScale.second;
+                ns_viewer::Posef curViewCamPose = initViewCamPose;
+                curViewCamPose.translation(0) = float(config.Width * 0.5 * ptScale.first);
+                curViewCamPose.translation(1) = float(config.Height * 0.5 * ptScale.first);
+                curViewCamPose.translation(2) = float(t + initViewCamPose.translation(2));
+                _viewer->SetCamView(curViewCamPose);
+
+                cv::waitKey(1);
+            }
+        }
+        bar->finish();
+        if (Configor::Preference::Visualization) {
+            _viewer->ClearViewer();
+            _viewer->ResetViewerCamera();
+            cv::destroyAllWindows();
+        }
+        spdlog::info("frame-based circle grid detection for camera '{}' finished! details:\n{}",
+                     topic, curPattern->InfoString());
+        _extractedPatterns[topic] = curPattern;
     }
 }
 

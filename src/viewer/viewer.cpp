@@ -212,29 +212,44 @@ Viewer &Viewer::AddEventData(const std::list<EventPtr> &ary,
 }
 
 Viewer &Viewer::AddGridPattern(const std::vector<cv::Point2f> &centers,
+                               const cv::Size &patternSize,
                                double timestamp,
                                const std::pair<float, float> &ptScales,
-                               const ns_viewer::Colour &color,
                                float ptSize) {
+    const int line_max = 7;
+    static const int line_colors[line_max][4] = {
+        {0, 0, 255, 0},   {0, 128, 255, 0}, {0, 200, 200, 0}, {0, 255, 0, 0},
+        {200, 200, 0, 0}, {255, 0, 0, 0},   {255, 0, 255, 0}};
+
     const float z = -timestamp * ptScales.second;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>);
     cloud->resize(centers.size());
+
+    int k = 0;
     for (const auto &center : centers) {
+        int row = k / patternSize.width;
+        const int *line_color = &line_colors[row % line_max][0];
+
         pcl::PointXYZRGB p;
         p.x = center.x * ptScales.first;
         p.y = center.y * ptScales.first;
         p.z = z;
-        p.r = color.r * 255;
-        p.g = color.g * 255;
-        p.b = color.b * 255;
+        // bgr -> rgb
+        p.r = line_color[2];
+        p.g = line_color[1];
+        p.b = line_color[0];
 
         cloud->push_back(p);
+        k += 1;
     }
     std::vector<ns_viewer::Entity::Ptr> entities;
     entities.reserve(centers.size() * 2 - 1);
     entities.push_back(std::make_shared<ns_viewer::Cloud<ns_viewer::Landmark>>(cloud, ptSize));
 
     for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
+        int row = i / patternSize.width;
+        const int *line_color = &line_colors[row % line_max][0];
+
         int j = i + 1;
         Eigen::Vector3f ci(centers.at(i).x, centers.at(i).y, 1.0);
         ci *= ptScales.first;
@@ -242,6 +257,9 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point2f> &centers,
         Eigen::Vector3f cj(centers.at(j).x, centers.at(j).y, 1.0);
         cj *= ptScales.first;
         cj(2) = z;
+        // bgr -> rgb
+        ns_viewer::Colour color(line_color[2] / 255.0, line_color[1] / 255.0, line_color[0] / 255.0,
+                                1.0f);
         entities.push_back(ns_viewer::Line::Create(ci, cj, 40.0f * ptSize, color));
     }
 
@@ -249,27 +267,47 @@ Viewer &Viewer::AddGridPattern(const std::vector<cv::Point2f> &centers,
 }
 
 Viewer &Viewer::AddGridPattern(const std::vector<cv::Point3f> &centers,
+                               const cv::Size &patternSize,
                                float radius,
                                const float &pScale,
-                               const ns_viewer::Colour &color,
                                float ptSize) {
     std::vector<ns_viewer::Entity::Ptr> entities;
     entities.reserve(centers.size() * 2 - 1);
 
+    const int line_max = 7;
+    static const int line_colors[line_max][4] = {
+        {0, 0, 255, 0},   {0, 128, 255, 0}, {0, 200, 200, 0}, {0, 255, 0, 0},
+        {200, 200, 0, 0}, {255, 0, 0, 0},   {255, 0, 255, 0}};
+
+    int k = 0;
     for (const auto &center : centers) {
+        int row = k / patternSize.width;
+        const int *line_color = &line_colors[row % line_max][0];
+
         Eigen::Vector3f c(center.x, center.y, center.z);
         c *= pScale;
+
+        // bgr -> rgb
+        ns_viewer::Colour color(line_color[2] / 255.0, line_color[1] / 255.0, line_color[0] / 255.0,
+                                1.0f);
         auto circle = ns_viewer::Circle::Create(ns_viewer::Posef(Eigen::Matrix3f::Identity(), c),
                                                 radius * pScale, true, true, color);
         entities.push_back(circle);
+        k += 1;
     }
 
     for (int i = 0; i < static_cast<int>(centers.size() - 1); i++) {
+        int row = i / patternSize.width;
+        const int *line_color = &line_colors[row % line_max][0];
+
         int j = i + 1;
         Eigen::Vector3f ci(centers.at(i).x, centers.at(i).y, centers.at(i).z);
         ci *= pScale;
         Eigen::Vector3f cj(centers.at(j).x, centers.at(j).y, centers.at(j).z);
         cj *= pScale;
+        // bgr -> rgb
+        ns_viewer::Colour color(line_color[2] / 255.0, line_color[1] / 255.0, line_color[0] / 255.0,
+                                1.0f);
         entities.push_back(ns_viewer::Line::Create(ci, cj, 40.0f * ptSize, color));
     }
 
@@ -286,9 +324,8 @@ Viewer &Viewer::UpdateViewer(const Sophus::SE3f &SE3_RefToWorld, const float &pS
     }
 
     if (_grid3d != nullptr) {
-        this->AddGridPattern(_grid3d->points,
-                             static_cast<float>(Configor::Prior::CirclePattern.Radius()), pScale,
-                             ns_viewer::Colour::Black());
+        this->AddGridPattern(_grid3d->points, _grid3d->GetPatternSize(),
+                             static_cast<float>(Configor::Prior::CirclePattern.Radius()), pScale);
     }
 
     if (_parMagr != nullptr) {

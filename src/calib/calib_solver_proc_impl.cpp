@@ -44,6 +44,9 @@ void CalibSolver::Process() {
     spdlog::info("load data from the rosbag and align timestamps...");
     this->LoadDataFromRosBag();
 
+    // this is the grid pattern tracking based on frame data
+    this->GridPatternTrackingFrameBased(true);
+
     /**
      * perform circle grid pattern extraction from raw event data stream:
      * (1) perform norm flow estimation
@@ -52,7 +55,8 @@ void CalibSolver::Process() {
      * (4) fit time-varying ciecles using least-squares estimation
      */
     this->GridPatternTracking(true);
-    _evMes.clear();  // "we don't talk anymore...", I mean the '_evMes'.
+    _evMes.clear();     // "we don't talk anymore...", I mean the '_evMes'.
+    _frameMes.clear();  //
 
     /**
      * we want to keep al added entities in the viewer, and do not just keep a const count of them
