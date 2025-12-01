@@ -376,6 +376,7 @@ void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
     const auto &pattern = Configor::Prior::CirclePattern;
     auto circlePattern = CirclePattern::FromString(pattern.Type);
     auto patternSize = cv::Size(pattern.Cols, pattern.Rows);
+    std::map<std::string, bool> patternLoadFromFile;
 
     _grid3d = CircleGrid3D::Create(pattern.Rows, pattern.Cols,
                                    pattern.SpacingMeters /*unit: meters*/, circlePattern);
@@ -389,11 +390,48 @@ void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
      * tracking complete grid patterns
      */
     for (const auto &[topic, frameMes] : _frameMes) {
+        if (tryLoadAndSaveRes) {
+            // try load
+            auto [gridPatternPath, _] = CalibSolverIO::GetDiskPathOfExtractedGridPatterns(topic);
+            if (std::filesystem::exists(gridPatternPath)) {
+                // try load '_extractedPatterns'
+                spdlog::info(
+                    "try to load existing extracted circles grid patterns for camera '{}' from "
+                    "'{}'...",
+                    topic, gridPatternPath);
+                auto curPattern = CircleGridPattern::Load(gridPatternPath, _dataRawTimestamp.first,
+                                                          Configor::Preference::OutputDataFormat);
+
+                if (curPattern != nullptr) {
+                    // select in time-range pattern
+                    auto idsOfRemoved = curPattern->RemoveGrid2DOutOfTimeRange(
+                        _dataRawTimestamp.first, _dataRawTimestamp.second);
+
+                    // assign
+                    _extractedPatterns[topic] = curPattern;
+                    patternLoadFromFile[topic] = true;
+                    spdlog::info(
+                        "load extracted circles grid patterns for camera '{}' success! "
+                        "details:\n{}",
+                        topic, curPattern->InfoString());
+                    continue;
+                }
+            }
+
+            // failed
+            spdlog::info(
+                "try to load extracted circles grid patterns failed! perform circle grid "
+                "identification for camera '{}'",
+                topic);
+        } else {
+            spdlog::info("perform frame-based circle grid detection for camera '{}'...", topic);
+        }
+
         auto curPattern = CircleGridPattern::Create(_grid3d, _dataRawTimestamp.first);
         const auto &config = Configor::DataStream::EventTopics.at(topic);
+        std::unordered_map<int, cv::Mat> trackedCirclesGrid;
 
         auto bar = std::make_shared<tqdm>();
-        spdlog::info("perform frame-based circle grid detection for camera '{}'...", topic);
         for (int grid2dIdx = 0; grid2dIdx < static_cast<int>(frameMes.size()); grid2dIdx++) {
             bar->progress(grid2dIdx, static_cast<int>(frameMes.size()));
             const auto &frame = frameMes.at(grid2dIdx);
@@ -406,20 +444,20 @@ void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
             } else {
                 success = cv::findCirclesGrid(frame->GetImg(), patternSize, centers);
             }
+            cv::Mat imgCopy = frame->GetColorImg().clone();
             if (success) {
                 auto grid2d =
                     CircleGrid2D::Create(grid2dIdx, frame->GetTimestamp(), centers,
                                          std::vector<std::uint8_t>(centers.size(), true), true);
                 curPattern->AddGrid2d(grid2d);
+
+                cv::drawChessboardCorners(imgCopy, patternSize, centers, success);
+                const auto &ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
+                _viewer->AddGridPattern(centers, patternSize, frame->GetTimestamp(), ptScale,
+                                        0.05f);
             }
+            trackedCirclesGrid[grid2dIdx] = imgCopy;
             if (Configor::Preference::Visualization) {
-                cv::Mat imgCopy = frame->GetColorImg().clone();
-                if (success) {
-                    cv::drawChessboardCorners(imgCopy, patternSize, centers, success);
-                    const auto &ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
-                    _viewer->AddGridPattern(centers, patternSize, frame->GetTimestamp(), ptScale,
-                                            0.05f);
-                }
                 cv::imshow("Frame-Based Circle Grid Detection", imgCopy);
 
                 auto ptScale = Configor::Preference::EventViewerSpatialTemporalScale;
@@ -434,6 +472,7 @@ void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
             }
         }
         bar->finish();
+        CalibSolverIO::SaveSAEMaps(topic, trackedCirclesGrid);
         if (Configor::Preference::Visualization) {
             _viewer->ClearViewer();
             _viewer->ResetViewerCamera();
@@ -442,6 +481,29 @@ void CalibSolver::GridPatternTrackingFrameBased(bool tryLoadAndSaveRes) {
         spdlog::info("frame-based circle grid detection for camera '{}' finished! details:\n{}",
                      topic, curPattern->InfoString());
         _extractedPatterns[topic] = curPattern;
+        patternLoadFromFile[topic] = false;
+    }
+
+    /**
+     * save circle grid patterns to disk
+     */
+    for (const auto &[topic, patterns] : _extractedPatterns) {
+        if (!tryLoadAndSaveRes) {
+            continue;
+        }
+        if (patternLoadFromFile.count(topic) == 0 || patternLoadFromFile.at(topic)) {
+            continue;
+        }
+        auto [gridPatternPath, rawEvsPath] =
+            CalibSolverIO::GetDiskPathOfExtractedGridPatterns(topic);
+
+        spdlog::info("saving extracted circle grid patterns of '{}' to path: '{}'...", topic,
+                     gridPatternPath);
+        if (!patterns->Save(gridPatternPath, Configor::Preference::OutputDataFormat)) {
+            spdlog::warn("failed to save patterns of '{}'!!!", topic);
+        } else {
+            spdlog::info("saved extracted patterns of '{}' to path finished!", topic);
+        }
     }
 }
 
