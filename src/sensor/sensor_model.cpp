@@ -102,6 +102,36 @@ std::string EventModel::ToString(EventModelType model) {
     }
     return modelStr;
 }
+std::string FrameModel::UnsupportedFrameModelMsg(const std::string& modelStr) {
+    return fmt::format(
+        "Unsupported frame model: '{}'. "
+        "Currently supported frame models are: \n"
+        "1. SENSOR_IMAGE: https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Image.html\n"
+        "2. SENSOR_IMAGE_COMP: "
+        "https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/CompressedImage.html\n"
+        "...\n",
+        modelStr);
+}
+
+FrameModel::FrameModelType FrameModel::FromString(const std::string& modelStr) {
+    FrameModelType model;
+    try {
+        model = EnumCast::stringToEnum<FrameModelType>(modelStr);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedFrameModelMsg(modelStr));
+    }
+    return model;
+}
+
+std::string FrameModel::ToString(const FrameModelType& model) {
+    std::string modelStr;
+    try {
+        modelStr = EnumCast::enumToString(model);
+    } catch (...) {
+        throw Status(Status::ERROR, UnsupportedFrameModelMsg(modelStr));
+    }
+    return modelStr;
+}
 
 std::string CirclePattern::UnsupportedCirclePatternMsg(const std::string& modelStr) {
     return fmt::format(

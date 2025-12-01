@@ -72,6 +72,8 @@ using SpatialTemporalPrioriPtr = std::shared_ptr<SpatialTemporalPriori>;
 struct TimeVaryingEllipse;
 using TimeVaryingEllipsePtr = std::shared_ptr<TimeVaryingEllipse>;
 class CalibSolverIO;
+class Frame;
+using FramePtr = std::shared_ptr<Frame>;
 
 class CalibSolver {
 public:
@@ -97,6 +99,7 @@ protected:
      */
     std::map<std::string, std::vector<EventArrayPtr>> _evMes;
     std::map<std::string, std::vector<IMUFramePtr>> _imuMes;
+    std::map<std::string, std::vector<FramePtr>> _frameMes;
     std::map<std::string, int> _imuFrequency;
 
     // start time, end time
@@ -246,24 +249,36 @@ protected:
 
 private:
     // remove the head data according to the pred
-    void EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
-                          std::function<bool(const EventArrayPtr &)> pred,
-                          const std::string &errorMsg) const;
+    template <class MsgType>
+    void EraseSeqHeadData(std::vector<std::shared_ptr<MsgType>> &seq,
+                          std::function<bool(const std::shared_ptr<MsgType> &)> pred,
+                          const std::string &errorMsg) const {
+        auto iter = std::find_if(seq.begin(), seq.end(), std::move(pred));
+        if (iter == seq.end()) {
+            // find failed
+            this->OutputDataStatus();
+            throw std::runtime_error(errorMsg);
+        } else {
+            // adjust
+            seq.erase(seq.begin(), iter);
+        }
+    }
 
     // remove the tail data according to the pred
-    void EraseSeqTailData(std::vector<EventArrayPtr> &seq,
-                          std::function<bool(const EventArrayPtr &)> pred,
-                          const std::string &errorMsg) const;
-
-    // remove the head data according to the pred
-    void EraseSeqHeadData(std::vector<IMUFramePtr> &seq,
-                          std::function<bool(const IMUFramePtr &)> pred,
-                          const std::string &errorMsg) const;
-
-    // remove the tail data according to the pred
-    void EraseSeqTailData(std::vector<IMUFramePtr> &seq,
-                          std::function<bool(const IMUFramePtr &)> pred,
-                          const std::string &errorMsg) const;
+    template <class MsgType>
+    void EraseSeqTailData(std::vector<std::shared_ptr<MsgType>> &seq,
+                          std::function<bool(const std::shared_ptr<MsgType> &)> pred,
+                          const std::string &errorMsg) const {
+        auto iter = std::find_if(seq.rbegin(), seq.rend(), pred);
+        if (iter == seq.rend()) {
+            // find failed
+            this->OutputDataStatus();
+            throw std::runtime_error(errorMsg);
+        } else {
+            // adjust
+            seq.erase(iter.base(), seq.end());
+        }
+    }
 
     std::list<std::list<double>> ContinuousGridTrackingSegments(const std::string &camTopic,
                                                                 const double neighborTimeDistThd,

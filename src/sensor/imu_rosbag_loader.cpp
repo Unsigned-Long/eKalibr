@@ -82,7 +82,6 @@ std::map<std::string, std::vector<IMUFrame::Ptr>> LoadIMUDataFromROSBag(
         const auto &item = *iter;
         const std::string &topic = item.getTopic();
         if (imuDataLoaders.cend() != imuDataLoaders.find(topic)) {
-            // an event array
             auto mes = imuDataLoaders.at(topic)->UnpackData(item);
             if (mes == nullptr) {
                 continue;

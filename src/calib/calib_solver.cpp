@@ -31,6 +31,7 @@
 #include "util/utils_tpl.hpp"
 #include "sensor/event_rosbag_loader.h"
 #include "sensor/imu_rosbag_loader.h"
+#include "sensor/frame_rosbag_loader.h"
 #include "config/configor.h"
 #include "pangolin/display/display.h"
 #include "viewer/viewer.h"
@@ -120,9 +121,18 @@ void CalibSolver::LoadDataFromRosBag() {
     auto viewTemp = rosbag::View();
 
     std::vector<std::string> topicsToQuery;
-    std::map<std::string, std::string> imuTopicTypeMap, evTopicTypeMap;
+    std::map<std::string, std::string> imuTopicTypeMap, evTopicTypeMap, frameTopicTypeMap;
     // add topics to vector
     for (const auto &[topic, info] : Configor::DataStream::EventTopics) {
+        /**
+         * The following logic flow is very unprofessional; we only use it for temporary processing
+         * of frame data.
+         */
+        if (info.Type == FrameModel::ToString(FrameModelType::SENSOR_IMAGE) ||
+            info.Type == FrameModel::ToString(FrameModelType::SENSOR_IMAGE_COMP)) {
+            frameTopicTypeMap[topic] = info.Type;
+            continue;
+        }
         topicsToQuery.push_back(topic);
         evTopicTypeMap[topic] = info.Type;
     }
@@ -186,6 +196,20 @@ void CalibSolver::LoadDataFromRosBag() {
             }
         }
     }
+    if (!frameTopicTypeMap.empty()) {
+        spdlog::info("loading frame data from rosbag...");
+        _frameMes = LoadFramesFromROSBag(bag.get(), frameTopicTypeMap, begTime, endTime);
+
+        for (const auto &[topic, _] : frameTopicTypeMap) {
+            if (auto iter = _frameMes.find(topic);
+                iter == _frameMes.end() || iter->second.empty()) {
+                throw Status(Status::CRITICAL,
+                             "there is no data in topic '{}'! "
+                             "check your configure file and rosbag!",
+                             topic);
+            }
+        }
+    }
     bag->close();
 
     /**
@@ -200,12 +224,16 @@ void CalibSolver::LoadDataFromRosBag() {
         sTimeList.push_back(mes.front()->GetTimestamp());
         eTimeList.push_back(mes.back()->GetTimestamp());
     }
+    for (const auto &[topic, mes] : _frameMes) {
+        sTimeList.push_back(mes.front()->GetTimestamp());
+        eTimeList.push_back(mes.back()->GetTimestamp());
+    }
     _dataRawTimestamp.first = *std::max_element(sTimeList.begin(), sTimeList.end());
     _dataRawTimestamp.second = *std::min_element(eTimeList.begin(), eTimeList.end());
 
-    for (const auto &[topic, _] : Configor::DataStream::EventTopics) {
+    for (const auto &[topic, _] : _evMes) {
         // remove event data arrays that are before the start time stamp
-        EraseSeqHeadData(
+        EraseSeqHeadData<EventArray>(
             _evMes.at(topic),
             [this](const EventArray::Ptr &ary) {
                 return ary->GetTimestamp() > _dataRawTimestamp.first - 1E-9;
@@ -213,16 +241,16 @@ void CalibSolver::LoadDataFromRosBag() {
             "the event data is invalid, there is no data intersection between sensors.");
 
         // remove event data arrays that are after the end time stamp
-        EraseSeqTailData(
+        EraseSeqTailData<EventArray>(
             _evMes.at(topic),
             [this](const EventArray::Ptr &ary) {
                 return ary->GetTimestamp() < _dataRawTimestamp.second + 1E-9;
             },
             "the event data is invalid, there is no data intersection between sensors.");
     }
-    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+    for (const auto &[topic, _] : _imuMes) {
         // remove imu data arrays that are before the start time stamp
-        EraseSeqHeadData(
+        EraseSeqHeadData<IMUFrame>(
             _imuMes.at(topic),
             [this](const IMUFrame::Ptr &ary) {
                 return ary->GetTimestamp() > _dataRawTimestamp.first - 1E-9;
@@ -230,12 +258,29 @@ void CalibSolver::LoadDataFromRosBag() {
             "the imu data is invalid, there is no data intersection between sensors.");
 
         // remove imu data arrays that are after the end time stamp
-        EraseSeqTailData(
+        EraseSeqTailData<IMUFrame>(
             _imuMes.at(topic),
             [this](const IMUFrame::Ptr &ary) {
                 return ary->GetTimestamp() < _dataRawTimestamp.second + 1E-9;
             },
             "the imu data is invalid, there is no data intersection between sensors.");
+    }
+    for (const auto &[topic, _] : _frameMes) {
+        // remove frame data arrays that are before the start time stamp
+        EraseSeqHeadData<Frame>(
+            _frameMes.at(topic),
+            [this](const Frame::Ptr &ary) {
+                return ary->GetTimestamp() > _dataRawTimestamp.first - 1E-9;
+            },
+            "the frame data is invalid, there is no data intersection between sensors.");
+
+        // remove frame data arrays that are after the end time stamp
+        EraseSeqTailData<Frame>(
+            _frameMes.at(topic),
+            [this](const Frame::Ptr &ary) {
+                return ary->GetTimestamp() < _dataRawTimestamp.second + 1E-9;
+            },
+            "the frame data is invalid, there is no data intersection between sensors.");
     }
 
     /**
@@ -258,6 +303,12 @@ void CalibSolver::LoadDataFromRosBag() {
         for (const auto &array : mes) {
             // array
             array->SetTimestamp(array->GetTimestamp() - _dataRawTimestamp.first);
+        }
+    }
+    for (const auto &[frameTopic, mes] : _frameMes) {
+        for (const auto &frame : mes) {
+            // frame
+            frame->SetTimestamp(frame->GetTimestamp() - _dataRawTimestamp.first);
         }
     }
 
@@ -447,62 +498,6 @@ double CalibSolver::BreakTimelineToSegments(double maxNeighborThd,
     }
 
     return sumTime;
-}
-
-void CalibSolver::EraseSeqHeadData(std::vector<EventArrayPtr> &seq,
-                                   std::function<bool(const EventArrayPtr &)> pred,
-                                   const std::string &errorMsg) const {
-    auto iter = std::find_if(seq.begin(), seq.end(), std::move(pred));
-    if (iter == seq.end()) {
-        // find failed
-        this->OutputDataStatus();
-        throw Status(Status::ERROR, errorMsg);
-    } else {
-        // adjust
-        seq.erase(seq.begin(), iter);
-    }
-}
-
-void CalibSolver::EraseSeqTailData(std::vector<EventArrayPtr> &seq,
-                                   std::function<bool(const EventArrayPtr &)> pred,
-                                   const std::string &errorMsg) const {
-    auto iter = std::find_if(seq.rbegin(), seq.rend(), pred);
-    if (iter == seq.rend()) {
-        // find failed
-        this->OutputDataStatus();
-        throw Status(Status::ERROR, errorMsg);
-    } else {
-        // adjust
-        seq.erase(iter.base(), seq.end());
-    }
-}
-
-void CalibSolver::EraseSeqHeadData(std::vector<IMUFramePtr> &seq,
-                                   std::function<bool(const IMUFramePtr &)> pred,
-                                   const std::string &errorMsg) const {
-    auto iter = std::find_if(seq.begin(), seq.end(), std::move(pred));
-    if (iter == seq.end()) {
-        // find failed
-        this->OutputDataStatus();
-        throw Status(Status::ERROR, errorMsg);
-    } else {
-        // adjust
-        seq.erase(seq.begin(), iter);
-    }
-}
-
-void CalibSolver::EraseSeqTailData(std::vector<IMUFramePtr> &seq,
-                                   std::function<bool(const IMUFramePtr &)> pred,
-                                   const std::string &errorMsg) const {
-    auto iter = std::find_if(seq.rbegin(), seq.rend(), pred);
-    if (iter == seq.rend()) {
-        // find failed
-        this->OutputDataStatus();
-        throw Status(Status::ERROR, errorMsg);
-    } else {
-        // adjust
-        seq.erase(iter.base(), seq.end());
-    }
 }
 
 std::list<std::list<double>> CalibSolver::ContinuousGridTrackingSegments(

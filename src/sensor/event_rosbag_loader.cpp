@@ -164,7 +164,6 @@ EventDataLoader::EventDataLoader(EventModelType model)
     : _model(model) {}
 
 EventDataLoader::Ptr EventDataLoader::GetLoader(const std::string &modelStr) {
-    // try extract radar model
     EventModelType model = EventModel::FromString(modelStr);
 
     EventDataLoader::Ptr dataLoader;

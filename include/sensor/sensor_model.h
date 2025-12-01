@@ -65,7 +65,7 @@ struct IMUModel {
 using IMUModelType = IMUModel::IMUModelType;
 
 struct EventModel {
-    enum class EventModelType { PROPHESEE_EVENT, DVS_EVENT };
+    enum class EventModelType : std::uint32_t { PROPHESEE_EVENT, DVS_EVENT };
 
     static std::string UnsupportedEventModelMsg(const std::string &modelStr);
 
@@ -75,6 +75,18 @@ struct EventModel {
 };
 
 using EventModelType = EventModel::EventModelType;
+
+struct FrameModel {
+    enum class FrameModelType : std::uint32_t { SENSOR_IMAGE, SENSOR_IMAGE_COMP };
+
+    static std::string UnsupportedFrameModelMsg(const std::string &modelStr);
+
+    static FrameModelType FromString(const std::string &modelStr);
+
+    static std::string ToString(const FrameModelType &model);
+};
+
+using FrameModelType = FrameModel::FrameModelType;
 
 struct CirclePattern {
     enum class CirclePatternType { SYMMETRIC_GRID = 0, ASYMMETRIC_GRID = 1 };
