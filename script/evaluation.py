@@ -44,6 +44,9 @@ class EvaluateMode(Enum):
     VISUAL_INERTIAL = "VISUAL_INERTIAL"
     BY_CATEGORY = "BY_CATEGORY"
     REGARDLESS_OF_CATEGORY = "REGARDLESS_OF_CATEGORY"
+    EVENT_DATA_ONLY = "EVENT_DATA_ONLY"
+    FRAME_DATA_ONLY = "FRAME_DATA_ONLY"
+    EVENT_FRAME_DATA = "EVENT_FRAME_DATA"
 
 
 def is_roscore_running():
@@ -129,7 +132,8 @@ def run_ekalibr_calibration_task(config_path, output=True):
         subprocess.run(cmd, shell=True)
 
 
-def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers, delete_existing_output,
+def run_ekalibr_calibration(data_mode: EvaluateMode, solve_mode: EvaluateMode, bag_path_list, max_workers,
+                            delete_existing_output,
                             resolve_existing_output, visualization):
     if not is_roscore_running():
         print("\033[93mWarning: roscore is not running. Please start roscore before running this script.\033[0m")
@@ -141,7 +145,7 @@ def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers
     if config_data is None:
         print("\033[93mWarning: Failed to load ekalibr config template. Please check the file.\033[0m")
         exit(1)
-    config_data['Configor']['DataStream']['EventTopics'] = [
+    event_cameras_config = [
         {
             "key": "/davis_left/events",
             "value": {
@@ -161,6 +165,35 @@ def run_ekalibr_calibration(solve_mode: EvaluateMode, bag_path_list, max_workers
             }
         }
     ]
+    frame_camera_config = [
+        {
+            "key": "/davis_left/image",
+            "value": {
+                "Type": "SENSOR_IMAGE",
+                "Width": 346,
+                "Height": 260,
+                "Intrinsics": ""
+            }
+        },
+        {
+            "key": "/davis_right/image",
+            "value": {
+                "Type": "SENSOR_IMAGE",
+                "Width": 346,
+                "Height": 260,
+                "Intrinsics": ""
+            }
+        }
+    ]
+    camera_config = []
+    if data_mode == EvaluateMode.EVENT_DATA_ONLY:
+        camera_config += event_cameras_config
+    elif data_mode == EvaluateMode.FRAME_DATA_ONLY:
+        camera_config += frame_camera_config
+    elif data_mode == EvaluateMode.EVENT_FRAME_DATA:
+        camera_config += event_cameras_config
+        camera_config += frame_camera_config
+    config_data['Configor']['DataStream']['EventTopics'] = camera_config
     config_data['Configor']['DataStream']['IMUTopics'] = []
     if solve_mode == EvaluateMode.VISUAL_INERTIAL:
         config_data['Configor']['DataStream']['IMUTopics'] = [
@@ -409,28 +442,32 @@ def evaluate_imu_intrinsics_SO3_AtoG(all_params, topic):
           f"std: {np.std(np.array(SO3_AtoG), axis=0)} deg")
 
 
-def evaluate(solve_mode: EvaluateMode, ekalibr_results_path):
+def evaluate(data_mode: EvaluateMode, solve_mode: EvaluateMode, ekalibr_results_path):
     # load yaml data in each ekalibr_param.all.yaml file and combine them into a list and then save them into a file
     all_params = load_yaml_file(ekalibr_results_path)
+    camera_topics = []
+    if data_mode == EvaluateMode.EVENT_DATA_ONLY:
+        camera_topics = ["/davis_left/events", "/davis_right/events"]
+    elif data_mode == EvaluateMode.FRAME_DATA_ONLY:
+        camera_topics = ["/davis_left/image", "/davis_right/image"]
+    elif data_mode == EvaluateMode.EVENT_FRAME_DATA:
+        camera_topics = ["/davis_left/events", "/davis_right/events",
+                         "/davis_left/image", "/davis_right/image"]
+    imu_topics =  ['/davis_left/imu', '/davis_right/imu']
 
     # extrinsic rotation, translation and temporal offset
     if solve_mode == EvaluateMode.VISUAL_INERTIAL:
-        evaluate_extrinsic_rotation(all_params, "SO3_BiToBr", "/davis_left/imu")
-        evaluate_extrinsic_translation(all_params, "POS_BiInBr", "/davis_left/imu")
-        evaluate_temporal_offset(all_params, "TO_BiToBr", "/davis_left/imu")
-        print()
-        evaluate_extrinsic_rotation(all_params, "SO3_BiToBr", "/davis_right/imu")
-        evaluate_extrinsic_translation(all_params, "POS_BiInBr", "/davis_right/imu")
-        evaluate_temporal_offset(all_params, "TO_BiToBr", "/davis_right/imu")
-        print()
-        evaluate_extrinsic_rotation(all_params, "SO3_CjToBr", "/davis_left/events")
-        evaluate_extrinsic_translation(all_params, "POS_CjInBr", "/davis_left/events")
-        evaluate_temporal_offset(all_params, "TO_CjToBr", "/davis_left/events")
-        print()
-    evaluate_extrinsic_rotation(all_params, "SO3_CjToBr", "/davis_right/events")
-    evaluate_extrinsic_translation(all_params, "POS_CjInBr", "/davis_right/events")
-    evaluate_temporal_offset(all_params, "TO_CjToBr", "/davis_right/events")
-    print()
+        for topic in imu_topics:
+            evaluate_extrinsic_rotation(all_params, "SO3_BiToBr", topic)
+            evaluate_extrinsic_translation(all_params, "POS_BiInBr", topic)
+            evaluate_temporal_offset(all_params, "TO_BiToBr", topic)
+            print()
+    # for 'EvaluateMode.VISUAL_INERTIAL' or 'EvaluateMode.MULTI_CAMERAS'
+    for topic in camera_topics:
+         evaluate_extrinsic_rotation(all_params, "SO3_CjToBr", topic)
+         evaluate_extrinsic_translation(all_params, "POS_CjInBr", topic)
+         evaluate_temporal_offset(all_params, "TO_CjToBr", topic)
+         print()
 
     # imu intrinsics
     if solve_mode == EvaluateMode.VISUAL_INERTIAL:
@@ -445,18 +482,16 @@ def evaluate(solve_mode: EvaluateMode, ekalibr_results_path):
         print()
 
     # visual intrinsics
-    evaluate_visual_intrinsics(all_params, "focal_length", "/davis_left/events")
-    evaluate_visual_intrinsics(all_params, "principal_point", "/davis_left/events")
-    evaluate_visual_intrinsics(all_params, "disto_param", "/davis_left/events")
-    print()
-
-    evaluate_visual_intrinsics(all_params, "focal_length", "/davis_right/events")
-    evaluate_visual_intrinsics(all_params, "principal_point", "/davis_right/events")
-    evaluate_visual_intrinsics(all_params, "disto_param", "/davis_right/events")
-    print()
+    # for 'EvaluateMode.VISUAL_INERTIAL' or 'EvaluateMode.MULTI_CAMERAS'
+    for topic in camera_topics:
+        evaluate_visual_intrinsics(all_params, "focal_length", topic)
+        evaluate_visual_intrinsics(all_params, "principal_point", topic)
+        evaluate_visual_intrinsics(all_params, "disto_param", topic)
+        print()
 
 
-def full_pipeline_evaluation(solve_mode: EvaluateMode,
+def full_pipeline_evaluation(data_mode: EvaluateMode,
+                             solve_mode: EvaluateMode,
                              evaluate_mode: EvaluateMode,
                              dataset_folder, max_workers=1,
                              delete_existing_output=True,
@@ -477,19 +512,22 @@ def full_pipeline_evaluation(solve_mode: EvaluateMode,
             bag_path_list.append(rosbag_path)
 
     print(f"There are {len(bag_path_list)} bags to process")
-    solve_info_succuss = run_ekalibr_calibration(solve_mode, bag_path_list, max_workers, delete_existing_output,
+    solve_info_succuss = run_ekalibr_calibration(data_mode, solve_mode, bag_path_list, max_workers,
+                                                 delete_existing_output,
                                                  resolve_existing_output, visualization)
     ekalibr_results_paths = save_solve_results(evaluate_mode, solve_info_succuss, dataset_folder)
     for ekalibr_results_path in ekalibr_results_paths:
         print(f"\033[92mevaluating results in {ekalibr_results_path} ...\033[0m")
-        evaluate(solve_mode, ekalibr_results_path)
+        evaluate(data_mode, solve_mode, ekalibr_results_path)
 
 
 if __name__ == "__main__":
     dataset_folder = '/media/csl/T7/eKalibr-Dataset/all'
+    data_mode = EvaluateMode.EVENT_DATA_ONLY
     solve_mode = EvaluateMode.VISUAL_INERTIAL
     evaluate_mode = EvaluateMode.BY_CATEGORY
-    full_pipeline_evaluation(solve_mode=solve_mode,
+    full_pipeline_evaluation(data_mode=data_mode,
+                             solve_mode=solve_mode,
                              evaluate_mode=evaluate_mode,
                              dataset_folder=dataset_folder,
                              max_workers=1,

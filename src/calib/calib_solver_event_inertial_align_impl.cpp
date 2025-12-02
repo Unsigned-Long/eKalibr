@@ -195,9 +195,50 @@ void CalibSolver::EventInertialAlignment() {
      * coordinate system), which can be achieved by using the least-squares method to solve a pose
      * from the origin of the SO3 spline to the world coordinate system
      */
-    spdlog::info(
-        "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
-        "system...");
+
+    {
+        /**
+         * optimize the old so3 spline from {Br0} to {W} directly would lead to local minimum, so we
+         * first extract the rotation bias between the two coordinate systems, and then transform
+         * the so3 spline to the world coordinate system for further optimization
+         */
+        spdlog::info(
+            "obtain rotation bias between the grid coordinate system and the so3 spline coordinate "
+            "system...");
+        auto fullSo3SplineCopy = _fullSo3Spline;  // make a copy
+        auto estimator = Estimator::Create(_parMgr);
+        for (const auto& [topic, poseVec] : _camPoses) {
+            const double TO_CjToBr = _parMgr->TEMPORAL.TO_CjToBr.at(topic);
+            const auto& SO3_CjToBr = _parMgr->EXTRI.SO3_CjToBr.at(topic);
+
+            for (const auto& pose : poseVec) {
+                if (pose.timeStamp + TO_CjToBr < st || pose.timeStamp + TO_CjToBr > et) {
+                    continue;
+                }
+                estimator->AddSo3Constraint(_fullSo3Spline, pose.timeStamp + TO_CjToBr,
+                                            pose.so3 * SO3_CjToBr.inverse(),
+                                            OptOption::OPT_SO3_SPLINE, 10.0);
+            }
+        }
+        this->AddGyroFactorToFullSo3Spline(estimator, Configor::DataStream::RefIMUTopic,
+                                           OptOption::OPT_SO3_SPLINE, 0.1 /*weight*/,
+                                           100 /*down sampling*/);
+        // we don't want to output the solving information
+        auto sum = estimator->Solve(Estimator::DefaultSolverOptions(-1, false, false), nullptr);
+        auto SO3_Br0ToW = _fullSo3Spline.Evaluate(st);
+
+        spdlog::info("transform the initialized SO3 spline to the world coordinate system...");
+        _fullSo3Spline = fullSo3SplineCopy;
+        /**
+         * transform the initialized SO3 spline to the world coordinate system
+         * attention: since the so3 spline if fitted from the angular velocity measurements, we need
+         * to perfrom optimization using camera rotations after the knots are transformed
+         */
+        for (int i = 0; i < static_cast<int>(_fullSo3Spline.GetKnots().size()); ++i) {
+            _fullSo3Spline.GetKnot(i) =
+                SO3_Br0ToW * _fullSo3Spline.GetKnot(i) /*from {Br(t)} to {Br0}*/;
+        }
+    }
 
     auto estimator = Estimator::Create(_parMgr);
     for (const auto& [topic, poseVec] : _camPoses) {
