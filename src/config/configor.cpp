@@ -42,6 +42,8 @@ const static std::map<std::string, OutputOption> OutputOptionMap = {
     {"BSplines", OutputOption::BSplines},
     {"HessianMat", OutputOption::HessianMat},
     {"VisualReprojError", OutputOption::VisualReprojError},
+    {"InertialAcceError", OutputOption::InertialAcceError},
+    {"InertialGyroError", OutputOption::InertialGyroError},
     {"SAEMapClusterNormFlowEvents", OutputOption::SAEMapClusterNormFlowEvents},
     {"SAEMapIdentifyCategory", OutputOption::SAEMapIdentifyCategory},
     {"SAEMapSearchMatches", OutputOption::SAEMapSearchMatches},

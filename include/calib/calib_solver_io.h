@@ -66,6 +66,10 @@ public:
 protected:
     void SaveVisualReprojError() const;
 
+    void SaveInertialAcceError() const;
+
+    void SaveInertialGyroError() const;
+
 public:
     static bool SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
                                                  const std::string &filename,

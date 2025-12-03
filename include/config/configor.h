@@ -44,19 +44,21 @@ enum class OutputOption : std::uint32_t {
     BSplines = 1 << 2,
     HessianMat = 1 << 3,
     VisualReprojError = 1 << 4,
-    SAEMapClusterNormFlowEvents = 1 << 5,
-    SAEMapIdentifyCategory = 1 << 6,
-    SAEMapSearchMatches = 1 << 7,
-    SAEMapExtractCircles = 1 << 8,
-    SAEMapExtractCirclesGrid = 1 << 9,
-    SAEMap = 1 << 10,
-    SAEMapTrackedCirclesGrid = 1 << 11,
-    SAEMapAccumulatedEvents = 1 << 12,
+    InertialAcceError = 1 << 5,
+    InertialGyroError = 1 << 6,
+    SAEMapClusterNormFlowEvents = 1 << 7,
+    SAEMapIdentifyCategory = 1 << 8,
+    SAEMapSearchMatches = 1 << 9,
+    SAEMapExtractCircles = 1 << 10,
+    SAEMapExtractCirclesGrid = 1 << 11,
+    SAEMap = 1 << 12,
+    SAEMapTrackedCirclesGrid = 1 << 13,
+    SAEMapAccumulatedEvents = 1 << 14,
 
-    ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError |
-          SAEMapClusterNormFlowEvents | SAEMapIdentifyCategory | SAEMapSearchMatches |
-          SAEMapExtractCircles | SAEMapExtractCirclesGrid | SAEMap | SAEMapTrackedCirclesGrid |
-          SAEMapAccumulatedEvents
+    ALL = ParamInEachIter | BSplines | HessianMat | VisualReprojError | InertialAcceError |
+          InertialGyroError | SAEMapClusterNormFlowEvents | SAEMapIdentifyCategory |
+          SAEMapSearchMatches | SAEMapExtractCircles | SAEMapExtractCirclesGrid | SAEMap |
+          SAEMapTrackedCirclesGrid | SAEMapAccumulatedEvents
 };
 
 struct Configor {

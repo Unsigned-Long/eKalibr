@@ -46,6 +46,7 @@
 #include "core/circle_extractor.h"
 #include <opencv2/imgcodecs.hpp>
 #include <pangolin/display/display.h>
+#include <sensor/imu_intrinsic.h>
 
 namespace ns_ekalibr {
 
@@ -63,6 +64,12 @@ CalibSolverIO::Ptr CalibSolverIO::Create(const CalibSolver::Ptr &solver) {
 void CalibSolverIO::SaveByProductsToDisk() const {
     if (IsOptionWith(OutputOption::VisualReprojError, Configor::Preference::Outputs)) {
         this->SaveVisualReprojError();
+    }
+    if (IsOptionWith(OutputOption::InertialGyroError, Configor::Preference::Outputs)) {
+        this->SaveInertialGyroError();
+    }
+    if (IsOptionWith(OutputOption::InertialAcceError, Configor::Preference::Outputs)) {
+        this->SaveInertialAcceError();
     }
 }
 
@@ -130,6 +137,114 @@ void CalibSolverIO::SaveVisualReprojError() const {
                                         cereal::make_nvp("reproj_residuals", residuals));
     }
     spdlog::info("saving visual reprojection errors finished!");
+}
+
+void CalibSolverIO::SaveInertialAcceError() const {
+    std::string saveDir = Configor::DataStream::OutputPath + "/residual/acce";
+    if (TryCreatePath(saveDir)) {
+        spdlog::info("saving inertial acce error to dir: '{}'...", saveDir);
+    } else {
+        return;
+    }
+    const auto &splines = _solver->_splineSegments;
+    const auto &gravity = _solver->_parMgr->GRAVITY;
+    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+        auto subSaveDir = saveDir + "/" + topic;
+        if (!TryCreatePath(subSaveDir)) {
+            spdlog::warn("create sub directory for '{}' failed: '{}'", topic, subSaveDir);
+            continue;
+        }
+        const auto &intri = _solver->_parMgr->INTRI.IMU.at(topic);
+        const auto &imuMes = _solver->_imuMes.at(topic);
+        const auto &TO_BiToBr = _solver->_parMgr->TEMPORAL.TO_BiToBr.at(topic);
+        const auto &SO3_BiToBr = _solver->_parMgr->EXTRI.SO3_BiToBr.at(topic);
+        const auto &POS_BiInBr = _solver->_parMgr->EXTRI.POS_BiInBr.at(topic);
+        std::vector<Eigen::Vector3d> residuals;
+        residuals.reserve(imuMes.size());
+        for (const auto &imuMe : imuMes) {
+            double timeBr = imuMe->GetTimestamp() + TO_BiToBr;
+            auto idx = _solver->IsTimeInValidSegment(timeBr);
+            if (idx == std::nullopt) {
+                continue;
+            }
+            auto SO3_BrToBr0 = splines.at(*idx).first.Evaluate(timeBr);
+            Sophus::SO3d SO3_BiToBr0 = SO3_BrToBr0 * SO3_BiToBr;
+            Eigen::Vector3d SO3_VEL_BrToBr0InBr0 =
+                SO3_BrToBr0 * splines.at(*idx).first.VelocityBody(timeBr);
+            Eigen::Vector3d SO3_ACCE_BrToBr0InBr0 =
+                SO3_BrToBr0 * splines.at(*idx).first.AccelerationBody(timeBr);
+
+            Eigen::Vector3d ACCE_BrToBr0InBr0 = splines.at(*idx).second.Acceleration(timeBr);
+
+            Eigen::Matrix33d SO3_VEL_MAT = Sophus::SO3d::hat(SO3_VEL_BrToBr0InBr0);
+            Eigen::Matrix33d SO3_ACCE_MAT = Sophus::SO3d::hat(SO3_ACCE_BrToBr0InBr0);
+            Eigen::Vector3d POS_ACCE_BiToBr0InBr0 =
+                ACCE_BrToBr0InBr0 +
+                (SO3_ACCE_MAT + SO3_VEL_MAT * SO3_VEL_MAT) * (SO3_BrToBr0.matrix() * POS_BiInBr);
+
+            Eigen::Vector3d accePred = (intri->ACCE.MapMatrix() *
+                                        (SO3_BiToBr0.inverse() * (POS_ACCE_BiToBr0InBr0 - gravity)))
+                                           .eval() +
+                                       intri->ACCE.BIAS;
+            Eigen::Vector3d error = accePred - imuMe->GetAcce();
+            residuals.push_back(error);
+        }
+        std::ofstream file(subSaveDir + "/residuals" + Configor::GetFormatExtension(),
+                           std::ios::out);
+        auto ar = GetOutputArchiveVariant(file, Configor::Preference::OutputDataFormat);
+        SerializeByOutputArchiveVariant(ar, Configor::Preference::OutputDataFormat,
+                                        cereal::make_nvp("acce_residuals", residuals));
+    }
+    spdlog::info("saving inertial acce errors finished!");
+}
+
+void CalibSolverIO::SaveInertialGyroError() const {
+    std::string saveDir = Configor::DataStream::OutputPath + "/residual/gyro";
+    if (TryCreatePath(saveDir)) {
+        spdlog::info("saving inertial gyro error to dir: '{}'...", saveDir);
+    } else {
+        return;
+    }
+    const auto &splines = _solver->_splineSegments;
+    for (const auto &[topic, _] : Configor::DataStream::IMUTopics) {
+        auto subSaveDir = saveDir + "/" + topic;
+        if (!TryCreatePath(subSaveDir)) {
+            spdlog::warn("create sub directory for '{}' failed: '{}'", topic, subSaveDir);
+            continue;
+        }
+        const auto &intri = _solver->_parMgr->INTRI.IMU.at(topic);
+        const auto &imuMes = _solver->_imuMes.at(topic);
+        const auto &TO_BiToBr = _solver->_parMgr->TEMPORAL.TO_BiToBr.at(topic);
+        const auto &SO3_BiToBr = _solver->_parMgr->EXTRI.SO3_BiToBr.at(topic);
+        std::vector<Eigen::Vector3d> residuals;
+        residuals.reserve(imuMes.size());
+        for (const auto &imuMe : imuMes) {
+            double timeBr = imuMe->GetTimestamp() + TO_BiToBr;
+            auto idx = _solver->IsTimeInValidSegment(timeBr);
+            if (idx == std::nullopt) {
+                continue;
+            }
+            Eigen::Vector3d SO3_VEL_BrToBr0InBr = splines.at(*idx).first.VelocityBody(timeBr);
+            const auto &SO3_BrToBr0 = splines.at(*idx).first.Evaluate(timeBr);
+
+            Sophus::SO3d SO3_BiToBr0 = SO3_BrToBr0 * SO3_BiToBr;
+            Sophus::SO3Tangent<double> SO3_VEL_BrToBr0InBr0 = SO3_BrToBr0 * SO3_VEL_BrToBr0InBr;
+
+            Eigen::Vector3d pred =
+                (intri->GYRO.MapMatrix() *
+                 (intri->SO3_AtoG * SO3_BiToBr0.inverse() * SO3_VEL_BrToBr0InBr0)) +
+                intri->GYRO.BIAS;
+
+            Eigen::Vector3d error = pred - imuMe->GetGyro();
+            residuals.push_back(error);
+        }
+        std::ofstream file(subSaveDir + "/residuals" + Configor::GetFormatExtension(),
+                           std::ios::out);
+        auto ar = GetOutputArchiveVariant(file, Configor::Preference::OutputDataFormat);
+        SerializeByOutputArchiveVariant(ar, Configor::Preference::OutputDataFormat,
+                                        cereal::make_nvp("gyro_residuals", residuals));
+    }
+    spdlog::info("saving inertial gyro errors finished!");
 }
 
 bool CalibSolverIO::SaveRawEventsOfExtractedPatterns(const std::map<int, ExtractedCirclesVec> &data,
